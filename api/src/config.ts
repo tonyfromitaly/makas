@@ -63,7 +63,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     now: () => new Date(),
     allowSignup: env.allowSignup,
     publicUrl: env.publicUrl,
-    billingEnabled: !!(env.stripeSecretKey && env.stripePriceId),
+    billingEnabled: !!(env.stripeSecretKey && env.stripePriceId && env.stripeWebhookSecret),
     ...overrides,
   };
 }

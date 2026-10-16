@@ -24,7 +24,7 @@ const T = {
     q3: 'Verilerim ne olur?', a3: 'Veriler yalnızca senin dükkânına aittir; istediğin an dışa aktarabilirsin. İptalden 90 gün sonra kalıcı olarak silinir.',
     q4: 'Hangi dillerde çalışıyor?', a4: 'Uygulama, asistan ve müşteri mesajları Türkçe, İngilizce ve İspanyolca.',
     q5: 'E-posta gelmedi?', a5: 'Gereksiz (spam) klasörüne bak. Yine yoksa uygulamadaki canlı destekten ya da bu sayfadaki demodan bize yaz; yeni anahtar gönderelim.',
-    soon: 'Çok yakında', footer: 'Berberin defteri · Türkçe · English · Español', priceHint: 'Fade Pro: {price} {interval} · istediğin zaman iptal',
+    soon: 'Çok yakında', apply: 'Başvur', applying: 'Gönderiliyor…', applied: 'Başvurun alındı! Ekibimiz seninle iletişime geçecek; onaylanınca uygulama linkin ve erişim anahtarın e-postana gelecek.', applySub: 'Bilgilerini bırak; başvurun onaylanınca uygulama linkin e-postana düşsün.', footer: 'Berberin defteri · Türkçe · English · Español', priceHint: 'Fade Pro: {price} {interval} · istediğin zaman iptal',
     okTitle: 'Ödemen alındı.', okBody: 'Dükkânın kuruluyor. Birkaç dakika içinde e-postana uygulama linkin ve erişim anahtarın gelecek.', okSpam: 'Göremezsen gereksiz (spam) klasörüne bak.', okBack: 'Ana sayfaya dön',
     errRequired: 'Lütfen tüm alanları doldur ve koşulları kabul et.', errEmail: 'Bu e-posta ile zaten bir dükkân var. Uygulamadan giriş yap.', errClosed: 'Abonelikler çok yakında açılıyor. O zamana kadar demoyu deneyebilirsin.', errGeneric: 'Bir şey ters gitti, tekrar dene.',
   },
@@ -52,7 +52,7 @@ const T = {
     q3: 'What about my data?', a3: 'Your data belongs to your shop only; export it any time. It is deleted 90 days after cancelling.',
     q4: 'Which languages?', a4: 'The app, the assistant and client messages work in Turkish, English and Spanish.',
     q5: 'No e-mail?', a5: 'Check your spam folder. Still nothing? Write to us and we’ll send a new key.',
-    soon: 'Coming soon', footer: 'The barber’s book · Türkçe · English · Español', priceHint: 'Fade Pro: {price} {interval} · cancel any time',
+    soon: 'Coming soon', apply: 'Apply', applying: 'Sending…', applied: 'Application received! Our team will get in touch; once approved, your app link and access key arrive by e-mail.', applySub: 'Leave your details; once approved, your app link lands in your inbox.', footer: 'The barber’s book · Türkçe · English · Español', priceHint: 'Fade Pro: {price} {interval} · cancel any time',
     okTitle: 'Payment received.', okBody: 'Your shop is being set up. Your app link and access key will reach your inbox in a few minutes.', okSpam: 'Can’t see it? Check your spam folder.', okBack: 'Back to the home page',
     errRequired: 'Please fill in every field and accept the terms.', errEmail: 'A shop already exists for this e-mail. Sign in from the app.', errClosed: 'Subscriptions open very soon. Try the demo meanwhile.', errGeneric: 'Something went wrong, please try again.',
   },
@@ -82,7 +82,7 @@ T.es = {
   q3: '¿Y mis datos?', a3: 'Son solo de tu barbería; expórtalos cuando quieras. Se borran 90 días después de cancelar.',
   q4: '¿En qué idiomas?', a4: 'La app, el asistente y los mensajes a clientes funcionan en turco, inglés y español.',
   q5: '¿No llegó el correo?', a5: 'Revisa la carpeta de spam. Si no está, escríbenos y te enviamos una clave nueva.',
-  soon: 'Muy pronto', footer: 'La libreta del barbero · Türkçe · English · Español', priceHint: 'Fade Pro: {price} {interval} · cancela cuando quieras',
+  soon: 'Muy pronto', apply: 'Solicitar', applying: 'Enviando…', applied: '¡Solicitud recibida! Nuestro equipo te contactará; al aprobarla, el enlace de la app y tu clave llegarán a tu correo.', applySub: 'Deja tus datos; cuando aprobemos tu solicitud, el enlace de la app llegará a tu correo.', footer: 'La libreta del barbero · Türkçe · English · Español', priceHint: 'Fade Pro: {price} {interval} · cancela cuando quieras',
   okTitle: 'Pago recibido.', okBody: 'Estamos preparando tu barbería. En unos minutos te llegarán el enlace de la app y tu clave de acceso.', okSpam: '¿No lo ves? Revisa el spam.', okBack: 'Volver al inicio',
   errRequired: 'Completa todos los campos y acepta las condiciones.', errEmail: 'Ya existe una barbería con este correo. Entra desde la app.', errClosed: 'Las suscripciones abren muy pronto. Mientras, prueba la demo.', errGeneric: 'Algo salió mal, inténtalo de nuevo.',
 };
@@ -98,6 +98,19 @@ function apply() {
   document.querySelectorAll('[data-i18n]').forEach((el) => (el.textContent = t(el.dataset.i18n)));
   document.querySelectorAll('.langs button').forEach((b) => b.classList.toggle('on', b.dataset.lang === lang));
   renderPrice();
+  renderMode();
+}
+
+// Payments off: the form is an application the team approves; payments on: it goes to Stripe Checkout.
+const applying = () => plan && plan.enabled === false;
+
+function renderMode() {
+  const btn = document.getElementById('submit');
+  if (btn && !btn.disabled) btn.textContent = t(applying() ? 'apply' : 'pay');
+  const sub = document.querySelector('[data-i18n="formSub"]');
+  if (sub && applying()) sub.textContent = t('applySub');
+  const secure = document.querySelector('.secure');
+  if (secure) secure.style.display = applying() ? 'none' : '';
 }
 
 function renderPrice() {
@@ -132,6 +145,7 @@ fetch('/api/billing/plan')
   .then((p) => {
     plan = p;
     renderPrice();
+    renderMode();
   })
   .catch(() => {});
 
@@ -147,7 +161,7 @@ if (form) {
     err.textContent = '';
     if (!form.checkValidity()) return void (err.textContent = t('errRequired'));
     btn.disabled = true;
-    btn.textContent = t('paying');
+    btn.textContent = t(applying() ? 'applying' : 'paying');
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
@@ -163,13 +177,17 @@ if (form) {
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.url) return void (location.href = body.url);
+      if (res.ok && body.applied) {
+        form.innerHTML = `<p class="applied">✓ ${t('applied')}</p>`;
+        return;
+      }
       const code = body?.error?.code;
       err.textContent = code === 'EMAIL_TAKEN' ? t('errEmail') : code === 'BILLING_DISABLED' ? t('errClosed') : code === 'VALIDATION_ERROR' ? t('errRequired') : t('errGeneric');
     } catch {
       err.textContent = t('errGeneric');
     }
     btn.disabled = false;
-    btn.textContent = t('pay');
+    btn.textContent = t(applying() ? 'apply' : 'pay');
   });
 }
 

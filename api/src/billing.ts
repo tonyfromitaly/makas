@@ -5,6 +5,7 @@ import { IANAZone } from 'luxon';
 import {
   createAccessKey,
   errorBody,
+  safeEqual,
   provisionShop,
   verifyAccess,
   withSystem,
@@ -116,7 +117,8 @@ export async function billingRoutes(
   const fail = (reply: any, status: number, code: string, message: string) => reply.code(status).send(errorBody(code, message));
 
   app.get(`${o.prefix}/billing/plan`, async () => {
-    if (!o.provider) return { enabled: false };
+    // Without a payment provider the website takes applications that the operator approves.
+    if (!o.provider) return { enabled: false, applications: true };
     try {
       return { enabled: true, ...(await o.provider.plan()) };
     } catch (e) {
@@ -126,13 +128,17 @@ export async function billingRoutes(
   });
 
   app.post(`${o.prefix}/billing/checkout`, { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
-    if (!o.provider) return fail(reply, 503, 'BILLING_DISABLED', 'Subscriptions are not open yet');
     const parsed = checkoutBody.safeParse(req.body);
     if (!parsed.success) return fail(reply, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input');
     const b = parsed.data;
     const signup = await withSystem(o.db, async (tx) => {
       const taken = await tx.query('select 1 from users where lower(email) = $1', [b.email]);
       if (taken.rows.length) return null;
+      // An application sent twice stays one application.
+      if (!o.provider) {
+        const pending = (await tx.query(`select id from signups where lower(email) = $1 and status = 'pending'`, [b.email])).rows[0];
+        if (pending) return pending;
+      }
       return (
         await tx.query(
           `insert into signups (email, shop_name, owner_name, country, timezone, language) values ($1, $2, $3, $4, $5, $6) returning id`,
@@ -141,6 +147,7 @@ export async function billingRoutes(
       ).rows[0];
     });
     if (!signup) return fail(reply, 409, 'EMAIL_TAKEN', 'An account with this email already exists');
+    if (!o.provider) return { applied: true };
     const session = await o.provider.createCheckout({
       email: b.email,
       signupId: signup.id,
@@ -168,45 +175,63 @@ export async function billingRoutes(
     });
   });
 
-  async function handleEvent(event: BillingEvent) {
+  /**
+   * Turns a pending sign-up into a shop, issues the access key and e-mails it. Used by the Stripe webhook
+   * and by the operator's "approve". Idempotent: a sign-up that is no longer pending is left alone.
+   */
+  async function openShop(
+    find: { sql: string; param: string },
+    sub: { status: SubStatus; periodEnd: Date | null; customerId?: string | null; subscriptionId?: string | null; planKey: string },
+    trialDays?: number,
+  ) {
     const now = o.config.now();
-    if (event.type === 'checkout.completed') {
-      const sub = event.subscriptionId ? await o.provider!.subscription(event.subscriptionId) : { status: 'active' as SubStatus, periodEnd: null };
-      // Idempotent: Stripe retries webhooks; a completed sign-up is never provisioned twice.
-      const created = await withSystem(o.db, async (tx) => {
-        const s = (await tx.query(`select * from signups where stripe_session_id = $1 and status = 'pending' for update`, [event.sessionId])).rows[0];
-        if (!s) return null;
+    const created = await withSystem(o.db, async (tx) => {
+      const s = (await tx.query(`select * from signups where ${find.sql} and status = 'pending' for update`, [find.param])).rows[0];
+      if (!s) return null;
         const taken = (await tx.query('select 1 from users where lower(email) = $1', [s.email])).rows[0];
         if (taken) {
           await tx.query(`update signups set status = 'expired' where id = $1`, [s.id]);
           return null;
         }
-        const { shopId, user } = await provisionShop(tx, {
-          shopName: s.shop_name,
-          ownerName: s.owner_name,
-          email: s.email,
-          passwordHash: null,
-          country: s.country,
-          timezone: s.timezone,
-          language: s.language,
-          currency: s.currency,
-          subscription: { status: sub.status, planKey: 'pro', periodEnd: sub.periodEnd, stripeCustomerId: event.customerId, stripeSubscriptionId: event.subscriptionId },
-          now,
-        });
-        const key = await createAccessKey(tx, shopId, user.id, now);
-        await tx.query(`update signups set status = 'completed', shop_id = $2 where id = $1`, [s.id, shopId]);
-        return { signup: s, key };
+      const { shopId, user } = await provisionShop(tx, {
+        shopName: s.shop_name,
+        ownerName: s.owner_name,
+        email: s.email,
+        passwordHash: null,
+        country: s.country,
+        timezone: s.timezone,
+        language: s.language,
+        currency: s.currency,
+        subscription: { status: sub.status, planKey: sub.planKey, periodEnd: sub.periodEnd, stripeCustomerId: sub.customerId, stripeSubscriptionId: sub.subscriptionId },
+        now,
       });
-      if (created) {
-        // After commit: if the e-mail fails the shop still exists and the operator can issue a new key.
-        try {
-          await o.mailer.send(
-            welcomeEmail({ to: created.signup.email, name: created.signup.owner_name, shop: created.signup.shop_name, key: created.key, appUrl, lang: created.signup.language }),
-          );
-        } catch (e) {
-          app.log.error(e, 'welcome e-mail failed');
-        }
-      }
+      const key = await createAccessKey(tx, shopId, user.id, now);
+      await tx.query(`update signups set status = 'completed', shop_id = $2 where id = $1`, [s.id, shopId]);
+      return { signup: s, key, shopId };
+    });
+    if (!created) return null;
+    // After commit: if the e-mail fails the shop still exists and the operator can issue a new key.
+    let emailed = true;
+    try {
+      await o.mailer.send(
+        welcomeEmail({ to: created.signup.email, name: created.signup.owner_name, shop: created.signup.shop_name, key: created.key, appUrl, lang: created.signup.language, trialDays }),
+      );
+    } catch (e) {
+      emailed = false;
+      app.log.error(e, 'welcome e-mail failed');
+    }
+    return { shopId: created.shopId, emailed };
+  }
+
+  async function handleEvent(event: BillingEvent) {
+    const now = o.config.now();
+    if (event.type === 'checkout.completed') {
+      const sub = event.subscriptionId ? await o.provider!.subscription(event.subscriptionId) : { status: 'active' as SubStatus, periodEnd: null };
+      // Idempotent: Stripe retries webhooks; a completed sign-up is never provisioned twice.
+      await openShop(
+        { sql: 'stripe_session_id = $1', param: event.sessionId },
+        { ...sub, customerId: event.customerId, subscriptionId: event.subscriptionId, planKey: 'pro' },
+      );
     } else if (event.type === 'subscription.changed') {
       await withSystem(o.db, (tx) =>
         tx.query(
@@ -233,6 +258,79 @@ export async function billingRoutes(
     const sub = await withTenant(o.db, claims.shop, async (tx) => (await tx.query('select stripe_customer_id from subscriptions where shop_id = $1', [claims.shop])).rows[0]);
     if (!sub?.stripe_customer_id) return fail(reply, 404, 'NO_BILLING', 'This shop is not billed through Stripe');
     return { url: await o.provider.portal(sub.stripe_customer_id, appUrl) };
+  });
+
+  // --- operator: applications from the website (while payments are off) and invitations ---
+  const admin = async (req: any, reply: any) => {
+    const token = String(req.headers.authorization ?? '').replace(/^Bearer /, '');
+    if (!(await safeEqual(token, o.config.adminApiKey))) {
+      fail(reply, 401, 'UNAUTHORIZED', 'Invalid service credentials');
+      return false;
+    }
+    return true;
+  };
+
+  app.get(`${o.prefix}/admin/signups`, async (req, reply) => {
+    if (!(await admin(req, reply))) return;
+    const status = (req.query as any)?.status ?? 'pending';
+    const { rows } = await withSystem(o.db, (tx) =>
+      tx.query(
+        `select id, email, shop_name, owner_name, country, timezone, language, status, stripe_session_id is not null as paid_checkout, created_at
+           from signups where ($1 = 'all' or status = $1) order by created_at desc limit 200`,
+        [status],
+      ),
+    );
+    return { data: rows };
+  });
+
+  app.post(`${o.prefix}/admin/signups/:id/approve`, async (req, reply) => {
+    if (!(await admin(req, reply))) return;
+    const body = z
+      .object({ status: z.enum(['trial', 'active']).default('trial'), days: z.number().int().min(1).max(366).default(o.config.trialDays) })
+      .safeParse(req.body ?? {});
+    if (!body.success) return fail(reply, 400, 'VALIDATION_ERROR', body.error.issues[0]?.message ?? 'Invalid input');
+    const id = (req.params as any).id;
+    if (!z.string().uuid().safeParse(id).success) return fail(reply, 404, 'NOT_FOUND', 'Application not found');
+    const end = new Date(o.config.now().getTime() + body.data.days * 86400_000);
+    const r = await openShop(
+      { sql: 'id = $1', param: id },
+      { status: body.data.status, periodEnd: end, planKey: body.data.status === 'trial' ? 'trial' : 'pro' },
+      body.data.status === 'trial' ? body.data.days : undefined,
+    );
+    if (!r) return fail(reply, 409, 'NOT_PENDING', 'This application is no longer pending');
+    return { shop_id: r.shopId, emailed: r.emailed };
+  });
+
+  app.post(`${o.prefix}/admin/signups/:id/reject`, async (req, reply) => {
+    if (!(await admin(req, reply))) return;
+    const id = (req.params as any).id;
+    if (!z.string().uuid().safeParse(id).success) return fail(reply, 404, 'NOT_FOUND', 'Application not found');
+    const { rows } = await withSystem(o.db, (tx) => tx.query(`update signups set status = 'expired' where id = $1 and status = 'pending' returning id`, [id]));
+    if (!rows.length) return fail(reply, 409, 'NOT_PENDING', 'This application is no longer pending');
+    return { rejected: true };
+  });
+
+  // A fresh access key for an existing shop, e-mailed to its owner (lost e-mail, new phone).
+  app.post(`${o.prefix}/admin/shops/:id/invite`, async (req, reply) => {
+    if (!(await admin(req, reply))) return;
+    const id = (req.params as any).id;
+    if (!z.string().uuid().safeParse(id).success) return fail(reply, 404, 'NOT_FOUND', 'Shop not found');
+    const now = o.config.now();
+    const r = await withSystem(o.db, async (tx) => {
+      const s = (
+        await tx.query(`select s.id, s.name, s.language, u.id as user_id, u.email, u.name as owner from shops s join users u on u.id = s.owner_user_id where s.id = $1`, [id])
+      ).rows[0];
+      if (!s) return null;
+      return { s, key: await createAccessKey(tx, s.id, s.user_id, now) };
+    });
+    if (!r) return fail(reply, 404, 'NOT_FOUND', 'Shop not found');
+    try {
+      await o.mailer.send(welcomeEmail({ to: r.s.email, name: r.s.owner, shop: r.s.name, key: r.key, appUrl, lang: r.s.language }));
+      return { emailed: true };
+    } catch (e) {
+      app.log.error(e, 'invite e-mail failed');
+      return { emailed: false, key: r.key };
+    }
   });
 
   return { handleEvent };

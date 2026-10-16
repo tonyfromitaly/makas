@@ -1823,3 +1823,12 @@ input.narrow {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+.app-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+.row.wrap {
+  flex-wrap: wrap;
+}

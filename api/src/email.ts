@@ -33,11 +33,12 @@ export function consoleMailer(log: (s: string) => void = console.log): Mailer {
 
 type L = 'tr' | 'en' | 'es';
 
-const COPY: Record<L, { subject: string; hello: string; ready: string; step1: string; step2: string; button: string; keyLabel: string; expires: string; help: string }> = {
+const COPY: Record<L, { subject: string; hello: string; ready: string; readyTrial: string; step1: string; step2: string; button: string; keyLabel: string; expires: string; help: string }> = {
   tr: {
     subject: 'Fade hazır: {shop} için giriş anahtarın',
     hello: 'Merhaba {name},',
     ready: 'Aboneliğin başladı ve {shop} Fade’de hazır. Randevu defterin, gün kazancın, veresiye defterin ve AI asistanın seni bekliyor.',
+    readyTrial: 'Başvurun onaylandı: {shop} Fade’de hazır ve {days} günlük deneme sürün başladı. Randevu defterin, gün kazancın, veresiye defterin ve AI asistanın seni bekliyor.',
     step1: 'Aşağıdaki düğmeye bas; anahtarın otomatik dolar.',
     step2: 'Kendine bir şifre belirle. Hepsi bu: dükkânın açık.',
     button: 'Fade’i aç',
@@ -49,6 +50,7 @@ const COPY: Record<L, { subject: string; hello: string; ready: string; step1: st
     subject: 'Fade is ready: your access key for {shop}',
     hello: 'Hi {name},',
     ready: 'Your subscription is active and {shop} is ready on Fade. Your appointment book, day takings, client tabs and AI assistant are waiting.',
+    readyTrial: 'You’re approved: {shop} is ready on Fade and your {days}-day trial has started. Your appointment book, day takings, client tabs and AI assistant are waiting.',
     step1: 'Tap the button below; your key is filled in for you.',
     step2: 'Choose a password. That’s it: your shop is open.',
     button: 'Open Fade',
@@ -60,6 +62,7 @@ const COPY: Record<L, { subject: string; hello: string; ready: string; step1: st
     subject: 'Fade está listo: tu clave de acceso para {shop}',
     hello: 'Hola {name}:',
     ready: 'Tu suscripción está activa y {shop} ya está en Fade. Tu agenda, la caja del día, los fiados y tu asistente de IA te esperan.',
+    readyTrial: 'Tu solicitud fue aprobada: {shop} ya está en Fade y empezó tu prueba de {days} días. Tu agenda, la caja del día, los fiados y tu asistente de IA te esperan.',
     step1: 'Pulsa el botón de abajo; tu clave se rellena sola.',
     step2: 'Elige una contraseña. Listo: tu barbería está abierta.',
     button: 'Abrir Fade',
@@ -72,11 +75,12 @@ const COPY: Record<L, { subject: string; hello: string; ready: string; step1: st
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /** The welcome e-mail with the app link and the one-time access key. */
-export function welcomeEmail(p: { to: string; name: string; shop: string; key: string; appUrl: string; lang: L }): Mail {
+export function welcomeEmail(p: { to: string; name: string; shop: string; key: string; appUrl: string; lang: L; trialDays?: number }): Mail {
   const c = COPY[p.lang] ?? COPY.en;
-  const fill = (s: string) => s.replace('{name}', p.name.split(' ')[0]).replace('{shop}', p.shop);
+  const fill = (s: string) => s.replace('{name}', p.name.split(' ')[0]).replace('{shop}', p.shop).replace('{days}', String(p.trialDays ?? ''));
+  const ready = p.trialDays ? c.readyTrial : c.ready;
   const link = `${p.appUrl.replace(/\/$/, '')}/#key=${encodeURIComponent(p.key)}`;
-  const text = [fill(c.hello), '', fill(c.ready), '', `1. ${c.step1}`, `2. ${c.step2}`, '', `${c.button}: ${link}`, `${c.keyLabel}: ${p.key}`, '', c.expires, c.help].join('\n');
+  const text = [fill(c.hello), '', fill(ready), '', `1. ${c.step1}`, `2. ${c.step2}`, '', `${c.button}: ${link}`, `${c.keyLabel}: ${p.key}`, '', c.expires, c.help].join('\n');
   const html = `<!doctype html><html><body style="margin:0;background:#f4efe4;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1d1a15">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fffdf8;border:1px solid #e2d9c7;border-radius:20px;overflow:hidden">
@@ -84,7 +88,7 @@ export function welcomeEmail(p: { to: string; name: string; shop: string; key: s
 <tr><td style="padding:28px 28px 8px"><div style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#a8741c">✂ Fade</div></td></tr>
 <tr><td style="padding:8px 28px 0;font-size:16px;line-height:1.55">
 <p style="margin:0 0 12px">${esc(fill(c.hello))}</p>
-<p style="margin:0 0 18px">${esc(fill(c.ready))}</p>
+<p style="margin:0 0 18px">${esc(fill(ready))}</p>
 <ol style="margin:0 0 22px;padding-left:20px"><li style="margin-bottom:6px">${esc(c.step1)}</li><li>${esc(c.step2)}</li></ol>
 <p style="margin:0 0 22px"><a href="${esc(link)}" style="display:inline-block;background:#1d1a15;color:#f4efe4;text-decoration:none;font-weight:600;padding:14px 26px;border-radius:14px">${esc(c.button)}</a></p>
 <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8f877a">${esc(c.keyLabel)}</p>

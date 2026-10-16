@@ -30,6 +30,8 @@ Gerçek uygulama kilitlidir: içeri yalnızca hesabı ya da **erişim anahtarı*
 4. Kişi linke dokunur, anahtar otomatik dolar, şifresini belirler ve içeri girer.
 5. Ödeme durursa kilit ekranı açılır; "Aboneliği yenile" Stripe portalına götürür, ödeme düzelince kilit kendiliğinden kalkar.
 
+**Ödeme açılmadan önce** site başvuru alır: başvuru İşletme panelinin **Başvurular** sekmesine düşer, sen onaylayınca dükkân açılır ve link e-postayla gider. Stripe anahtarları girildiğinde form kendiliğinden ödemeye geçer.
+
 Yayına alma (Render + Stripe + Resend) adım adım: [docs/yayina-alma.md](docs/yayina-alma.md). Repodaki `render.yaml` sunucuyu ve veritabanını tek tıkla kurar.
 
 ## Canlı destek: "Bize yaz"
@@ -70,7 +72,7 @@ npm run build:demo && npx vite preview --outDir app/dist
 
 ### Testler
 ```bash
-npm test          # 107 test (abonelik akışı ve süper kullanıcısız veritabanı dahil): kiracı yalıtımı, kabul ölçütleri, asistan + 40 cümlelik eğitim seti, auth, ayrıştırıcılar, repo hijyeni
+npm test          # 112 test (abonelik akışı ve süper kullanıcısız veritabanı dahil): kiracı yalıtımı, kabul ölçütleri, asistan + 40 cümlelik eğitim seti, auth, ayrıştırıcılar, repo hijyeni
 npm run typecheck
 ```
 

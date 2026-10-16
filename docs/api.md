@@ -31,9 +31,14 @@ In production everything is under `/api` (website at `/`, app at `/app/`).
 
 | | |
 |---|---|
-| `GET /billing/plan` | `{enabled, amount_cents, currency, interval}` read from the Stripe price |
+| `GET /billing/plan` | `{enabled, amount_cents, currency, interval}` read from the Stripe price; `{enabled: false, applications: true}` while payments are off |
 | `POST /billing/checkout` | `{shop_name, owner_name, email, country, timezone, language}` → `{url}` of Stripe Checkout. 10/min per IP. `EMAIL_TAKEN`, `BILLING_DISABLED`. |
 | `POST /billing/webhook` | Stripe, signature-verified on the raw body. `checkout.session.completed` opens the shop, issues an access key and sends the welcome e-mail (idempotent); `customer.subscription.updated/deleted` sync status and period end. |
+| `POST /billing/checkout` (payments off) | the same form becomes an application → `{applied: true}` (one per e-mail) |
+| `GET /admin/signups?status=pending\|all` | applications (admin key) |
+| `POST /admin/signups/:id/approve` | `{status: trial\|active, days}` → opens the shop, e-mails link + key → `{shop_id, emailed}` |
+| `POST /admin/signups/:id/reject` | closes an application |
+| `POST /admin/shops/:id/invite` | e-mails a fresh access key to the owner |
 | `POST /billing/portal` | owner → `{url}` of Stripe's customer portal (`NO_BILLING` for hand-managed shops) |
 
 Auth endpoints are limited to 10 requests/min per IP.

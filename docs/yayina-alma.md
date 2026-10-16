@@ -15,6 +15,17 @@ web sitesi (/)  →  "Abone ol" formu  →  Stripe ödeme sayfası
                                      /app/#key=…  →  şifre belirle  →  dükkân açık
 ```
 
+## 0. Ödeme açılmadan önce: başvuru modu
+
+Stripe anahtarları (gizli anahtar, fiyat kimliği, webhook sırrı) girilmediği sürece ödeme kapalıdır ve site **başvuru** alır:
+
+1. Kişi formu doldurur, site "Başvurun alındı" der. Ödeme sayfası açılmaz.
+2. Başvuru, İşletme panelinin (`/app/#operator`, `ADMIN_API_KEY` ile) **Başvurular** sekmesine düşer.
+3. Ödemeyi yasal yoldan nasıl alacağını netleştirince **Deneme ile onayla (14 gün)** ya da **Aktif onayla (30 gün)** dersin. Dükkân açılır, anahtar üretilir, Resend e-postayı gönderir.
+4. Süresi dolan dükkân kilitlenir. Elle yenilemek için `PATCH /api/admin/shops/<id>/subscription` kullanılır (bkz. `docs/operations.md`).
+
+Stripe hazır olduğunda yalnızca üç anahtarı girersin; form kendiliğinden ödeme sayfasına yönlenir, başvuru modu kapanır.
+
 ## 1. Stripe (ödeme)
 
 1. https://dashboard.stripe.com adresinde hesap aç. Önce **Test modu**nda çalış (sağ üstteki anahtar).
@@ -43,7 +54,15 @@ web sitesi (/)  →  "Abone ol" formu  →  Stripe ödeme sayfası
 3. Olaylar: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.
 4. Kaydet ve **İmzalama sırrı**nı kopyala (`whsec_...`). Render'da `STRIPE_WEBHOOK_SECRET` olarak gir; servis yeniden başlar.
 
-## 5. Dene
+## 5. E-postayı dene
+
+```bash
+npm run mail:check -- adresin@ornek.com
+```
+
+Alan adı doğrulanmadan Resend yalnızca hesabını açtığın e-postaya gönderir. Apple ile giriş yaptıysan bu bir `…@privaterelay.appleid.com` adresidir ve Apple onu asıl e-postana iletir.
+
+## 6. Dene
 
 1. Siteyi aç, formu doldur, Stripe test kartıyla öde: `4242 4242 4242 4242`, ileri bir tarih, herhangi bir CVC.
 2. E-postana "Fade hazır" gelir (alan adı doğrulanmadıysa yalnızca Resend hesabının e-postasına). Linke dokun, şifreni belirle, içeridesin.

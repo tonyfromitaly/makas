@@ -11,6 +11,7 @@
     "retention": "tsx src/scripts/retention.ts",
     "ai:check": "tsx src/scripts/ai-check.ts",
     "ai:eval": "tsx src/scripts/ai-eval.ts",
+    "mail:check": "tsx src/scripts/mail-check.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

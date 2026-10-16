@@ -17,6 +17,22 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
   const [thread, setThread] = useState<any | null>(null);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  // Applications come from the website and live on the real server only (not in the browser demo).
+  const [view, setView] = useState<'support' | 'apps'>('support');
+  const [apps, setApps] = useState<any[] | null>(null);
+  const [note, setNote] = useState('');
+  const loadApps = async () => {
+    const r = await api.raw('GET', '/admin/signups', key);
+    setApps(r.status === 200 ? r.body.data : []);
+  };
+  const decide = async (id: string, action: 'trial' | 'active' | 'reject') => {
+    const r =
+      action === 'reject'
+        ? await api.raw('POST', `/admin/signups/${id}/reject`, key, {})
+        : await api.raw('POST', `/admin/signups/${id}/approve`, key, action === 'trial' ? { status: 'trial', days: 14 } : { status: 'active', days: 30 });
+    if (action !== 'reject') setNote(r.body?.emailed ? t('emailSent') : t('emailFailed'));
+    loadApps();
+  };
 
   const loadThreads = async () => {
     const r = await api.raw('GET', '/admin/support', key);
@@ -77,7 +93,34 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
         <button className="icon-btn" onClick={onClose} aria-label="close"><Icon name="x" /></button>
       </header>
 
-      {!open && (
+      {!open && !demoKey && (
+        <div className="segmented">
+          <button className={view === 'support' ? 'on' : ''} onClick={() => setView('support')}>{t('feedback')}</button>
+          <button className={view === 'apps' ? 'on' : ''} onClick={() => (setView('apps'), loadApps())}>{t('applications')}</button>
+        </div>
+      )}
+      {note && <p className="notice small">{note}</p>}
+
+      {!open && view === 'apps' && (
+        <ul className="list">
+          {apps?.map((a) => (
+            <li key={a.id} className="app-row">
+              <div>
+                <span className="row-title">{a.shop_name}</span>
+                <span className="row-meta">{a.owner_name} · {a.email} · {a.country} · {new Date(a.created_at).toLocaleString()}</span>
+              </div>
+              <div className="row wrap">
+                <button className="btn small ok" onClick={() => decide(a.id, 'trial')}>{t('approveTrial')}</button>
+                <button className="btn small" onClick={() => decide(a.id, 'active')}>{t('approveActive')}</button>
+                <button className="btn small danger-ghost" onClick={() => decide(a.id, 'reject')}>{t('reject')}</button>
+              </div>
+            </li>
+          ))}
+          {apps && !apps.length && <li className="muted small" style={{ padding: 16 }}>{t('noApplications')}</li>}
+        </ul>
+      )}
+
+      {!open && view === 'support' && (
         <ul className="list">
           {threads?.map((th) => (
             <li key={th.shop_id}>

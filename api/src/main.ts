@@ -45,7 +45,8 @@ const app = await buildServer({
   mailer: env.resendApiKey ? resendMailer(env.resendApiKey, env.mailFrom) : consoleMailer(),
   publicUrl: env.publicUrl,
 });
-console.log(`billing: ${env.stripeSecretKey ? 'stripe' : 'off (set STRIPE_* in .env)'} · mail: ${env.resendApiKey ? 'resend' : 'console'} · signup: ${env.allowSignup ? 'open' : 'website only'}`);
+const paymentsOn = !!(env.stripeSecretKey && env.stripePriceId && env.stripeWebhookSecret);
+console.log(`billing: ${paymentsOn ? 'stripe' : 'off, website takes applications (set STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET)'} · mail: ${env.resendApiKey ? 'resend' : 'console'} · signup: ${env.allowSignup ? 'open' : 'website only'}`);
 await app.listen({ port: env.port, host: env.host });
 
 const shutdown = async () => {
