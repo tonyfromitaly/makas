@@ -7,7 +7,18 @@ Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olar
 > **Canlı demo:** https://tonyfromitaly.github.io/makas/
 > Demoda hiçbir kurulum yok: **gerçek sunucu kodu ve gerçek Postgres (PGlite, WebAssembly) tarayıcının içinde çalışır.** Sağ üstteki **Canlı demo** düğmesi mesaj altyapısını (Tony tarafı) ve işletme panelini oynamanı sağlar.
 
+**Tanıtım filmi (19 sn):** [app/public/media/makas-film.mp4](app/public/media/makas-film.mp4). Demoyu ilk açışta da oynar.
+
 ---
+
+## AI asistanı DeepSeek'e bağlamak
+
+1. Kök klasördeki `.env` dosyasında `AI_API_KEY=` satırına DeepSeek anahtarını yaz (dosya git'e girmez).
+2. `npm run ai:check`: anahtarı tek bir anlama ve tek bir sohbet çağrısıyla dener.
+3. `npm run ai:eval`: 40 cümlelik eğitim/ölçüm setini hem yerel motora hem DeepSeek'e sorar, isabet oranını yazar.
+4. `npm run dev` → http://localhost:5173 → "Demo · demo@makas.app" düğmesi → Asistan sekmesi.
+
+Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldüğü: [docs/asistan-egitimi.md](docs/asistan-egitimi.md). GitHub Pages'teki canlı demo statik bir sayfa olduğu için anahtar taşıyamaz; orada her zaman yerleşik kural motoru çalışır.
 
 ## Ne yapıyor?
 
@@ -43,7 +54,7 @@ npm run build:demo && npx vite preview --outDir app/dist
 
 ### Testler
 ```bash
-npm test          # 53 test: kiracı yalıtımı, kabul ölçütleri, asistan, auth, ayrıştırıcılar, repo hijyeni
+npm test          # 95 test: kiracı yalıtımı, kabul ölçütleri, asistan + 40 cümlelik eğitim seti, auth, ayrıştırıcılar, repo hijyeni
 npm run typecheck
 ```
 
@@ -89,6 +100,10 @@ Temel şemadaki boşluklar kapatıldı, üstüne yenilikler eklendi:
 
 ## Bu turda yok (şemada yeri hazır)
 Çevrimiçi ödeme (Stripe alanları hazır), müşteriye açık rezervasyon sayfası, personel arayüzü (`barbers.user_id`, `users.role=barber` hazır), uygulama mağazası paketi.
+
+## Görüntü ve araçlar
+- Giriş ekranı ve film görüntüleri: [Pexels](https://www.pexels.com) (Pexels Lisansı) — 4178099, 7686515, 7697526, 7697135.
+- Film [Remotion](https://www.remotion.dev) ile kodla üretildi; geçişler çapraz bir "makas kesiği", imza dokusu akan barber-pole bandı.
 
 ---
 Lisans: MIT

@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "npm run dev -w api & npm run dev -w app",
     "test": "npm test -w api",
+    "ai:check": "npm run ai:check -w api",
+    "ai:eval": "npm run ai:eval -w api",
     "build": "npm run build -w app",
     "build:demo": "npm run build:demo -w app",
     "typecheck": "npm run typecheck -w core && npm run typecheck -w api && npm run typecheck -w app"

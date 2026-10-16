@@ -22,6 +22,8 @@ export interface Deps {
   parseNote?(input: { text: string; lang: string; today: string; timezone: string }): Promise<unknown>;
   /** LLM that turns a sentence into a Plan (see assistant/plan.ts). Optional: the local engine is the fallback. */
   assistant?(input: AssistantInput): Promise<unknown>;
+  /** LLM that answers an open question in words, grounded on a SQL snapshot. Optional: local advice is the fallback. */
+  chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown }): Promise<string>;
 }
 
 export interface AssistantInput {

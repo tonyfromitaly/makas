@@ -114,6 +114,33 @@ describe('assistant', () => {
     expect(es.body.reply).toContain('El mes pasado');
   });
 
+  it('answers open questions from the SQL snapshot (local advice without a model key)', async () => {
+    const r = await ask('işler nasıl gidiyor, ne yapmalıyım?');
+    expect(r.body.drafts).toHaveLength(0);
+    expect(r.body.engine).toBe('local');
+    expect(r.body.reply).toMatch(/\$/);
+  });
+
+  it('with a model configured, chat sees only the computed snapshot and its words are returned', async () => {
+    const { buildServer, argon2Deps } = await import('../src/server');
+    const { loadConfig } = await import('../src/config');
+    let seen: any = null;
+    const app = await buildServer({
+      db: t.db,
+      config: loadConfig({ jwtSecret: 'test-jwt-secret-that-is-long-enough-123', now: () => t.clock.now }),
+      deps: { ...argon2Deps, chat: async (input) => ((seen = input), 'Bu ay iyi gidiyor.') },
+    });
+    const login = await app.inject({ method: 'POST', url: '/auth/login', payload: { email: 'halil@example.com', password: 'super-secret-1' } });
+    const tok = JSON.parse(login.body).access_token;
+    const res = await app.inject({ method: 'POST', url: '/assistant', headers: { authorization: `Bearer ${tok}` }, payload: { text: 'müşterilerim neden azaldı?' } });
+    const body = JSON.parse(res.body);
+    expect(body.reply).toBe('Bu ay iyi gidiyor.');
+    expect(body.engine).toBe('ai');
+    expect(seen.snapshot.last_month.income_cents).toBe(80050);
+    expect(JSON.stringify(seen.snapshot)).not.toContain('+905'); // no phone numbers or raw records
+    await app.close();
+  });
+
   it('never leaks another shop’s data', async () => {
     expect((await ask('bu ay ne kadar ödemem var?', other)).body.reply).not.toContain('$');
     expect((await ask('Ahmet ne kadar borçlu?', other)).body.reply).not.toContain('$40');

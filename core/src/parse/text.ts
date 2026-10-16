@@ -10,12 +10,16 @@ export function fold(s: string) {
     .trim();
 }
 
+/** "2 tane", "3 adet", "2x": counts, not money. */
+export const QUANTITY = /\b\d+\s*(tane|adet|kutu|paket|kisi|pcs|pieces|units?|x|unidades?|piezas?)\b/g;
+
 /**
  * "1.800" and "1,800" mean 1800; "12,50" and "12.50" mean 12.5; "1.5k" or "2 bin" multiply.
  * Returns cents, or null when the text holds no amount.
  */
+
 export function parseAmountCents(text: string): number | null {
-  const m = fold(text).match(/(\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,](\d{1,2}))?\s*(k|bin|mil)?\b/);
+  const m = fold(text).replace(QUANTITY, ' ').match(/(\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,](\d{1,2}))?\s*(k|bin|mil)?\b/);
   if (!m) return null;
   const whole = Number(m[1].replace(/[.,]/g, ''));
   const frac = m[2] ? Number(m[2].padEnd(2, '0')) : 0;

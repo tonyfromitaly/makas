@@ -43,8 +43,9 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
   }, []);
 
   useEffect(() => {
+    // Only follow the conversation once it has started, so the header stays in view on open.
     // Block body: scrollIntoView may return a promise, which must not become the effect's cleanup.
-    end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (msgs.length > 1 || busy) end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [msgs, busy]);
 
   const send = async (sentence: string) => {
@@ -74,10 +75,13 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
 
   return (
     <div className="screen assistant">
-      <div className="screen-head">
-        <h1>{t('assistant')}</h1>
+      <div className="assistant-hero">
+        <span className={`orb ${busy || speech.listening ? 'busy' : ''}`} aria-hidden />
+        <div>
+          <h1>{t('assistant')}</h1>
+          <p className="muted small">{t('assistantHint')}</p>
+        </div>
       </div>
-      <p className="muted small">{t('assistantHint')}</p>
 
       <div className="chat">
         {msgs.map((m) => (

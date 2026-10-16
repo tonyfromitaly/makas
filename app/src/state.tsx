@@ -35,6 +35,7 @@ interface AppState {
   bump: number;
   refreshAll(): void;
   openAssistant(mic?: boolean): void;
+  showWelcome(): void;
 }
 
 export const Ctx = createContext<AppState>(null as any);

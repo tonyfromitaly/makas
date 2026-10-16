@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { Client } from '../api';
-import { Field, Icon } from '../components/ui';
+import { Field } from '../components/ui';
+import { Hero } from '../components/Welcome';
 import { errorText } from '../state';
 import type { Lang, T } from '../i18n';
+import { DEMO_LOGIN } from '@makas/core';
 
 const guessTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const guessCountry = (lang: Lang) => (lang === 'tr' ? 'TR' : lang === 'es' ? 'MX' : 'US');
@@ -33,17 +35,9 @@ export function Auth({ api, t, lang, setLang, onIn }: { api: Client; t: T; lang:
   };
 
   return (
-    <div className="auth">
-      <div className="auth-brand">
-        <span className="logo">
-          <Icon name="scissors" size={28} />
-        </span>
-        <h1>Makas</h1>
-        <p className="eyebrow">{t('appTagline')}</p>
-        <p className="hero-line">{t('heroLine')}</p>
-      </div>
+    <Hero t={t}>
       <form
-        className="card stack auth-card"
+        className="hero-card stack"
         onSubmit={(e) => {
           e.preventDefault();
           submit();
@@ -82,6 +76,11 @@ export function Auth({ api, t, lang, setLang, onIn }: { api: Client; t: T; lang:
         <button className="btn primary block" disabled={busy}>
           {mode === 'login' ? t('login') : t('register')}
         </button>
+        {import.meta.env.DEV && mode === 'login' && (
+          <button type="button" className="btn block" onClick={() => setF({ ...f, email: DEMO_LOGIN.email, password: DEMO_LOGIN.password })}>
+            Demo · {DEMO_LOGIN.email}
+          </button>
+        )}
         <button type="button" className="link-btn center" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
           {mode === 'login' ? t('noAccount') : t('haveAccount')}
         </button>
@@ -93,6 +92,6 @@ export function Auth({ api, t, lang, setLang, onIn }: { api: Client; t: T; lang:
           </button>
         ))}
       </div>
-    </div>
+    </Hero>
   );
 }

@@ -13,3 +13,6 @@ export { understandLocal, parseDue } from './assistant/local';
 export { planSchema, type Plan, type PlanItem, METRICS, PERIODS } from './assistant/plan';
 export { toE164, extractPhone } from './assistant/phone';
 export { periodRange } from './routes/assistant';
+export { UNDERSTAND_SYSTEM, CHAT_SYSTEM, SHOP_KNOWLEDGE, FEW_SHOT } from './assistant/training';
+export { shopSnapshot, type ShopSnapshot } from './assistant/snapshot';
+export { localAdvice } from './assistant/advice';

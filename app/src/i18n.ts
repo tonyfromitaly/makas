@@ -200,6 +200,13 @@ const tr = {
   sug7: "Ayın 25'inde kira ödemesini hatırlat",
   sug8: 'Kim borçlu?',
   thinking: 'Düşünüyorum…',
+  heroA: 'Her kesik,',
+  heroB: 'kayıtta.',
+  watchFilm: 'Filmi izle',
+  startDemo: 'Demoyu başlat',
+  welcomeBody: 'Randevu defteri, gün kazancı, veresiye, otomatik hatırlatmalar ve sesle çalışan bir AI asistan. Berberin telefonunda, tek ekranda.',
+  welcomePoints: 'Söyle, kaydetsin · Sor, rakamla cevaplasın · Hatırlatmalar kendiliğinden gitsin',
+  film: 'Tanıtım filmi',
 };
 
 type Dict = typeof tr;
@@ -404,6 +411,13 @@ const en: Dict = {
   sug7: 'Remind me to pay rent on the 25th',
   sug8: 'Who owes me?',
   thinking: 'Thinking…',
+  heroA: 'Every cut,',
+  heroB: 'counted.',
+  watchFilm: 'Watch the film',
+  startDemo: 'Start the demo',
+  welcomeBody: 'Appointment book, day takings, client tabs, automatic reminders and a voice AI assistant. On the barber’s phone, one screen.',
+  welcomePoints: 'Say it, it’s filed · Ask, it answers with numbers · Reminders go out on their own',
+  film: 'Intro film',
 };
 
 const es: Dict = {
@@ -605,6 +619,13 @@ const es: Dict = {
   sug7: 'Recuérdame pagar el alquiler el 25',
   sug8: '¿Quién me debe?',
   thinking: 'Pensando…',
+  heroA: 'Cada corte,',
+  heroB: 'contado.',
+  watchFilm: 'Ver el video',
+  startDemo: 'Empezar la demo',
+  welcomeBody: 'Agenda, caja del día, fiados, recordatorios automáticos y un asistente de IA por voz. En el teléfono del barbero, en una pantalla.',
+  welcomePoints: 'Dilo y se anota · Pregunta y responde con números · Los recordatorios salen solos',
+  film: 'Video',
 };
 
 export const dictionaries: Record<Lang, Dict> = { tr, en, es };

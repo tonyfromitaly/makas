@@ -8,6 +8,8 @@ import { toE164 } from '../assistant/phone';
 import { bestMatch, type Named } from '../parse/voice';
 import { fold } from '../parse/text';
 import { updateRow } from './shop';
+import { shopSnapshot } from '../assistant/snapshot';
+import { localAdvice } from '../assistant/advice';
 
 type Lang = 'tr' | 'en' | 'es';
 
@@ -234,6 +236,19 @@ export const assistantRoutes: Route[] = [
         if (item.type === 'query') {
           const a = await answer(ctx, item, shop, l, L.clients);
           if (a) texts.push(a.text);
+        } else if (item.type === 'chat') {
+          // Open question: the shop's numbers come from SQL; the model (or local rules) only words them.
+          const snapshot = await shopSnapshot(ctx.db, ctx.shopId, now);
+          let reply: string | null = null;
+          if (ctx.deps.chat) {
+            try {
+              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot })).trim() || null;
+              if (reply) engine = 'ai';
+            } catch {
+              /* fall back to local advice */
+            }
+          }
+          texts.push(reply ?? localAdvice(item.question, snapshot, l, shop.currency));
         } else if (item.type === 'appointment') {
           const client = match(item.client_name, L.clients);
           const service = match(item.service, L.services) ?? L.services[0] ?? null;

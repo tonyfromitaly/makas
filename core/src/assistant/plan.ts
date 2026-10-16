@@ -55,6 +55,7 @@ export const planItem = z.discriminatedUnion('type', [
     period: z.enum(PERIODS).default('this_month'),
     client_name: z.string().max(80).nullable().optional(),
   }),
+  z.object({ type: z.literal('chat'), question: z.string().min(1).max(600) }),
   z.object({ type: z.literal('unknown') }),
 ]);
 

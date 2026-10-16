@@ -5,7 +5,7 @@ import { Icon, Sheet } from './ui';
 
 /** Lets a reviewer play the other two layers: Tony's message worker and our operator desk. */
 export function DemoPanel() {
-  const { api, t, me, reloadMe, refreshAll, fail } = useApp();
+  const { api, t, me, reloadMe, refreshAll, fail, showWelcome } = useApp();
   const [open, setOpen] = useState(false);
   const [due, setDue] = useState<any[] | null>(null);
   const [feedback, setFeedback] = useState<any[] | null>(null);
@@ -54,6 +54,9 @@ export function DemoPanel() {
       <Sheet open={open} onClose={() => setOpen(false)} title={t('demoTitle')}>
         <div className="stack">
           <p className="muted small">{t('demoIntro')}</p>
+          <button className="btn" onClick={() => (setOpen(false), showWelcome())}>
+            <Icon name="sparkle" size={16} /> {t('film')}
+          </button>
 
           <section className="subcard stack">
             <h3 className="mini-title">

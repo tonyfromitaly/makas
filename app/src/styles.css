@@ -1415,3 +1415,297 @@ input.narrow {
   color: var(--pos);
   border-color: var(--pos);
 }
+
+/* =========================================================================
+   Makas identity v2: shop footage, the barber pole as a moving signature,
+   ink-and-brass money, a living assistant orb.
+   ========================================================================= */
+:root {
+  --pole-red: #b8322a;
+  --pole-blue: #2c4f7c;
+  --pole-cream: #f4efe4;
+  --pole: repeating-linear-gradient(-45deg, var(--pole-red) 0 10px, var(--pole-cream) 10px 16px, var(--pole-blue) 16px 26px, var(--pole-cream) 26px 32px);
+}
+@keyframes pole-run {
+  to {
+    background-position: 64px 0;
+  }
+}
+
+/* --- hero (auth + demo welcome) --- */
+.hero {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #14110d;
+  color: #f4efe4;
+}
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.04);
+}
+.hero-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 80% at 80% 10%, rgba(192, 138, 46, 0.18), transparent 60%),
+    linear-gradient(180deg, rgba(20, 17, 13, 0.55) 0%, rgba(20, 17, 13, 0.82) 55%, #14110d 100%);
+}
+.pole-band {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: 92px;
+  height: 18px;
+  transform: rotate(-6deg);
+  background: var(--pole);
+  background-size: 64px 18px;
+  animation: pole-run 1.6s linear infinite;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  opacity: 0.95;
+}
+.hero-inner {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: 150px 20px 40px;
+  display: grid;
+  gap: 28px;
+  align-content: end;
+}
+.hero-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #e0a94a;
+}
+.hero-title {
+  font-size: clamp(3rem, 12vw, 6.4rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  margin: 14px 0 0;
+  color: #f4efe4;
+}
+.hero-title em {
+  font-style: normal;
+  color: #e0a94a;
+}
+.hero-body {
+  max-width: 46ch;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: rgba(244, 239, 228, 0.86);
+  margin: 18px 0 6px;
+}
+.hero-points {
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: rgba(244, 239, 228, 0.6);
+  margin: 0 0 18px;
+}
+.film-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(244, 239, 228, 0.35);
+  background: rgba(20, 17, 13, 0.35);
+  backdrop-filter: blur(6px);
+  color: #f4efe4;
+  border-radius: 999px;
+  padding: 6px 16px 6px 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.film-btn .play {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #e0a94a;
+  color: #14110d;
+}
+.hero-card {
+  background: rgba(255, 253, 248, 0.94);
+  color: #1d1a15;
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  --surface: #fffdf8;
+  --surface-2: #f8f3e9;
+  --ink: #1d1a15;
+  --ink-2: #5d564b;
+  --line: #e2d9c7;
+  --bg: #f4efe4;
+}
+.hero-card input {
+  background: #fffdf8;
+  color: #1d1a15;
+}
+.hero-demo-note {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: #5d564b;
+  text-align: center;
+}
+.btn.big {
+  min-height: 56px;
+  font-size: 1.05rem;
+}
+.hero .lang-switch button {
+  color: rgba(244, 239, 228, 0.6);
+  border-color: rgba(244, 239, 228, 0.25);
+}
+.hero .lang-switch button.on {
+  color: #f4efe4;
+  border-color: #f4efe4;
+}
+.hero-panel {
+  display: grid;
+  gap: 14px;
+}
+.hero-phone {
+  display: none;
+}
+@media (min-width: 980px) {
+  .hero-inner {
+    grid-template-columns: 1.15fr 0.9fr 0.62fr;
+    align-items: center;
+    align-content: center;
+    gap: 40px;
+  }
+  .hero-phone {
+    display: block;
+    aspect-ratio: 9 / 16;
+    border-radius: 34px;
+    overflow: hidden;
+    border: 8px solid #0d0b09;
+    box-shadow: 0 0 0 1px rgba(244, 239, 228, 0.15), 0 40px 90px -30px rgba(0, 0, 0, 0.8);
+    transform: rotate(3deg);
+  }
+  .hero-phone video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+.film-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(10, 8, 6, 0.88);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  animation: fade 0.2s ease;
+}
+.film-modal video {
+  max-height: 88dvh;
+  max-width: 100%;
+  border-radius: 24px;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
+}
+.film-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  color: #f4efe4;
+}
+
+/* --- shell accents --- */
+.topbar {
+  overflow: hidden;
+}
+.pole-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--pole);
+  background-size: 64px 3px;
+  animation: pole-run 2.4s linear infinite;
+  opacity: 0.85;
+}
+.till {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(224, 169, 74, 0.28) 0%, transparent 55%),
+    linear-gradient(160deg, #221d17, #14110d);
+  color: #f4efe4;
+  border-color: #2f2a23;
+}
+.till .eyebrow {
+  color: rgba(244, 239, 228, 0.55);
+}
+.till-main .numeral.big {
+  color: #e0a94a;
+  font-size: 2.8rem;
+}
+.till-side,
+.till-foot {
+  color: rgba(244, 239, 228, 0.7);
+}
+.till .meter {
+  background: rgba(244, 239, 228, 0.08);
+  border-color: rgba(244, 239, 228, 0.12);
+}
+.till .link-btn {
+  color: #e0a94a;
+}
+
+/* --- assistant: a living orb --- */
+.assistant-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+.orb {
+  width: 54px;
+  height: 54px;
+  flex: none;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--pole-red), #e0a94a, var(--pole-blue), #e0a94a, var(--pole-red));
+  animation: orb-spin 6s linear infinite;
+  position: relative;
+  box-shadow: 0 10px 30px -10px rgba(192, 138, 46, 0.7);
+}
+.orb::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a3127, #14110d 70%);
+}
+.orb.busy {
+  animation-duration: 1.2s;
+}
+@keyframes orb-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.assistant-hero h1 {
+  font-size: 1.8rem;
+}
+.assistant-hero p {
+  margin: 2px 0 0;
+}
+.msg-avatar {
+  background: conic-gradient(from 200deg, var(--pole-red), #e0a94a, var(--pole-blue), var(--pole-red));
+  color: #fff;
+}
+.suggestions .chip-btn {
+  background: var(--surface);
+  border-style: dashed;
+}

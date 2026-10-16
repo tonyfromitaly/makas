@@ -12,6 +12,7 @@ import { Settings } from './screens/Settings';
 import { Locked } from './screens/Locked';
 import { Assistant } from './screens/Assistant';
 import { DemoPanel } from './components/DemoPanel';
+import { Welcome } from './components/Welcome';
 
 export const DEMO = import.meta.env.MODE === 'demo' || import.meta.env.VITE_DEMO === 'true';
 type Tab = 'today' | 'clients' | 'assistant' | 'books' | 'settings';
@@ -51,6 +52,22 @@ export function App() {
   const [lang, setLangState] = useState<Lang>(savedLang() ?? detectLang());
   const [tab, setTab] = useState<Tab>('today');
   const [autoMic, setAutoMic] = useState(false);
+  const [welcome, setWelcome] = useState(() => {
+    if (!DEMO) return false;
+    try {
+      return !localStorage.getItem('makas.welcomed');
+    } catch {
+      return true;
+    }
+  });
+  const closeWelcome = () => {
+    setWelcome(false);
+    try {
+      localStorage.setItem('makas.welcomed', '1');
+    } catch {
+      /* ignore */
+    }
+  };
   const [toastMsg, setToast] = useState('');
   const [bump, setBump] = useState(0);
   const t = useMemo(() => makeT(lang), [lang]);
@@ -88,6 +105,9 @@ export function App() {
     });
   }, [loadMe]);
 
+  // The welcome shows at once; Postgres keeps starting in the background behind it.
+  if (welcome) return <Welcome t={t} onStart={closeWelcome} />;
+
   if (phase === 'boot' || !api)
     return (
       <div className="boot">
@@ -121,6 +141,7 @@ export function App() {
     demo: DEMO,
     bump,
     refreshAll: () => setBump((b) => b + 1),
+    showWelcome: () => setWelcome(true),
     openAssistant: (mic = false) => {
       setAutoMic(mic);
       setTab('assistant');
@@ -131,6 +152,7 @@ export function App() {
     <Ctx.Provider value={state}>
       <div className="app">
         <header className="topbar">
+          <span className="pole-strip" aria-hidden />
           <span className="brand">
             <Icon name="scissors" size={18} /> {me.shop.name}
           </span>

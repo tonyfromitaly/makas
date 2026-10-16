@@ -24,12 +24,13 @@ describe('repo hygiene', () => {
     }
   });
   it('no secrets or .env files are committed', () => {
-    const all = files(root);
-    expect(all.filter((f) => /(^|\/)\.env$/.test(f))).toEqual([]);
+    // What matters is what git would publish: a local .env with a real key is fine as long as it is ignored.
+    const tracked = execSync('git ls-files', { cwd: root }).toString().split('\n').filter(Boolean);
+    expect(tracked.filter((f) => /(^|\/)\.env$/.test(f))).toEqual([]);
+    const all = tracked.map((f) => join(root, f));
     const suspicious = /(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[A-Za-z0-9]{30,})/;
     for (const f of all.filter((f) => /\.(ts|tsx|js|json|yml|yaml|md|env|example|conf)$/.test(f))) {
       expect(suspicious.test(readFileSync(f, 'utf8')), f).toBe(false);
     }
-    void execSync;
   });
 });

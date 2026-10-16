@@ -16,13 +16,16 @@ export interface AssistantContext {
 const re = (words: string[]) => new RegExp(`(^|\\s)(${words.join('|')})`);
 const QUESTION = re(['ne kadar', 'kac', 'hangi', 'kim', 'nedir', 'ne zaman', 'var mi', 'how much', 'how many', 'what', 'which', 'who', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'que', 'quien', 'cual']);
 // Weak cues only count when the sentence carries no amount ("toplam 500 kazandım" is a note, not a question).
+// Open questions and requests for advice go to the data-grounded chat.
+const ADVICE = re(['ne yapmali', 'ne yapsam', 'nasil', 'neden', 'niye', 'oneri', 'tavsiye', 'fikir', 'yorumla', 'durum ne', 'nasil gidiyor', 'why', 'how can', 'how do i', 'what should', 'advice', 'suggest', 'tips', 'por que', 'como puedo', 'que hago', 'consejo', 'recomienda']);
 const QUESTION_WEAK = re(['toplam', 'goster', 'listele', 'ozet', 'total', 'show', 'list', 'summary', 'muestra', 'resumen']);
 const REMIND = ['hatirlat', 'unutma', 'not al', 'remind', 'dont forget', 'don t forget', 'recuerda', 'recordar', 'recordatorio', 'no olvid'];
 const CLIENT_NEW = ['musteri ekle', 'musteri kaydet', 'yeni musteri', 'musteri kayd', 'musteriyi kaydet', 'kaydet', 'new client', 'add client', 'new customer', 'add customer', 'register', 'save client', 'nuevo cliente', 'agrega', 'registra', 'anade', 'guarda'];
 const APPT = ['randevu', 'appointment', 'book ', 'booking', 'cita', 'reserva', 'agenda'];
 const LEDGER_CHARGE = ['borc yaz', 'borca yaz', 'veresiye', 'borclandir', 'hesabina yaz', 'on his tab', 'on her tab', 'on the tab', 'owes', 'put on', 'fiado', 'fiar', 'apunta', 'debe'];
 const LEDGER_PAY = /(^|\s)(odedi|borcunu odedi|borcunu kapatti|kapatti|paid me|paid back|paid his|paid her|settled|pago|abono|saldo su)(\s|$)/;
-const TIME_HINT = /(saat|\bat\b|a las|\d{1,2}[:.]\d{2})/;
+// Words that make a number a time of day ("saat 3", "3'te", "beş buçukta", "at 11", "a las 4").
+const TIME_HINT = /(saat|\bat\b|a las|\d{1,2}[:.]\d{2}|bucuk|ceyrek|half past|o ?clock|y media|\d{1,2}'?(te|ta|de|da)\b|\b(bir|iki|uc|dort|bes|alti|yedi|sekiz|dokuz|on)(de|da|te|ta)\b)/;
 
 const METRIC_RULES: [string, RegExp][] = [
   ['payables', re(['odemem', 'odeyecegim', 'odenecek', 'odemeler', 'odemem gereken', 'borcum', 'faturalar', 'have to pay', 'need to pay', 'i owe', 'bills', 'payments due', 'due', 'debo', 'tengo que pagar', 'pagos', 'por pagar'])],
@@ -32,7 +35,7 @@ const METRIC_RULES: [string, RegExp][] = [
   ['appointments', re(['randevu', 'musteri gel', 'kac musteri', 'appointment', 'booking', 'customers', 'clients', 'cita', 'clientes'])],
   ['net', /(^|\s)(net|kar|kari|kazanc kaldi|elimde kalan|profit|ganancia|beneficio)(\s|$)/],
   ['expense', re(['masraf', 'gider', 'harca', 'odedik', 'expense', 'spent', 'spend', 'cost', 'gasto', 'gastamos', 'gastado'])],
-  ['income', re(['kazan', 'gelir', 'ciro', 'kasa', 'hasilat', 'income', 'earn', 'made', 'revenue', 'sales', 'take', 'ingreso', 'ganamos', 'ganado', 'ganancia', 'vendimos', 'facturamos'])],
+  ['income', re(['kazan', 'gelir', 'ciro', 'kasa', 'hasilat', 'income', 'earn', 'made', 'make', 'bring in', 'brought in', 'revenue', 'sales', 'take', 'ingreso', 'ganamos', 'ganado', 'ganancia', 'vendimos', 'facturamos'])],
 ];
 
 function periodOf(f: string, metric: string) {
@@ -132,8 +135,10 @@ export function understandLocal(text: string, ctx: AssistantContext): Plan {
     if (client && re(['borc', 'owe', 'debe', 'balance', 'bakiye', 'veresiye']).test(f))
       return { items: [{ type: 'query', metric: 'client_balance', period: 'this_month', client_name: client.item.name }] };
     const hit = METRIC_RULES.find(([, r]) => r.test(f));
-    if (hit) return { items: [{ type: 'query', metric: hit[0] as any, period: periodOf(f, hit[0]) as any }] };
+    if (hit && !ADVICE.test(f)) return { items: [{ type: 'query', metric: hit[0] as any, period: periodOf(f, hit[0]) as any }] };
+    return { items: [{ type: 'chat', question: text.trim().slice(0, 600) }] };
   }
+  if (ADVICE.test(f)) return { items: [{ type: 'chat', question: text.trim().slice(0, 600) }] };
 
   // 2. A reminder for the barber (optionally a payment with an amount).
   if (hasAny(f, REMIND)) {

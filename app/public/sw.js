@@ -1,5 +1,5 @@
 // App-shell cache: the UI opens offline. API calls are never cached (they carry private data).
-const CACHE = 'makas-shell-v1';
+const CACHE = 'makas-shell-v2';
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './icon.svg', './manifest.webmanifest'])));
@@ -9,7 +9,8 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/api/')) return;
+  // API calls carry private data and videos stream in ranges: neither goes through the cache.
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/api/') || url.pathname.includes('/media/')) return;
   e.respondWith(
     caches.open(CACHE).then(async (c) => {
       try {

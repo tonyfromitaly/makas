@@ -2,7 +2,7 @@ import { migrate, seedDemo } from '@makas/core';
 import { env, loadConfig } from './config';
 import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
-import { assistantClient } from './assistant-llm';
+import { assistantClient, chatClient } from './assistant-llm';
 import { argon2Deps, buildServer } from './server';
 
 const db = await openDatabase(env.databaseUrl);
@@ -17,6 +17,7 @@ const config = loadConfig();
 if (!env.isProd) {
   console.log('dev mode: service and admin keys are random per boot unless set in .env');
 }
+console.log(env.aiApiKey ? `assistant: ${env.aiModel} via ${env.aiBaseUrl}` : 'assistant: built-in rule engine (set AI_API_KEY in .env for DeepSeek)');
 const app = await buildServer({
   db,
   config,
@@ -24,6 +25,7 @@ const app = await buildServer({
     ...argon2Deps,
     parseNote: parseServiceClient(env.parseServiceUrl, env.parseServiceKey),
     assistant: assistantClient({ url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel }),
+    chat: chatClient({ url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel }),
   },
   corsOrigins: env.corsOrigins,
   trustProxy: env.trustProxy,

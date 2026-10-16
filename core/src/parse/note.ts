@@ -1,6 +1,9 @@
 import { DateTime } from 'luxon';
 import { fold, hasAny, parseAmountCents } from './text';
 
+const SALE_WORDS = ['sattim', 'satis', 'sold', 'sale', 'vendi', 'venta'];
+const QUANTITY_WORDS = /^(tane|adet|kutu|paket|kisi|pcs|pieces|units?|x|unidades?|piezas?)$/;
+
 export type Category = 'service' | 'product' | 'tips' | 'rent' | 'supplies' | 'utilities' | 'wages' | 'other';
 export const CATEGORIES: Category[] = ['service', 'product', 'tips', 'rent', 'supplies', 'utilities', 'wages', 'other'];
 
@@ -44,6 +47,8 @@ function parseSegment(text: string, today: string): (Omit<NoteDraft, 'kind'> & {
       break;
     }
   }
+  // "2 wax sattım": selling stock is product income, even if the item is also a supply word.
+  if (hasAny(f, SALE_WORDS)) category = 'product';
   let kind: NoteDraft['kind'] | null = null;
   if (hasAny(f, INCOME_WORDS) && !hasAny(f, ['aldim', 'bought', 'compre'])) kind = 'income';
   else if (hasAny(f, EXPENSE_WORDS)) kind = 'expense';
@@ -82,7 +87,7 @@ export function splitSegments(text: string, lang: 'tr' | 'en' | 'es' = 'tr'): st
   for (const words of clauses.filter((c) => c.length)) {
     const f = words.map((w) => fold(w).replace(/[,;.!?]+$/, ''));
     const amountIdx = f
-      .map((w, i) => (AMOUNT_TOKEN.test(w) && !/^(saat|at)$/.test(f[i - 1] ?? '') ? i : -1))
+      .map((w, i) => (AMOUNT_TOKEN.test(w) && !/^(saat|at)$/.test(f[i - 1] ?? '') && !QUANTITY_WORDS.test(f[i + 1] ?? '') ? i : -1))
       .filter((i) => i >= 0);
     if (amountIdx.length <= 1) {
       segments.push(words.join(' '));
