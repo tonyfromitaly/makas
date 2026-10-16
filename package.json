@@ -2,7 +2,7 @@
   "name": "makas",
   "private": true,
   "version": "0.1.0",
-  "description": "Makas: berber dükkânları için randevu defteri, gün kazancı, borç defteri ve otomatik hatırlatmalar.",
+  "description": "Fade: berber dükkânları için randevu defteri, gün kazancı, borç defteri ve otomatik hatırlatmalar.",
   "workspaces": ["core", "api", "app"],
   "scripts": {
     "dev": "npm run dev -w api & npm run dev -w app",

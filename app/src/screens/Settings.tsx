@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp, useLoad } from '../state';
 import { Field, Icon } from '../components/ui';
 import { dateLabel, toCents } from '../format';
+import { SupportChat } from '../components/SupportChat';
 import type { Lang } from '../i18n';
 
 export function Settings() {
@@ -89,7 +90,7 @@ export function Settings() {
 
       <Catalog kind="services" />
       <Catalog kind="barbers" />
-      <Feedback />
+      <SupportChat />
 
       <section className="card stack">
         {isOwner && <ExportButton />}
@@ -98,7 +99,7 @@ export function Settings() {
         </button>
         {isOwner && <DeleteShop />}
       </section>
-      <p className="muted small center">Makas v0.1 · {me.user.email}</p>
+      <p className="muted small center">Fade v0.2 · {me.user.email}</p>
     </div>
   );
 }

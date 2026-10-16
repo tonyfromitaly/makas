@@ -13,6 +13,7 @@ import { Locked } from './screens/Locked';
 import { Assistant } from './screens/Assistant';
 import { DemoPanel } from './components/DemoPanel';
 import { Welcome } from './components/Welcome';
+import { Operator } from './screens/Operator';
 
 export const DEMO = import.meta.env.MODE === 'demo' || import.meta.env.VITE_DEMO === 'true';
 type Tab = 'today' | 'clients' | 'assistant' | 'books' | 'settings';
@@ -70,6 +71,9 @@ export function App() {
   };
   const [toastMsg, setToast] = useState('');
   const [bump, setBump] = useState(0);
+  const [operator, setOperator] = useState(() => typeof location !== 'undefined' && location.hash === '#operator');
+  const [unread, setUnread] = useState(0);
+  const [demoAdminKey, setDemoAdminKey] = useState<string>();
   const t = useMemo(() => makeT(lang), [lang]);
 
   const setLang = (l: Lang) => {
@@ -89,6 +93,22 @@ export function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
+  useEffect(() => {
+    const onHash = () => setOperator(location.hash === '#operator');
+    window.addEventListener('hashchange', onHash);
+    if (DEMO) import('./demo').then((d) => setDemoAdminKey(d.DEMO_KEYS.admin));
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // Replies from the Fade team show as a badge on Settings, checked every 20 seconds.
+  useEffect(() => {
+    if (phase !== 'in' || !api) return;
+    const check = () => api.get<{ unread: number }>('/support/unread').then((r) => setUnread(r.unread)).catch(() => {});
+    check();
+    const id = setInterval(check, 20000);
+    return () => clearInterval(id);
+  }, [phase, api, bump, operator]);
+
   const loadMe = useCallback(async (client: Client) => {
     const m = await client.get<Me>('/shops/me');
     setMe(m);
@@ -104,6 +124,9 @@ export function App() {
       await loadMe(client).catch(() => setPhase('out'));
     });
   }, [loadMe]);
+
+  if (operator && api)
+    return <Operator api={api} t={t} demoKey={demoAdminKey} onClose={() => ((location.hash = ''), setOperator(false))} />;
 
   // The welcome shows at once; Postgres keeps starting in the background behind it.
   if (welcome) return <Welcome t={t} onStart={closeWelcome} />;
@@ -142,6 +165,7 @@ export function App() {
     bump,
     refreshAll: () => setBump((b) => b + 1),
     showWelcome: () => setWelcome(true),
+    markSupportRead: () => setUnread(0),
     openAssistant: (mic = false) => {
       setAutoMic(mic);
       setTab('assistant');
@@ -184,6 +208,7 @@ export function App() {
             ).map(([k, icon]) => (
               <button key={k} className={`${tab === k ? 'on' : ''} ${k === 'assistant' ? 'center' : ''}`} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined}>
                 <Icon name={icon} size={22} />
+                {k === 'settings' && unread > 0 && <span className="tab-badge">{unread}</span>}
                 <span>{t(k)}</span>
               </button>
             ))}

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { IANAZone } from 'luxon';
-import { audit, badRequest, cents, lang, noContent, notFound, ok, pageQuery, paged, unauthorized, uuid, type Route } from '../http';
+import { audit, badRequest, cents, lang, noContent, notFound, ok, pageQuery, paged, unauthorized, uuid, type Ctx, type Route } from '../http';
 import type { Queryable } from '../db';
 
 export function isLocked(sub: { status: string; current_period_end: Date | string | null } | undefined, now: Date) {
@@ -106,19 +106,48 @@ export const shopRoutes: Route[] = [
       return noContent();
     },
   },
+  // --- "Bize yaz": the shop's live support thread with us. Open even while the shop is locked. ---
   {
     method: 'POST',
     path: '/feedback',
     auth: 'user',
     body: z.object({ message: z.string().trim().min(1).max(2000) }),
     async handler(ctx, { body }) {
-      const row = (
-        await ctx.db.query(
-          'insert into feedback (shop_id, user_id, message, created_at) values ($1, $2, $3, $4) returning id, message, created_at',
-          [ctx.shopId, ctx.userId, body.message, ctx.now],
-        )
+      return ok(await postSupport(ctx, body.message), 201);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/support',
+    auth: 'user',
+    body: z.object({ message: z.string().trim().min(1).max(2000) }),
+    async handler(ctx, { body }) {
+      return ok(await postSupport(ctx, body.message), 201);
+    },
+  },
+  {
+    // The whole thread, oldest first. Reading it marks our replies as read.
+    method: 'GET',
+    path: '/support',
+    auth: 'user',
+    async handler(ctx) {
+      const { rows } = await ctx.db.query(
+        `select id, author, message, created_at, read_at from feedback where shop_id = $1 order by created_at, id limit 500`,
+        [ctx.shopId],
+      );
+      await ctx.db.query(`update feedback set read_at = $2 where shop_id = $1 and author = 'operator' and read_at is null`, [ctx.shopId, ctx.now]);
+      return { data: rows };
+    },
+  },
+  {
+    method: 'GET',
+    path: '/support/unread',
+    auth: 'user',
+    async handler(ctx) {
+      const r = (
+        await ctx.db.query(`select count(*)::int as n from feedback where shop_id = $1 and author = 'operator' and read_at is null`, [ctx.shopId])
       ).rows[0];
-      return ok(row, 201);
+      return { unread: r.n };
     },
   },
 
@@ -250,3 +279,13 @@ export async function updateRow(db: Queryable, table: string, shopId: string, id
   return row;
 }
 
+
+async function postSupport(ctx: Ctx, message: string) {
+  return (
+    await ctx.db.query(
+      `insert into feedback (shop_id, user_id, message, author, created_at) values ($1, $2, $3, 'shop', $4)
+       returning id, author, message, created_at`,
+      [ctx.shopId, ctx.userId, message, ctx.now],
+    )
+  ).rows[0];
+}

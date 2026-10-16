@@ -81,6 +81,6 @@ export async function buildServer(o: ServerOptions) {
     handler: forward,
   });
   app.route({ method: ['GET', 'POST', 'PATCH', 'DELETE'], url: '/*', handler: forward });
-  app.route({ method: ['GET'], url: '/', handler: async () => ({ name: 'makas-api', docs: '/docs/api.md' }) });
+  app.route({ method: ['GET'], url: '/', handler: async () => ({ name: 'fade-api', docs: '/docs/api.md' }) });
   return app;
 }

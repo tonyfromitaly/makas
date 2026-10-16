@@ -36,6 +36,7 @@ interface AppState {
   refreshAll(): void;
   openAssistant(mic?: boolean): void;
   showWelcome(): void;
+  markSupportRead(): void;
 }
 
 export const Ctx = createContext<AppState>(null as any);

@@ -1,6 +1,7 @@
 import { useApp } from '../state';
 import { Icon } from '../components/ui';
-import { ExportButton, Feedback } from './Settings';
+import { ExportButton } from './Settings';
+import { SupportChat } from '../components/SupportChat';
 
 export function Locked() {
   const { t, me, signOut } = useApp();
@@ -16,7 +17,7 @@ export function Locked() {
           {t('subscription')}: {t(`sub_${me.subscription?.status}` as any)}
         </span>
       </div>
-      <Feedback />
+      <SupportChat />
       <section className="card stack">
         {me.user.role === 'owner' && <ExportButton />}
         <button className="btn" onClick={signOut}>

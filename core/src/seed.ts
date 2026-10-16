@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import { withSystem, type Database } from './db';
 import { enqueueReminders } from './reminders';
 
-export const DEMO_LOGIN = { email: 'demo@makas.app', password: 'demo-berber-2026' };
+export const DEMO_LOGIN = { email: 'fatihyahyayildizz@gmail.com', password: 'demo-berber-2026' };
 
 /**
  * Demo shop "Berber Halil" (USD): 4 services, 2 barbers, 6 clients, today's 4 appointments, one open tab,

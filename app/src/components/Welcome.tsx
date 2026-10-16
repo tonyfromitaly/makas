@@ -15,7 +15,7 @@ export function Hero({ t, children }: { t: T; children: ReactNode }) {
       <div className="hero-inner">
         <section className="hero-copy">
           <span className="hero-mark">
-            <Icon name="scissors" size={22} /> Makas
+            <Icon name="scissors" size={22} /> Fade
           </span>
           <h1 className="hero-title">
             {t('heroA')}
@@ -33,12 +33,12 @@ export function Hero({ t, children }: { t: T; children: ReactNode }) {
         </section>
         <section className="hero-panel">{children}</section>
         <aside className="hero-phone" aria-label={t('film')}>
-          <video src={media('makas-film.mp4')} poster={media('makas-film-poster.jpg')} autoPlay muted loop playsInline />
+          <video src={media('fade-film.mp4')} poster={media('fade-film-poster.jpg')} autoPlay muted loop playsInline />
         </aside>
       </div>
       {film && (
         <div className="film-modal" onClick={() => setFilm(false)}>
-          <video src={media('makas-film.mp4')} autoPlay controls playsInline onClick={(e) => e.stopPropagation()} />
+          <video src={media('fade-film.mp4')} autoPlay controls playsInline onClick={(e) => e.stopPropagation()} />
           <button className="icon-btn film-close" onClick={() => setFilm(false)} aria-label="close">
             <Icon name="x" />
           </button>

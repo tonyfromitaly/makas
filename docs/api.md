@@ -33,7 +33,9 @@ Auth endpoints are limited to 10 requests/min per IP.
 | `PATCH /shops/me` | owner: name, country, timezone, language, currency, reminder_day_before_hour, reminder_hours_before |
 | `GET /shops/me/export` | owner: full JSON export (works while locked) |
 | `DELETE /shops/me` | owner: `{password}` → 204, everything deleted |
-| `POST /feedback` | `{message}` → 201 (works while locked) |
+| `POST /support` (alias `POST /feedback`) | `{message}` → 201. The shop's live support thread (works while locked) |
+| `GET /support` | the whole thread, oldest first; marks the team's replies as read |
+| `GET /support/unread` | `{unread}`: team replies not yet read (badge) |
 
 ## Catalog
 `GET/POST /services`, `PATCH /services/:id`, `DELETE /services/:id` (soft: `active=false`).
@@ -106,5 +108,6 @@ body `{text, lang, today, timezone}` → `{kind, amount_cents, category, entry_d
 output validated; on any failure the local parser is used.
 
 ## Operator (admin key)
-`GET /admin/shops`, `GET /admin/feedback`, `PATCH /admin/shops/:id/subscription {status?, plan_key?, current_period_end?}`,
+`GET /admin/support` (one row per shop thread, `waiting` = shop messages since our last reply), `GET /admin/support/:shopId`,
+`POST /admin/support/:shopId {message}` (reply), `GET /admin/shops`, `GET /admin/feedback`, `PATCH /admin/shops/:id/subscription {status?, plan_key?, current_period_end?}`,
 `POST /admin/retention/run {days?: 90}`.

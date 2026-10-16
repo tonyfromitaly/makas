@@ -1417,7 +1417,7 @@ input.narrow {
 }
 
 /* =========================================================================
-   Makas identity v2: shop footage, the barber pole as a moving signature,
+   Fade identity v2: shop footage, the barber pole as a moving signature,
    ink-and-brass money, a living assistant orb.
    ========================================================================= */
 :root {
@@ -1708,4 +1708,105 @@ input.narrow {
 .suggestions .chip-btn {
   background: var(--surface);
   border-style: dashed;
+}
+
+/* --- live support chat --- */
+.support-thread {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px;
+}
+.support-thread.tall {
+  max-height: calc(100dvh - 260px);
+}
+.sup {
+  max-width: 85%;
+  display: grid;
+  gap: 2px;
+}
+.sup p {
+  margin: 0;
+  padding: 9px 13px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 0.93rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.sup.shop {
+  align-self: flex-end;
+  justify-items: end;
+}
+.sup.shop p {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+  border-radius: 14px 14px 4px 14px;
+}
+.sup-who {
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pos);
+}
+.live-dot span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pos);
+  animation: blink 1.6s ease-in-out infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+.tabbar button {
+  position: relative;
+}
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--pole-red);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.operator {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--bg);
+}
+.op-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.op-head h1 {
+  font-size: 1.6rem;
 }

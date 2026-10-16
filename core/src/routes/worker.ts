@@ -183,10 +183,63 @@ export const adminRoutes: Route[] = [
         `select f.id, f.message, f.created_at, s.name as shop_name, s.id as shop_id, u.name as user_name,
                 count(*) over() as total_count
            from feedback f join shops s on s.id = f.shop_id left join users u on u.id = f.user_id
+          where f.author = 'shop'
           order by f.created_at desc limit $1 offset $2`,
         [query.page_size, (query.page - 1) * query.page_size],
       );
       return paged(rows, query.page, query.page_size);
+    },
+  },
+  {
+    // Support inbox: one row per shop thread, newest activity first, with messages we haven't answered.
+    method: 'GET',
+    path: '/admin/support',
+    auth: 'admin',
+    async handler(ctx) {
+      const { rows } = await ctx.db.query(
+        `select s.id as shop_id, s.name as shop_name, u.email as owner_email,
+                last.message as last_message, last.author as last_author, last.created_at as last_at,
+                (select count(*) from feedback f2 where f2.shop_id = s.id and f2.author = 'shop'
+                   and f2.created_at > coalesce((select max(created_at) from feedback f3 where f3.shop_id = s.id and f3.author = 'operator'), '-infinity'))::int as waiting
+           from shops s
+           left join users u on u.id = s.owner_user_id
+           join lateral (select message, author, created_at from feedback f where f.shop_id = s.id order by created_at desc, id desc limit 1) last on true
+          order by waiting desc, last.created_at desc`,
+      );
+      return { data: rows };
+    },
+  },
+  {
+    method: 'GET',
+    path: '/admin/support/:id',
+    auth: 'admin',
+    async handler(ctx, { params }) {
+      const shop = (await ctx.db.query('select id, name from shops where id = $1', [params.id])).rows[0];
+      if (!shop) throw notFound('Shop');
+      const { rows } = await ctx.db.query(
+        `select f.id, f.author, f.message, f.created_at, f.read_at, u.name as user_name
+           from feedback f left join users u on u.id = f.user_id where f.shop_id = $1 order by f.created_at, f.id`,
+        [params.id],
+      );
+      return { shop, data: rows };
+    },
+  },
+  {
+    method: 'POST',
+    path: '/admin/support/:id',
+    auth: 'admin',
+    body: z.object({ message: z.string().trim().min(1).max(2000) }),
+    async handler(ctx, { params, body }) {
+      const shop = (await ctx.db.query('select id from shops where id = $1', [params.id])).rows[0];
+      if (!shop) throw notFound('Shop');
+      const row = (
+        await ctx.db.query(
+          `insert into feedback (shop_id, user_id, message, author, created_at) values ($1, null, $2, 'operator', $3)
+           returning id, author, message, created_at`,
+          [params.id, body.message, ctx.now],
+        )
+      ).rows[0];
+      return { ...row };
     },
   },
   {

@@ -1,4 +1,4 @@
-# Makas ✂️
+# Fade ✂️
 
 **Berber dükkânı sahibinin telefonunda tek ekran: randevu defteri, gün kazancı, müşteri veresiye defteri ve otomatik WhatsApp/SMS hatırlatmaları.**
 
@@ -7,7 +7,7 @@ Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olar
 > **Canlı demo:** https://tonyfromitaly.github.io/makas/
 > Demoda hiçbir kurulum yok: **gerçek sunucu kodu ve gerçek Postgres (PGlite, WebAssembly) tarayıcının içinde çalışır.** Sağ üstteki **Canlı demo** düğmesi mesaj altyapısını (Tony tarafı) ve işletme panelini oynamanı sağlar.
 
-**Tanıtım filmi (19 sn):** [app/public/media/makas-film.mp4](app/public/media/makas-film.mp4). Demoyu ilk açışta da oynar.
+**Tanıtım filmi (19 sn):** [app/public/media/fade-film.mp4](app/public/media/fade-film.mp4). Demoyu ilk açışta da oynar.
 
 ---
 
@@ -16,9 +16,13 @@ Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olar
 1. Kök klasördeki `.env` dosyasında `AI_API_KEY=` satırına DeepSeek anahtarını yaz (dosya git'e girmez).
 2. `npm run ai:check`: anahtarı tek bir anlama ve tek bir sohbet çağrısıyla dener.
 3. `npm run ai:eval`: 40 cümlelik eğitim/ölçüm setini hem yerel motora hem DeepSeek'e sorar, isabet oranını yazar.
-4. `npm run dev` → http://localhost:5173 → "Demo · demo@makas.app" düğmesi → Asistan sekmesi.
+4. `npm run dev` → http://localhost:5173 → "Demo · fatihyahyayildizz@gmail.com" düğmesi → Asistan sekmesi.
 
 Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldüğü: [docs/asistan-egitimi.md](docs/asistan-egitimi.md). GitHub Pages'teki canlı demo statik bir sayfa olduğu için anahtar taşıyamaz; orada her zaman yerleşik kural motoru çalışır.
+
+## Canlı destek: "Bize yaz"
+
+Berber Ayarlar'daki **Bize yaz** kartından yazar; mesajlar sohbet olarak akar ve kart birkaç saniyede bir yenilenir. Ekip (işletme) cevabı **İşletme paneli**nden verir: uygulama adresinin sonuna `#operator` ekleyip (`http://localhost:5173/#operator`) `ADMIN_API_KEY` ile girilir. Cevap bekleyen sohbetler üstte listelenir. Ekipten gelen okunmamış cevaplar Ayarlar sekmesinde rozet olarak görünür. Canlı demoda panel, sağ üstteki **Canlı demo** düğmesinden anahtarsız açılır.
 
 ## Ne yapıyor?
 
@@ -28,7 +32,7 @@ Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldü�
 | **Bugün** | Günü gelen hatırlatmalar ve ödemeler (geciken kırmızı), gün listesi, *Kasada / Beklenen* sayacı, tek dokunuşla tamamlandı/gelmedi/iptal, saat değiştirme, hatırlatma durum noktaları, **sesle randevu**, **Kasayı kapat** gün raporu (WhatsApp'tan paylaşılır) |
 | **Müşteriler** | Arama; *Borçlu / Uzun süredir gelmeyen / Riskli* filtreleri; veresiye defteri (borç yaz, ödeme al); **gelmeme riski** rozeti; **geri çağır** mesajı; numara maskeli, açmak denetim kaydına düşer |
 | **Defter** | Serbest not veya ses ("kira 18.000 ödedim") → **onay taslağı** → kayıt. Gün/hafta/ay gelir-gider-net, kategori kırılımı, günlük grafik, tek cümlelik yorum. **Bütün rakamlar SQL'den gelir; yapay zekâ hiçbir toplamı üretmez.** |
-| **Ayarlar** | Dükkân, hizmetler, berberler, hatırlatma kuralı, dil, geri bildirim, verimi indir (JSON), dükkânı sil |
+| **Ayarlar** | Dükkân, hizmetler, berberler, hatırlatma kuralı, dil, **canlı destek sohbeti (Bize yaz)**, verimi indir (JSON), dükkânı sil |
 | **Kilit ekranı** | Abonelik pasifse uygulama kilitlenir; geri bildirim ve veri dışa aktarma açık kalır |
 
 ## Hızlı başlangıç

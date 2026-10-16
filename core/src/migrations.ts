@@ -287,7 +287,16 @@ ${rls('shop_tasks')}
 grant select, insert, update, delete on shop_tasks to makas_tenant;
 `;
 
+// "Bize yaz" becomes a live support thread: the feedback table holds both sides of the conversation.
+const support = `
+alter table feedback add column author text not null default 'shop' check (author in ('shop', 'operator'));
+alter table feedback add column read_at timestamptz;
+create index feedback_thread on feedback (shop_id, created_at);
+grant update (read_at) on feedback to makas_tenant;
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
+  { id: '003_support_thread', sql: support },
 ];

@@ -8,7 +8,6 @@ export function DemoPanel() {
   const { api, t, me, reloadMe, refreshAll, fail, showWelcome } = useApp();
   const [open, setOpen] = useState(false);
   const [due, setDue] = useState<any[] | null>(null);
-  const [feedback, setFeedback] = useState<any[] | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const note = (s: string) => setLog((l) => [s, ...l].slice(0, 6));
 
@@ -40,10 +39,6 @@ export function DemoPanel() {
       fail(e);
     }
     setOpen(false);
-  };
-  const readFeedback = async () => {
-    const r = await api.raw('GET', '/admin/feedback', DEMO_KEYS.admin);
-    setFeedback(r.body?.data ?? []);
   };
 
   return (
@@ -96,14 +91,9 @@ export function DemoPanel() {
             <button className="btn" onClick={toggleSub}>
               <Icon name="lock" size={16} /> {me.locked ? t('unlockShop') : t('lockShop')}
             </button>
-            <button className="btn" onClick={readFeedback}>
-              {t('readFeedback')}
+            <button className="btn" onClick={() => (setOpen(false), (location.hash = 'operator'))}>
+              <Icon name="chat" size={16} /> {t('openOperator')}
             </button>
-            {feedback?.map((f) => (
-              <p key={f.id} className="small">
-                <strong>{f.shop_name}:</strong> {f.message}
-              </p>
-            ))}
           </section>
           <button className="btn danger-ghost" onClick={resetDemo}>
             {t('resetDemo')}
