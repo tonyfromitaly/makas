@@ -4,7 +4,7 @@
 
 Abonelik ürünü olarak tasarlandı: her dükkân kendi verisini görür, işletme (biz) abonelikleri yönetir, mesajları ayrı bir altyapı gönderir. Arayüz Türkçe, İngilizce ve İspanyolca.
 
-> **Canlı demo:** repo GitHub Pages'te yayınlanınca linki buraya gelir (`https://<kullanıcı>.github.io/makas/`).
+> **Canlı demo:** https://tonyfromitaly.github.io/makas/
 > Demoda hiçbir kurulum yok: **gerçek sunucu kodu ve gerçek Postgres (PGlite, WebAssembly) tarayıcının içinde çalışır.** Sağ üstteki **Canlı demo** düğmesi mesaj altyapısını (Tony tarafı) ve işletme panelini oynamanı sağlar.
 
 ---
