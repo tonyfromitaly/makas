@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { IANAZone } from 'luxon';
 import { issueTokens, sha256 } from '../auth';
+import { normalizeKey, provisionShop } from '../provision';
 import { ApiError, conflict, errorBody, lang, ok, noContent, unauthorized, type Route } from '../http';
 
 const email = z.string().trim().toLowerCase().email().max(200);
@@ -26,33 +27,24 @@ export const authRoutes: Route[] = [
       currency: z.string().trim().length(3).toUpperCase().default('USD'),
     }),
     async handler(ctx, { body }) {
+      if (ctx.config.allowSignup === false)
+        throw new ApiError(403, 'SIGNUP_CLOSED', 'New shops are opened by subscribing on the website');
       const taken = await ctx.db.query('select 1 from users where lower(email) = $1', [body.email]);
       if (taken.rows.length) throw conflict('An account with this email already exists', 'EMAIL_TAKEN');
-      const hash = await ctx.deps.hashPassword(body.password);
-      const shop = (
-        await ctx.db.query(
-          `insert into shops (name, country, timezone, language, currency) values ($1, $2, $3, $4, $5) returning *`,
-          [body.shop_name, body.country, body.timezone, body.language, body.currency],
-        )
-      ).rows[0];
-      const user = (
-        await ctx.db.query(
-          `insert into users (shop_id, email, password_hash, role, name) values ($1, $2, $3, 'owner', $4) returning *`,
-          [shop.id, body.email, hash, body.owner_name],
-        )
-      ).rows[0];
-      await ctx.db.query('update shops set owner_user_id = $1 where id = $2', [user.id, shop.id]);
-      // Owner works the chair too: start with one barber so booking works right away.
-      await ctx.db.query('insert into barbers (shop_id, name) values ($1, $2)', [shop.id, body.owner_name]);
       const trialEnd = new Date(ctx.now.getTime() + ctx.config.trialDays * 86400_000);
-      await ctx.db.query(
-        `insert into subscriptions (shop_id, plan_key, status, current_period_end) values ($1, 'basic', 'trial', $2)`,
-        [shop.id, trialEnd],
-      );
-      await ctx.db.query(
-        `insert into audit_log (shop_id, user_id, action, entity, entity_id, at) values ($1, $2, 'shop.register', 'shop', $1, $3)`,
-        [shop.id, user.id, ctx.now],
-      );
+      const { shopId, user } = await provisionShop(ctx.db, {
+        shopName: body.shop_name,
+        ownerName: body.owner_name,
+        email: body.email,
+        passwordHash: await ctx.deps.hashPassword(body.password),
+        country: body.country,
+        timezone: body.timezone,
+        language: body.language,
+        currency: body.currency,
+        subscription: { status: 'trial', planKey: 'basic', periodEnd: trialEnd },
+        now: ctx.now,
+      });
+      const shop = { id: shopId, name: body.shop_name };
       const { tokens } = await issueTokens(ctx.db, ctx.config, user);
       return ok({ ...tokens, user: publicUser(user), shop: { id: shop.id, name: shop.name } }, 201);
     },
@@ -111,6 +103,39 @@ export const authRoutes: Route[] = [
         refreshId,
       ]);
       return tokens;
+    },
+  },
+  {
+    // First login (or recovery) with the access key from the welcome e-mail: sets the password, then signs in.
+    method: 'POST',
+    path: '/auth/key',
+    auth: 'public',
+    body: z.object({ key: z.string().trim().min(10).max(40), password }),
+    async handler(ctx, { body }) {
+      const hash = await sha256(normalizeKey(body.key));
+      const key = (
+        await ctx.db.query(`select id, user_id, used_at, expires_at from access_keys where key_hash = $1`, [hash])
+      ).rows[0];
+      if (!key || key.used_at || new Date(key.expires_at) <= ctx.now)
+        throw new ApiError(401, 'INVALID_KEY', 'This access key is invalid, used or expired');
+      await ctx.db.query('update users set password_hash = $2 where id = $1', [key.user_id, await ctx.deps.hashPassword(body.password)]);
+      await ctx.db.query('update access_keys set used_at = $2 where id = $1', [key.id, ctx.now]);
+      const user = (await ctx.db.query('select * from users where id = $1', [key.user_id])).rows[0];
+      const { tokens } = await issueTokens(ctx.db, ctx.config, user);
+      return { ...tokens, user: publicUser(user) };
+    },
+  },
+  {
+    // What the app needs to know before sign-in: can it open shops itself, or does it send people to the website?
+    method: 'GET',
+    path: '/meta',
+    auth: 'public',
+    async handler(ctx) {
+      return {
+        signup: ctx.config.allowSignup === false ? 'subscribe' : 'open',
+        billing: !!ctx.config.billingEnabled,
+        site_url: ctx.config.publicUrl ?? null,
+      };
     },
   },
   {

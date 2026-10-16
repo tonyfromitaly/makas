@@ -3,6 +3,7 @@ import { useApp, useLoad } from '../state';
 import { Field, Icon } from '../components/ui';
 import { dateLabel, toCents } from '../format';
 import { SupportChat } from '../components/SupportChat';
+import { ManagePlan } from '../components/ManagePlan';
 import type { Lang } from '../i18n';
 
 export function Settings() {
@@ -43,6 +44,7 @@ export function Settings() {
             {t('until')}: {dateLabel(me.subscription.current_period_end.slice(0, 10), lang, { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         )}
+        <ManagePlan />
         <Field label={t('language')}>
           <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
             <option value="tr">Türkçe</option>

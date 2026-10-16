@@ -39,6 +39,17 @@ export const env = {
   aiApiKey: process.env.AI_API_KEY ?? '',
   aiModel: process.env.AI_MODEL || 'deepseek-chat',
   seedDemo: process.env.SEED_DEMO === 'true',
+  // Production on one server: API under /api, website at /, app at /app/.
+  apiPrefix: process.env.API_PREFIX ?? '',
+  serveStatic: process.env.SERVE_STATIC === 'true',
+  publicUrl: (process.env.PUBLIC_URL ?? process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
+  // Shops are sold on the website in production; open self-signup stays on for local development.
+  allowSignup: process.env.ALLOW_SIGNUP ? process.env.ALLOW_SIGNUP === 'true' : !isProd,
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
+  stripePriceId: process.env.STRIPE_PRICE_ID ?? '',
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
+  resendApiKey: process.env.RESEND_API_KEY ?? '',
+  mailFrom: process.env.MAIL_FROM || 'Fade <onboarding@resend.dev>',
 };
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
@@ -50,6 +61,9 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     refreshTtlSec: Number(process.env.REFRESH_TTL_SEC ?? 60 * 60 * 24 * 30),
     trialDays: Number(process.env.TRIAL_DAYS ?? 14),
     now: () => new Date(),
+    allowSignup: env.allowSignup,
+    publicUrl: env.publicUrl,
+    billingEnabled: !!(env.stripeSecretKey && env.stripePriceId),
     ...overrides,
   };
 }

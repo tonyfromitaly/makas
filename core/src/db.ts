@@ -11,18 +11,38 @@ export interface Database extends Queryable {
   exec(sql: string): Promise<unknown>;
 }
 
-/** Runs fn inside a transaction as the restricted tenant role, scoped to one shop. */
+// Superusers bypass row-level security entirely, so on such a connection tenant work switches to the
+// restricted makas_tenant role. A regular owner connection (managed Postgres) is already bound by the
+// FORCE'd policies and needs no switch.
+const needsRoleSwitch = new WeakMap<Database, Promise<boolean>>();
+
+async function detectRoleSwitch(db: Database) {
+  const r = (
+    await db.query<{ su: boolean; role: boolean }>(
+      `select (select rolsuper from pg_roles where rolname = current_user) as su,
+              exists (select 1 from pg_roles where rolname = 'makas_tenant') as role`,
+    )
+  ).rows[0];
+  return !!r?.su && !!r?.role;
+}
+
+/** Runs fn inside a transaction scoped to one shop; row-level security hides every other shop. */
 export async function withTenant<T>(db: Database, shopId: string, fn: (tx: Queryable) => Promise<T>): Promise<T> {
+  if (!needsRoleSwitch.has(db)) needsRoleSwitch.set(db, detectRoleSwitch(db));
+  const switchRole = await needsRoleSwitch.get(db)!;
   return db.transaction(async (tx) => {
-    await tx.query('set local role makas_tenant');
+    if (switchRole) await tx.query('set local role makas_tenant');
     await tx.query(`select set_config('app.shop_id', $1, true)`, [shopId]);
     return fn(tx);
   });
 }
 
-/** Runs fn as the system (owner) role. Only auth, the message worker and the operator use this. */
+/** Runs fn as the system: only auth, billing, the message worker and the operator use this. */
 export async function withSystem<T>(db: Database, fn: (tx: Queryable) => Promise<T>): Promise<T> {
-  return db.transaction(fn);
+  return db.transaction(async (tx) => {
+    await tx.query(`select set_config('app.system', 'on', true)`);
+    return fn(tx);
+  });
 }
 
 export async function migrate(db: Database): Promise<string[]> {

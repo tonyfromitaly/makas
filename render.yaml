@@ -1,0 +1,60 @@
+# Render blueprint: one web service (website at /, app at /app/, API at /api) and a Postgres database.
+# New → Blueprint → pick this repository. Secrets marked sync: false are entered in the Render dashboard.
+services:
+  - type: web
+    name: fade
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --include=dev && VITE_BASE=/app/ npm run build -w app
+    startCommand: npm start -w api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fade-db
+          property: connectionString
+      - key: SERVE_STATIC
+        value: "true"
+      - key: API_PREFIX
+        value: /api
+      - key: TRUST_PROXY
+        value: "true"
+      - key: ALLOW_SIGNUP
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SERVICE_API_KEY
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true
+      # Stripe: secret key, the monthly price id (price_...) and the webhook signing secret (whsec_...).
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # Resend: API key and a sender on a verified domain, e.g. "Fade <hello@yourdomain.com>".
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # DeepSeek for the assistant (optional; without it the built-in engine runs).
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_BASE_URL
+        value: https://api.deepseek.com
+      - key: AI_MODEL
+        value: deepseek-chat
+
+databases:
+  - name: fade-db
+    plan: free
+    region: frankfurt
+    databaseName: fade
+    user: fade

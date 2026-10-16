@@ -16,3 +16,4 @@ export { periodRange } from './routes/assistant';
 export { UNDERSTAND_SYSTEM, CHAT_SYSTEM, SHOP_KNOWLEDGE, FEW_SHOT } from './assistant/training';
 export { shopSnapshot, type ShopSnapshot } from './assistant/snapshot';
 export { localAdvice } from './assistant/advice';
+export { provisionShop, createAccessKey, generateAccessKey, normalizeKey, type ProvisionInput } from './provision';

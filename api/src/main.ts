@@ -4,6 +4,9 @@ import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
 import { assistantClient, chatClient } from './assistant-llm';
 import { argon2Deps, buildServer } from './server';
+import { stripeProvider } from './billing';
+import { consoleMailer, resendMailer } from './email';
+import { fileURLToPath } from 'node:url';
 
 const db = await openDatabase(env.databaseUrl);
 const applied = await migrate(db);
@@ -31,7 +34,18 @@ const app = await buildServer({
   trustProxy: env.trustProxy,
   requireHttps: env.isProd && process.env.REQUIRE_HTTPS !== 'false',
   logger: true,
+  prefix: env.apiPrefix,
+  staticDirs: env.serveStatic
+    ? { site: fileURLToPath(new URL('../../site', import.meta.url)), app: fileURLToPath(new URL('../../app/dist', import.meta.url)) }
+    : undefined,
+  payments:
+    env.stripeSecretKey && env.stripePriceId && env.stripeWebhookSecret
+      ? stripeProvider({ secretKey: env.stripeSecretKey, priceId: env.stripePriceId, webhookSecret: env.stripeWebhookSecret })
+      : null,
+  mailer: env.resendApiKey ? resendMailer(env.resendApiKey, env.mailFrom) : consoleMailer(),
+  publicUrl: env.publicUrl,
 });
+console.log(`billing: ${env.stripeSecretKey ? 'stripe' : 'off (set STRIPE_* in .env)'} · mail: ${env.resendApiKey ? 'resend' : 'console'} · signup: ${env.allowSignup ? 'open' : 'website only'}`);
 await app.listen({ port: env.port, host: env.host });
 
 const shutdown = async () => {

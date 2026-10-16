@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#14110d" />
+    <title>Fade · berberin defteri</title>
+    <meta name="description" content="Fade: berber dükkânları için randevu defteri, gün kazancı, veresiye, otomatik hatırlatmalar ve sesle çalışan AI asistan." />
+    <link rel="icon" href="/app/icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <a class="logo" href="#top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 7.9 20 20M8.1 16.1 20 4"/></svg> Fade</a>
+      <nav>
+        <a href="#ozellikler" data-i18n="navFeatures">Özellikler</a>
+        <a href="#fiyat" data-i18n="navPricing">Fiyat</a>
+        <a href="#sss" data-i18n="navFaq">SSS</a>
+        <a class="ghost" href="https://tonyfromitaly.github.io/makas/" target="_blank" rel="noopener" data-i18n="tryDemo">Demoyu dene</a>
+        <a class="cta" href="#abone-ol" data-i18n="subscribe">Abone ol</a>
+      </nav>
+      <div class="langs"><button data-lang="tr">TR</button><button data-lang="en">EN</button><button data-lang="es">ES</button></div>
+    </header>
+
+    <section class="hero" id="top">
+      <video class="hero-video" src="/app/media/dukkan-loop.mp4" poster="/app/media/dukkan-poster.jpg" autoplay muted loop playsinline aria-hidden="true"></video>
+      <div class="shade"></div>
+      <div class="pole"></div>
+      <div class="hero-inner">
+        <div>
+          <h1><span data-i18n="heroA">Her kesik,</span><br /><em data-i18n="heroB">kayıtta.</em></h1>
+          <p class="lead" data-i18n="lead">Randevu defteri, gün kazancı, veresiye, otomatik WhatsApp hatırlatmaları ve sesle çalışan bir AI asistan. Berberin telefonunda, tek ekranda.</p>
+          <div class="actions">
+            <a class="btn primary" href="#abone-ol" data-i18n="subscribe">Abone ol</a>
+            <a class="btn light" href="https://tonyfromitaly.github.io/makas/" target="_blank" rel="noopener" data-i18n="tryDemo">Demoyu dene</a>
+          </div>
+          <p class="price-hint" id="price-hint"></p>
+        </div>
+        <div class="phone"><video src="/app/media/fade-film.mp4" poster="/app/media/fade-film-poster.jpg" autoplay muted loop playsinline></video></div>
+      </div>
+    </section>
+
+    <section class="features" id="ozellikler">
+      <h2 data-i18n="featuresTitle">Dükkânı yürüten her şey, cebinde.</h2>
+      <div class="grid">
+        <article><span class="ic">✦</span><h3 data-i18n="f1t">AI asistan</h3><p data-i18n="f1">“Yarın 3’te Ahmet sakal”, “100 dolar kazandım, 300 dolar kira ödedim” de; asistan doğru yere yazsın. “Geçen ay ne kadar kazandık?” diye sor, veritabanından cevaplasın.</p></article>
+        <article><span class="ic">◷</span><h3 data-i18n="f2t">Randevu defteri</h3><p data-i18n="f2">Gün listesi, kasada ve beklenen tutar, tek dokunuşla tamamlandı ya da gelmedi. Aynı koltuğa çift randevu imkânsız.</p></article>
+        <article><span class="ic">✉</span><h3 data-i18n="f3t">Otomatik hatırlatma</h3><p data-i18n="f3">Bir gün önce 18.00’de ve randevudan 2 saat önce WhatsApp/SMS. Gelmeyen müşteri azalır; izin vermeyen müşteriye hiç mesaj gitmez.</p></article>
+        <article><span class="ic">≡</span><h3 data-i18n="f4t">Defter ve özet</h3><p data-i18n="f4">Gelir, gider, net; gün, hafta, ay. Karışık bir notu bile ayrı kayıtlara böler. Rakamları her zaman veritabanı hesaplar.</p></article>
+        <article><span class="ic">₺</span><h3 data-i18n="f5t">Veresiye</h3><p data-i18n="f5">Kimin ne kadar borcu var, tek bakışta. Borç yaz, ödeme al, kapat.</p></article>
+        <article><span class="ic">✆</span><h3 data-i18n="f6t">Canlı destek</h3><p data-i18n="f6">Uygulamanın içinden bize yaz; ekibimiz aynı sohbetten cevaplasın. Türkçe, English, Español.</p></article>
+      </div>
+    </section>
+
+    <section class="steps">
+      <h2 data-i18n="stepsTitle">Üç adımda dükkânın açık.</h2>
+      <ol>
+        <li><b>1</b><span data-i18n="s1">Aşağıdan abone ol; ödeme Stripe’ın güvenli sayfasında.</span></li>
+        <li><b>2</b><span data-i18n="s2">Uygulama linkin ve erişim anahtarın e-postana gelsin.</span></li>
+        <li><b>3</b><span data-i18n="s3">Linke dokun, şifreni belirle, ilk randevuyu sesle gir.</span></li>
+      </ol>
+    </section>
+
+    <section class="pricing" id="fiyat">
+      <div class="plan">
+        <p class="eyebrow" data-i18n="planName">Fade Pro</p>
+        <p class="amount"><span id="price">—</span><small id="interval" data-i18n="perMonth">/ ay</small></p>
+        <ul>
+          <li data-i18n="p1">Sınırsız randevu, müşteri ve defter kaydı</li>
+          <li data-i18n="p2">AI asistan (sesle ve yazıyla)</li>
+          <li data-i18n="p3">Otomatik WhatsApp/SMS hatırlatmaları</li>
+          <li data-i18n="p4">Canlı destek, verini istediğin an dışa aktar</li>
+          <li data-i18n="p5">İstediğin zaman iptal</li>
+        </ul>
+        <a class="btn primary block" href="#abone-ol" data-i18n="subscribe">Abone ol</a>
+      </div>
+    </section>
+
+    <section class="signup" id="abone-ol">
+      <h2 data-i18n="formTitle">Dükkânını aç</h2>
+      <p class="muted" data-i18n="formSub">Bilgilerini gir, ödemeyi tamamla; uygulama linkin e-postana düşsün.</p>
+      <form id="signup-form" novalidate>
+        <label><span data-i18n="shopName">Dükkân adı</span><input name="shop_name" required maxlength="120" autocomplete="organization" /></label>
+        <label><span data-i18n="ownerName">Adın soyadın</span><input name="owner_name" required maxlength="120" autocomplete="name" /></label>
+        <label><span data-i18n="email">E-posta</span><input name="email" type="email" required autocomplete="email" /></label>
+        <label><span data-i18n="country">Ülke</span>
+          <select name="country">
+            <option value="TR">Türkiye</option><option value="US">United States</option><option value="MX">México</option>
+            <option value="ES">España</option><option value="GB">United Kingdom</option><option value="DE">Deutschland</option><option value="CA">Canada</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" name="terms" required /><span data-i18n="terms">Abonelik ve gizlilik koşullarını kabul ediyorum.</span></label>
+        <p class="error" id="form-error" role="alert"></p>
+        <button class="btn primary block" type="submit" id="submit" data-i18n="pay">Ödemeye geç</button>
+        <p class="secure" data-i18n="secure">🔒 Kart bilgilerin Stripe’ta işlenir, bize hiç ulaşmaz.</p>
+      </form>
+    </section>
+
+    <section class="faq" id="sss">
+      <h2 data-i18n="faqTitle">Sık sorulanlar</h2>
+      <details><summary data-i18n="q1">Kart bilgilerim güvende mi?</summary><p data-i18n="a1">Ödeme Stripe’ın sayfasında alınır; kart bilgin Fade’e hiç gelmez.</p></details>
+      <details><summary data-i18n="q2">İptal edebilir miyim?</summary><p data-i18n="a2">Evet, istediğin an uygulamadaki “Aboneliği yönet” bağlantısından. Dönem sonuna kadar kullanmaya devam edersin.</p></details>
+      <details><summary data-i18n="q3">Verilerim ne olur?</summary><p data-i18n="a3">Veriler yalnızca senin dükkânına aittir; istediğin an dışa aktarabilirsin. İptalden 90 gün sonra kalıcı olarak silinir.</p></details>
+      <details><summary data-i18n="q4">Hangi dillerde çalışıyor?</summary><p data-i18n="a4">Uygulama, asistan ve müşteri mesajları Türkçe, İngilizce ve İspanyolca.</p></details>
+      <details><summary data-i18n="q5">E-posta gelmedi?</summary><p data-i18n="a5">Gereksiz (spam) klasörüne bak. Yine yoksa uygulamadaki canlı destekten ya da bu sayfadaki demodan bize yaz; yeni anahtar gönderelim.</p></details>
+    </section>
+
+    <footer><span>✂ Fade</span><span data-i18n="footer">Berberin defteri · Türkçe · English · Español</span></footer>
+    <script src="site.js"></script>
+  </body>
+</html>

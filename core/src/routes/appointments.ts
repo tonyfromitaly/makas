@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { audit, badRequest, isoDate, notFound, ok, pageQuery, paged, uuid, type Ctx, type Route } from '../http';
+import { audit, badRequest, conflict, isoDate, notFound, ok, pageQuery, paged, uuid, type Ctx, type Route } from '../http';
 import { dropQueued, enqueueReminders } from '../reminders';
 
 const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Expected YYYY-MM-DDTHH:mm');
@@ -58,6 +58,18 @@ async function resolveBarber(ctx: Ctx, id?: string) {
   ).rows[0];
   if (!first) throw badRequest('Add a barber first', 'NO_BARBER');
   return first.id as string;
+}
+
+/** Same rule as the database constraint, for databases that can't install btree_gist. */
+async function assertFree(ctx: Ctx, barberId: string, starts: Date, ends: Date, exceptId?: string) {
+  const clash = (
+    await ctx.db.query(
+      `select 1 from appointments where shop_id = $1 and barber_id = $2 and status in ('booked', 'done')
+          and starts_at < $4 and ends_at > $3 and ($5::uuid is null or id <> $5) limit 1`,
+      [ctx.shopId, barberId, starts, ends, exceptId ?? null],
+    )
+  ).rows[0];
+  if (clash) throw conflict('That barber already has an appointment at this time', 'SLOT_TAKEN');
 }
 
 /** A done appointment is the day's income; this keeps exactly one book row per done visit. */
@@ -158,6 +170,7 @@ export const appointmentRoutes: Route[] = [
       const barberId = await resolveBarber(ctx, body.barber_id);
       const starts = resolveStart(body, tz)!;
       const ends = new Date(starts.getTime() + service.duration_min * 60_000);
+      await assertFree(ctx, barberId, starts, ends);
       const row = (
         await ctx.db.query(
           `insert into appointments (shop_id, barber_id, client_id, service_id, starts_at, ends_at, price_cents_snapshot, source, notes)
@@ -204,6 +217,15 @@ export const appointmentRoutes: Route[] = [
         if (body.service_id && body.service_id !== before.service_id) patch.price_cents_snapshot = service.price_cents;
         if (body.barber_id) patch.barber_id = await resolveBarber(ctx, body.barber_id);
       }
+      const next = body.status ?? before.status;
+      if ((moved || next !== before.status) && (next === 'booked' || next === 'done'))
+        await assertFree(
+          ctx,
+          (patch.barber_id as string) ?? before.barber_id,
+          (patch.starts_at as Date) ?? new Date(before.starts_at),
+          (patch.ends_at as Date) ?? new Date(before.ends_at),
+          before.id,
+        );
       if (body.notes !== undefined) patch.notes = body.notes;
       if (body.status && body.status !== before.status) patch.status = body.status;
       const keys = Object.keys(patch);

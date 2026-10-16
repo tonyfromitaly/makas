@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { badRequest, conflict, notFound, pageQuery, paged, phone, uuid, type Route } from '../http';
 import { renderTemplate, type Lang, type TemplateKey } from '../reminders';
 import { isLocked } from './shop';
+import { createAccessKey } from '../provision';
 
 const LEASE_MINUTES = 5;
 
@@ -188,6 +189,17 @@ export const adminRoutes: Route[] = [
         [query.page_size, (query.page - 1) * query.page_size],
       );
       return paged(rows, query.page, query.page_size);
+    },
+  },
+  {
+    // A fresh one-time access key for a shop owner (manual onboarding, lost e-mail).
+    method: 'POST',
+    path: '/admin/shops/:id/access-key',
+    auth: 'admin',
+    async handler(ctx, { params }) {
+      const owner = (await ctx.db.query('select owner_user_id as id from shops where id = $1', [params.id])).rows[0];
+      if (!owner?.id) throw notFound('Shop');
+      return { key: await createAccessKey(ctx.db, params.id, owner.id, ctx.now) };
     },
   },
   {

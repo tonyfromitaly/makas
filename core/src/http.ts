@@ -46,6 +46,12 @@ export interface Config {
   refreshTtlSec: number;
   trialDays: number;
   now: () => Date;
+  /** false when shops can only be bought on the website (production). */
+  allowSignup?: boolean;
+  /** Public base URL of the website and app, e.g. https://fade.onrender.com */
+  publicUrl?: string;
+  /** Stripe checkout is configured. */
+  billingEnabled?: boolean;
 }
 
 export interface Ctx {

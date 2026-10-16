@@ -1810,3 +1810,16 @@ input.narrow {
 .op-head h1 {
   font-size: 1.6rem;
 }
+
+/* --- access key sign-in --- */
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+}
+.key-input {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

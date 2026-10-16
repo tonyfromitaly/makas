@@ -23,6 +23,18 @@ Common codes: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `INVALID_CREDENTIALS` 
 | `POST /auth/login` | `{email, password}` → `{access_token, refresh_token, expires_in, user}` |
 | `POST /auth/refresh` | `{refresh_token}` → new pair. Rotation; reusing an old token ends the whole session family. |
 | `POST /auth/logout` | `{refresh_token}` → 204, family revoked |
+| `POST /auth/key` | `{key, password}` → tokens. One-time access key from the welcome e-mail (14 days); sets the password. `INVALID_KEY` otherwise. |
+| `GET /meta` | `{signup: open\|subscribe, billing, site_url}`: whether shops open themselves or subscribe on the website. With `ALLOW_SIGNUP=false`, `/auth/register` returns `SIGNUP_CLOSED`. |
+
+## Billing (website subscriptions)
+In production everything is under `/api` (website at `/`, app at `/app/`).
+
+| | |
+|---|---|
+| `GET /billing/plan` | `{enabled, amount_cents, currency, interval}` read from the Stripe price |
+| `POST /billing/checkout` | `{shop_name, owner_name, email, country, timezone, language}` → `{url}` of Stripe Checkout. 10/min per IP. `EMAIL_TAKEN`, `BILLING_DISABLED`. |
+| `POST /billing/webhook` | Stripe, signature-verified on the raw body. `checkout.session.completed` opens the shop, issues an access key and sends the welcome e-mail (idempotent); `customer.subscription.updated/deleted` sync status and period end. |
+| `POST /billing/portal` | owner → `{url}` of Stripe's customer portal (`NO_BILLING` for hand-managed shops) |
 
 Auth endpoints are limited to 10 requests/min per IP.
 
@@ -110,4 +122,4 @@ output validated; on any failure the local parser is used.
 ## Operator (admin key)
 `GET /admin/support` (one row per shop thread, `waiting` = shop messages since our last reply), `GET /admin/support/:shopId`,
 `POST /admin/support/:shopId {message}` (reply), `GET /admin/shops`, `GET /admin/feedback`, `PATCH /admin/shops/:id/subscription {status?, plan_key?, current_period_end?}`,
-`POST /admin/retention/run {days?: 90}`.
+`POST /admin/retention/run {days?: 90}`, `POST /admin/shops/:id/access-key` (a fresh one-time key for the owner).

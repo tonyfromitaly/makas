@@ -18,7 +18,7 @@ function files(dir: string, out: string[] = []) {
 describe('repo hygiene', () => {
   it('.env.example has keys but no values for secrets', () => {
     const env = readFileSync(join(root, '.env.example'), 'utf8');
-    for (const k of ['JWT_SECRET', 'SERVICE_API_KEY', 'ADMIN_API_KEY', 'PARSE_SERVICE_KEY', 'AI_API_KEY', 'POSTGRES_PASSWORD']) {
+    for (const k of ['JWT_SECRET', 'SERVICE_API_KEY', 'ADMIN_API_KEY', 'PARSE_SERVICE_KEY', 'AI_API_KEY', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'RESEND_API_KEY', 'POSTGRES_PASSWORD']) {
       const line = env.split('\n').find((l) => l.startsWith(`${k}=`));
       expect(line, k).toBe(`${k}=`);
     }

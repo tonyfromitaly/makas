@@ -2,6 +2,7 @@ import { useApp } from '../state';
 import { Icon } from '../components/ui';
 import { ExportButton } from './Settings';
 import { SupportChat } from '../components/SupportChat';
+import { ManagePlan } from '../components/ManagePlan';
 
 export function Locked() {
   const { t, me, signOut } = useApp();
@@ -16,6 +17,7 @@ export function Locked() {
         <span className={`chip sub-${me.subscription?.status}`}>
           {t('subscription')}: {t(`sub_${me.subscription?.status}` as any)}
         </span>
+        <ManagePlan renew />
       </div>
       <SupportChat />
       <section className="card stack">

@@ -17,6 +17,14 @@ const TENANT_TABLES = [
   'audit_log',
 ];
 
+/** Grants to the tenant role, skipped when the database could not create it. */
+const toTenant = (sql: string) => `
+do $grant$ begin
+  if exists (select 1 from pg_roles where rolname = 'makas_tenant') then
+    execute $sql$ ${sql} $sql$;
+  end if;
+end $grant$;`;
+
 const rls = (table: string) => `
 alter table ${table} enable row level security;
 alter table ${table} force row level security;
@@ -28,12 +36,19 @@ create trigger ${table}_updated_at before update on ${table}
 `;
 
 const init = `
-create extension if not exists btree_gist;
+do $$ begin
+  create extension if not exists btree_gist;
+exception when insufficient_privilege then
+  null; -- without it the no-overlap rule is enforced in the API instead
+end $$;
 
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'makas_tenant') then
     create role makas_tenant nologin;
   end if;
+exception when insufficient_privilege then
+  -- Managed Postgres (e.g. Render) without CREATEROLE: RLS still applies to the table owner (FORCE).
+  null;
 end $$;
 
 create or replace function set_updated_at() returns trigger language plpgsql as $$
@@ -143,12 +158,16 @@ create table appointments (
   -- Composite FKs: an appointment can never point at another shop's rows.
   foreign key (shop_id, barber_id) references barbers(shop_id, id),
   foreign key (shop_id, client_id) references clients(shop_id, id) on delete cascade,
-  foreign key (shop_id, service_id) references services(shop_id, id),
-  -- One barber, one chair: no overlapping live appointments.
-  constraint appointments_no_overlap exclude using gist (
-    barber_id with =, tstzrange(starts_at, ends_at) with &&
-  ) where (status in ('booked', 'done'))
+  foreign key (shop_id, service_id) references services(shop_id, id)
 );
+-- One barber, one chair: no overlapping live appointments (the API checks too).
+do $$ begin
+  if exists (select 1 from pg_extension where extname = 'btree_gist') then
+    alter table appointments add constraint appointments_no_overlap exclude using gist (
+      barber_id with =, tstzrange(starts_at, ends_at) with &&
+    ) where (status in ('booked', 'done'));
+  end if;
+end $$;
 create index appointments_day on appointments (shop_id, starts_at);
 
 create table ledger_entries (
@@ -254,6 +273,7 @@ create trigger shops_updated_at before update on shops
 
 ${TENANT_TABLES.map(rls).join('\n')}
 
+${toTenant(`
 grant select, update on shops to makas_tenant;
 grant select, insert, update, delete on
   users, refresh_tokens, services, barbers, clients, appointments,
@@ -262,6 +282,7 @@ grant select, insert, update, delete on
 grant select on subscriptions to makas_tenant;
 -- Append-only for tenants: the shop can read its trail but never rewrite it.
 grant select, insert on audit_log, feedback to makas_tenant;
+`)}
 `;
 
 // The barber's own reminders and upcoming payments (rent, bills, suppliers), created by the assistant or by hand.
@@ -284,7 +305,7 @@ create table shop_tasks (
 );
 create index shop_tasks_due on shop_tasks (shop_id, status, due_date);
 ${rls('shop_tasks')}
-grant select, insert, update, delete on shop_tasks to makas_tenant;
+${toTenant('grant select, insert, update, delete on shop_tasks to makas_tenant;')}
 `;
 
 // "Bize yaz" becomes a live support thread: the feedback table holds both sides of the conversation.
@@ -292,11 +313,55 @@ const support = `
 alter table feedback add column author text not null default 'shop' check (author in ('shop', 'operator'));
 alter table feedback add column read_at timestamptz;
 create index feedback_thread on feedback (shop_id, created_at);
-grant update (read_at) on feedback to makas_tenant;
+${toTenant('grant update (read_at) on feedback to makas_tenant;')}
+`;
+
+// Subscriptions sold on the website: Stripe checkout, pending sign-ups, one-time access keys.
+// Policies gain an explicit system switch so the owner connection works on non-superuser Postgres,
+// where FORCE row-level security applies to the owner too.
+const POLICY = (col: string) =>
+  `(${col} = nullif(current_setting('app.shop_id', true), '')::uuid or current_setting('app.system', true) = 'on')`;
+const billing = `
+create table signups (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  shop_name text not null check (length(shop_name) between 1 and 120),
+  owner_name text not null check (length(owner_name) between 1 and 120),
+  country char(2) not null,
+  timezone text not null,
+  language text not null check (language in ('tr', 'en', 'es')),
+  currency char(3) not null default 'USD',
+  stripe_session_id text unique,
+  status text not null default 'pending' check (status in ('pending', 'completed', 'expired')),
+  shop_id uuid references shops(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index signups_email on signups (lower(email));
+
+create table access_keys (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  user_id uuid not null,
+  key_hash text not null unique,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  foreign key (shop_id, user_id) references users(shop_id, id) on delete cascade
+);
+${rls('access_keys')}
+${toTenant('grant select on access_keys to makas_tenant;')}
+
+alter policy tenant_isolation on shops using ${POLICY('id')} with check ${POLICY('id')};
+${[...TENANT_TABLES, 'shop_tasks', 'access_keys']
+  .map((t) => `alter policy tenant_isolation on ${t} using ${POLICY('shop_id')} with check ${POLICY('shop_id')};`)
+  .join('\n')}
 `;
 
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
   { id: '003_support_thread', sql: support },
+  { id: '004_billing_access', sql: billing },
 ];

@@ -2,6 +2,10 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import { billingRoutes, type PaymentProvider } from './billing';
+import { consoleMailer, type Mailer } from './email';
 import { hash, verify } from '@node-rs/argon2';
 import { createApi, errorBody, type Config, type Database, type Deps } from '@makas/core';
 
@@ -20,6 +24,13 @@ export interface ServerOptions {
   requireHttps?: boolean;
   authRateLimit?: number;
   logger?: boolean;
+  /** "/api" when the same server also serves the website and the app. */
+  prefix?: string;
+  /** Built website (served at /) and app (served at /app/). */
+  staticDirs?: { site?: string; app?: string };
+  payments?: PaymentProvider | null;
+  mailer?: Mailer;
+  publicUrl?: string;
 }
 
 export async function buildServer(o: ServerOptions) {
@@ -45,7 +56,7 @@ export async function buildServer(o: ServerOptions) {
 
   if (o.requireHttps) {
     app.addHook('onRequest', async (req, reply) => {
-      if (req.protocol !== 'https' && req.url !== '/health')
+      if (req.protocol !== 'https' && !req.url.endsWith('/health'))
         return reply.code(403).send(errorBody('HTTPS_REQUIRED', 'Use HTTPS'));
     });
   }
@@ -59,11 +70,12 @@ export async function buildServer(o: ServerOptions) {
     return reply.code(500).send(errorBody('INTERNAL', 'Something went wrong'));
   });
 
+  const prefix = o.prefix ?? '';
   const forward = async (req: FastifyRequest, reply: FastifyReply) => {
     const url = new URL(req.url, 'http://x');
     const res = await handle({
       method: req.method,
-      path: url.pathname,
+      path: url.pathname.slice(prefix.length) || '/',
       query: Object.fromEntries(url.searchParams),
       body: req.body,
       authorization: req.headers.authorization,
@@ -74,13 +86,35 @@ export async function buildServer(o: ServerOptions) {
   };
 
   // Auth endpoints get a much tighter per-IP limit (credential stuffing, signup spam).
+  // Website subscriptions (Stripe) live next to the core routes, under the same prefix.
+  await billingRoutes(app, {
+    db: o.db,
+    config: o.config,
+    provider: o.payments ?? null,
+    mailer: o.mailer ?? consoleMailer((s) => app.log.info(s)),
+    publicUrl: o.publicUrl ?? o.config.publicUrl ?? 'http://localhost:5173',
+    prefix,
+  });
+
   app.route({
     method: ['GET', 'POST', 'PATCH', 'DELETE'],
-    url: '/auth/*',
+    url: `${prefix}/auth/*`,
     config: { rateLimit: { max: o.authRateLimit ?? 10, timeWindow: '1 minute' } },
     handler: forward,
   });
-  app.route({ method: ['GET', 'POST', 'PATCH', 'DELETE'], url: '/*', handler: forward });
-  app.route({ method: ['GET'], url: '/', handler: async () => ({ name: 'fade-api', docs: '/docs/api.md' }) });
+  app.route({ method: ['GET', 'POST', 'PATCH', 'DELETE'], url: `${prefix}/*`, handler: forward });
+
+  const site = o.staticDirs?.site;
+  const web = o.staticDirs?.app;
+  if (site && existsSync(site)) {
+    await app.register(fastifyStatic, { root: site, prefix: '/', wildcard: false, index: ['index.html'] });
+  }
+  if (web && existsSync(web)) {
+    await app.register(fastifyStatic, { root: web, prefix: '/app/', decorateReply: !site, wildcard: false, index: ['index.html'] });
+    // The app is a single page: unknown paths under /app/ get its index.html.
+    app.get('/app', (_req, reply) => reply.redirect('/app/'));
+    app.get('/app/*', (_req, reply) => reply.type('text/html').sendFile('index.html', web));
+  }
+  if (!site) app.route({ method: ['GET'], url: '/', handler: async () => ({ name: 'fade-api', docs: '/docs/api.md' }) });
   return app;
 }

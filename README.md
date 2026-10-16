@@ -20,6 +20,18 @@ Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olar
 
 Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldüğü: [docs/asistan-egitimi.md](docs/asistan-egitimi.md). GitHub Pages'teki canlı demo statik bir sayfa olduğu için anahtar taşıyamaz; orada her zaman yerleşik kural motoru çalışır.
 
+## Abonelik ve kilit
+
+Gerçek uygulama kilitlidir: içeri yalnızca hesabı ya da **erişim anahtarı** olan girer, herkese açık "dükkân aç" kapalıdır.
+
+1. Kişi web sitesindeki (`/`) **Abone ol** formunu doldurur ve Stripe'ın güvenli sayfasında öder.
+2. Stripe ödemeyi onaylayınca sistem dükkânı açar ve tek kullanımlık bir anahtar (`FADE-XXXX-XXXX-XXXX`) üretir.
+3. Resend, kişinin dilinde, uygulama linki ve anahtar içeren bir hoş geldin e-postası gönderir.
+4. Kişi linke dokunur, anahtar otomatik dolar, şifresini belirler ve içeri girer.
+5. Ödeme durursa kilit ekranı açılır; "Aboneliği yenile" Stripe portalına götürür, ödeme düzelince kilit kendiliğinden kalkar.
+
+Yayına alma (Render + Stripe + Resend) adım adım: [docs/yayina-alma.md](docs/yayina-alma.md). Repodaki `render.yaml` sunucuyu ve veritabanını tek tıkla kurar.
+
 ## Canlı destek: "Bize yaz"
 
 Berber Ayarlar'daki **Bize yaz** kartından yazar; mesajlar sohbet olarak akar ve kart birkaç saniyede bir yenilenir. Ekip (işletme) cevabı **İşletme paneli**nden verir: uygulama adresinin sonuna `#operator` ekleyip (`http://localhost:5173/#operator`) `ADMIN_API_KEY` ile girilir. Cevap bekleyen sohbetler üstte listelenir. Ekipten gelen okunmamış cevaplar Ayarlar sekmesinde rozet olarak görünür. Canlı demoda panel, sağ üstteki **Canlı demo** düğmesinden anahtarsız açılır.
@@ -58,7 +70,7 @@ npm run build:demo && npx vite preview --outDir app/dist
 
 ### Testler
 ```bash
-npm test          # 95 test: kiracı yalıtımı, kabul ölçütleri, asistan + 40 cümlelik eğitim seti, auth, ayrıştırıcılar, repo hijyeni
+npm test          # 107 test (abonelik akışı ve süper kullanıcısız veritabanı dahil): kiracı yalıtımı, kabul ölçütleri, asistan + 40 cümlelik eğitim seti, auth, ayrıştırıcılar, repo hijyeni
 npm run typecheck
 ```
 
@@ -66,7 +78,8 @@ npm run typecheck
 
 ```
 core/   İş kuralları: rotalar, SQL, migration, hatırlatma motoru, ayrıştırıcılar (ortam bağımsız TypeScript)
-api/    Fastify adaptörü: helmet, CORS, rate limit, HTTPS zorunluluğu, argon2id, pg havuzu
+api/    Fastify adaptörü: helmet, CORS, rate limit, HTTPS zorunluluğu, argon2id, pg havuzu, Stripe + Resend
+site/   Web sitesi: tanıtım, fiyat, abonelik formu (üretimde / adresinde)
 app/    React PWA (telefona kurulur, çevrimdışı açılır). Demo modunda core'u tarayıcıda PGlite ile çalıştırır
 docs/   Mimari, API kontratı, güvenlik ve gizlilik, operasyon
 ```
