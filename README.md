@@ -42,7 +42,7 @@ Berber Ayarlar'daki **Bize yaz** kartından yazar; mesajlar sohbet olarak akar v
 npm install
 npm run dev
 ```
-API gömülü Postgres (PGlite, `./api/.data`) ile `http://localhost:3000`'de, uygulama `http://localhost:5173`'te açılır. Demo dükkân otomatik oluşur, giriş bilgisi `core/src/seed.ts` içindeki `DEMO_LOGIN`'dedir.
+API gömülü Postgres (PGlite, `./api/.data`) ile `http://localhost:3000`'de, uygulama `http://localhost:5173`'te açılır. Demo dükkân (Berber Halil) boş olarak otomatik oluşur: yalnızca hizmet listesi ve iki berber hazırdır; müşteri, randevu ve defter kayıtlarını sen girersin. Giriş bilgisi `core/src/seed.ts` içindeki `DEMO_LOGIN`'dedir.
 
 ### 2) Üretim benzeri (Docker, tek komut)
 ```bash

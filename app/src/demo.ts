@@ -27,9 +27,18 @@ export const DEMO_KEYS = { service: randomToken(), admin: randomToken() };
 export { DEMO_LOGIN };
 
 let lite: PGlite | null = null;
-const DATA_DIR = 'idb://fade-demo-v3';
+const DATA_DIR = 'idb://fade-demo-v4';
+// Earlier demo databases (with sample data) are removed so every visitor starts from the empty shop.
+const OLD_DBS = ['/pglite/makas-demo-v1', '/pglite/makas-demo-v2', '/pglite/fade-demo-v3'];
 
 export async function startDemo(): Promise<Transport> {
+  for (const name of OLD_DBS) {
+    try {
+      indexedDB.deleteDatabase(name);
+    } catch {
+      /* ignore */
+    }
+  }
   try {
     lite = await PGlite.create({ dataDir: DATA_DIR, extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
   } catch {
@@ -66,7 +75,7 @@ export async function startDemo(): Promise<Transport> {
 export async function resetDemo() {
   await lite?.close();
   await new Promise<void>((resolve) => {
-    const req = indexedDB.deleteDatabase('/pglite/fade-demo-v3');
+    const req = indexedDB.deleteDatabase('/pglite/fade-demo-v4');
     req.onsuccess = req.onerror = req.onblocked = () => resolve();
   });
   try {
