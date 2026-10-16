@@ -1,0 +1,10 @@
+{
+  "name": "Makas: berber defteri",
+  "short_name": "Makas",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4efe4",
+  "theme_color": "#1d1a15",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

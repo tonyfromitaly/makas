@@ -1,0 +1,27 @@
+{
+  "name": "@makas/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "migrate": "tsx src/scripts/migrate.ts",
+    "seed": "tsx src/scripts/seed.ts",
+    "retention": "tsx src/scripts/retention.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.15",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/rate-limit": "^10.2.1",
+    "@makas/core": "*",
+    "@node-rs/argon2": "^2.0.2",
+    "fastify": "^5.2.0",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": { "@types/node": "^22.10.2", "@types/pg": "^8.11.10", "typescript": "^5.7.2", "vitest": "^2.1.8" }
+}

@@ -1,0 +1,8 @@
+node_modules
+dist
+.data
+.env
+*.local
+coverage
+.DS_Store
+.claude

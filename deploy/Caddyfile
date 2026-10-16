@@ -1,0 +1,8 @@
+# Automatic HTTPS (Let's Encrypt). Plain HTTP only redirects.
+{$APP_DOMAIN} {
+  encode gzip zstd
+  header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  reverse_proxy web:80 {
+    header_up X-Forwarded-Proto https
+  }
+}

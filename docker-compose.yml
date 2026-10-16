@@ -1,0 +1,65 @@
+# One command: cp .env.example .env (fill secrets) && docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-makas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-makas}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-makas}"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: { context: ., dockerfile: api/Dockerfile }
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-makas}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-makas}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      SERVICE_API_KEY: ${SERVICE_API_KEY:?set SERVICE_API_KEY in .env}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:?set ADMIN_API_KEY in .env}
+      PARSE_SERVICE_URL: ${PARSE_SERVICE_URL:-}
+      PARSE_SERVICE_KEY: ${PARSE_SERVICE_KEY:-}
+      CORS_ORIGINS: https://${APP_DOMAIN:-localhost}
+      TRUST_PROXY: "true"
+      SEED_DEMO: ${SEED_DEMO:-false}
+
+  web:
+    build: { context: ., dockerfile: app/Dockerfile }
+    restart: unless-stopped
+    depends_on: [api]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [web]
+
+  # Daily backup at 03:00, 14 days kept (see docs/operations.md).
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [./backups:/backups]
+    entrypoint: >
+      sh -c 'while true; do
+        sleep $$(( ( 86400 + 10800 - $$(date +%s) % 86400 ) % 86400 ));
+        pg_dump -h db -U ${POSTGRES_USER:-makas} -Fc ${POSTGRES_DB:-makas} > /backups/makas-$$(date +%F).dump;
+        find /backups -name "makas-*.dump" -mtime +14 -delete;
+      done'
+
+volumes:
+  pgdata:
+  caddy_data:

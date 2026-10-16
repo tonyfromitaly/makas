@@ -1,0 +1,15 @@
+{
+  "name": "makas",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Makas: berber dükkânları için randevu defteri, gün kazancı, borç defteri ve otomatik hatırlatmalar.",
+  "workspaces": ["core", "api", "app"],
+  "scripts": {
+    "dev": "npm run dev -w api & npm run dev -w app",
+    "test": "npm test -w api",
+    "build": "npm run build -w app",
+    "build:demo": "npm run build:demo -w app",
+    "typecheck": "npm run typecheck -w core && npm run typecheck -w api && npm run typecheck -w app"
+  },
+  "engines": { "node": ">=20" }
+}
