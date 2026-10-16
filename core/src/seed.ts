@@ -5,8 +5,8 @@ import { enqueueReminders } from './reminders';
 export const DEMO_LOGIN = { email: 'demo@makas.app', password: 'demo-berber-2026' };
 
 /**
- * Demo shop: 4 services, 2 barbers, 6 clients, today's 4 appointments, one open debt,
- * a few weeks of history (so "lapsed" and "no-show risk" have something to show) and this month's expenses.
+ * Demo shop "Berber Halil" (USD): 4 services, 2 barbers, 6 clients, today's 4 appointments, one open tab,
+ * six weeks of books (so "last month" questions have answers), open payments and reminders for the assistant.
  */
 export async function seedDemo(db: Database, opts: { hashPassword: (p: string) => Promise<string>; now: Date }) {
   return withSystem(db, async (tx) => {
@@ -18,11 +18,11 @@ export async function seedDemo(db: Database, opts: { hashPassword: (p: string) =
     const q = async (sql: string, p: unknown[]) => (await tx.query(sql, p)).rows[0];
 
     const shop = await q(
-      `insert into shops (name, country, timezone, language, currency) values ('Usta Makas Berber', 'TR', $1, 'tr', 'TRY') returning id`,
+      `insert into shops (name, country, timezone, language, currency) values ('Berber Halil', 'TR', $1, 'tr', 'USD') returning id`,
       [tz],
     );
     const user = await q(
-      `insert into users (shop_id, email, password_hash, role, name) values ($1, $2, $3, 'owner', 'Hasan Usta') returning id`,
+      `insert into users (shop_id, email, password_hash, role, name) values ($1, $2, $3, 'owner', 'Halil Usta') returning id`,
       [shop.id, DEMO_LOGIN.email, await opts.hashPassword(DEMO_LOGIN.password)],
     );
     await tx.query('update shops set owner_user_id = $1 where id = $2', [user.id, shop.id]);
@@ -33,13 +33,13 @@ export async function seedDemo(db: Database, opts: { hashPassword: (p: string) =
 
     const svc = async (name: string, price: number, min: number) =>
       (await q('insert into services (shop_id, name, price_cents, duration_min) values ($1, $2, $3, $4) returning id, price_cents', [shop.id, name, price * 100, min]));
-    const cut = await svc('Saç kesimi', 400, 30);
-    const beard = await svc('Sakal tıraşı', 200, 20);
-    const combo = await svc('Saç + sakal', 550, 45);
-    const kid = await svc('Çocuk tıraşı', 300, 25);
+    const cut = await svc('Saç kesimi', 30, 30);
+    const beard = await svc('Sakal tıraşı', 15, 20);
+    const combo = await svc('Saç + sakal', 40, 45);
+    const kid = await svc('Çocuk tıraşı', 20, 25);
 
     const barber = async (name: string) => (await q('insert into barbers (shop_id, name) values ($1, $2) returning id', [shop.id, name])).id;
-    const hasan = await barber('Hasan Usta');
+    const hasan = await barber('Halil Usta');
     const emre = await barber('Emre');
 
     const client = async (name: string, phone: string, consent = true, language = 'tr') =>
@@ -107,25 +107,47 @@ export async function seedDemo(db: Database, opts: { hashPassword: (p: string) =
 
     // One open tab: Mehmet owes for a combo.
     await tx.query(
-      `insert into ledger_entries (shop_id, client_id, amount_cents, kind, note, created_by) values ($1, $2, 55000, 'charge', 'Saç + sakal, sonra ödeyecek', $3)`,
+      `insert into ledger_entries (shop_id, client_id, amount_cents, kind, note, created_by) values ($1, $2, 4000, 'charge', 'Saç + sakal, sonra ödeyecek', $3)`,
       [shop.id, mehmet, user.id],
     );
 
-    const book = async (kind: string, category: string, tl: number, daysAgo: number, raw: string) =>
+    const book = async (kind: string, category: string, usd: number, day: DateTime, raw: string) =>
       tx.query(
         `insert into book_entries (shop_id, kind, category, amount_cents, entry_date, note, raw_text, source, created_by)
          values ($1, $2, $3, $4, $5, $6, $6, 'ai_note', $7)`,
-        [shop.id, kind, category, tl * 100, today.minus({ days: daysAgo }).toISODate(), raw, user.id],
+        [shop.id, kind, category, Math.round(usd * 100), day.toISODate(), raw, user.id],
       );
-    await book('expense', 'rent', 18000, Math.min(now.day - 1, 3), 'kira 18.000 ödedim');
-    await book('expense', 'supplies', 640, 2, 'jilet ve şampuan aldım 640');
-    await book('income', 'tips', 150, 1, 'bahşiş 150');
-    await book('expense', 'utilities', 1250, Math.min(now.day - 1, 5), 'elektrik faturası 1250');
-    // Earlier days of the month: end-of-day takings noted by hand, so week and month views look real.
-    for (let d = 1; d <= Math.min(now.day - 1, 24); d++) {
-      if (today.minus({ days: d }).weekday === 7) continue; // closed on Sundays
-      await book('income', 'service', 2400 + ((d * 737) % 2100), d, 'gün sonu kasa');
+    const monthStart = today.startOf('month');
+    const lastMonth = monthStart.minus({ months: 1 });
+    // This month's and last month's fixed costs.
+    for (const m of [lastMonth, monthStart]) {
+      const inPast = (d: DateTime) => (d < today ? d : today);
+      await book('expense', 'rent', 1800, inPast(m.plus({ days: 2 })), 'kira 1800 dolar ödedim');
+      await book('expense', 'utilities', m === monthStart ? 125 : 118, inPast(m.plus({ days: 4 })), 'elektrik faturası ödendi');
+      await book('expense', 'supplies', m === monthStart ? 64 : 90, inPast(m.plus({ days: 9 })), 'jilet ve şampuan aldım');
     }
+    await book('income', 'tips', 15, today.minus({ days: 1 }), 'bahşiş 15 dolar');
+    // End-of-day takings noted by hand for the last six weeks (closed on Sundays).
+    for (let d = 1; d <= 45; d++) {
+      const day = today.minus({ days: d });
+      if (day.weekday === 7) continue;
+      await book('income', 'service', 240 + ((d * 73) % 210), day, 'gün sonu kasa');
+    }
+
+    // Open payments and reminders for the assistant ("bu ay ne kadar ödemem var?").
+    const endOfMonth = today.endOf('month').startOf('day');
+    const within = (n: number) => { const d = today.plus({ days: n }); return (d > endOfMonth ? endOfMonth : d).toISODate(); };
+    const task = (kind: string, title: string, due: string, usd: number | null) =>
+      tx.query(
+        `insert into shop_tasks (shop_id, kind, title, due_date, amount_cents, source, created_by) values ($1, $2, $3, $4, $5, 'assistant', $6)`,
+        [shop.id, kind, title, due, usd ? usd * 100 : null, user.id],
+      );
+    await task('payment', 'Su faturası', today.minus({ days: 2 }).toISODate()!, 45);
+    await task('payment', 'Doğalgaz faturası', within(3)!, 140);
+    await task('payment', 'Ürün tedarikçisi', within(6)!, 260);
+    await task('payment', 'Kira', today.plus({ months: 1 }).startOf('month').plus({ days: 2 }).toISODate()!, 1800);
+    await task('reminder', 'Makas bileme servisini ara', today.toISODate()!, null);
+    await task('reminder', 'Ahmet’e doğum günü indirimi', today.plus({ days: 1 }).toISODate()!, null);
     void ali;
     return { created: true, shopId: shop.id };
   });

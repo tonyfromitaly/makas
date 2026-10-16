@@ -10,10 +10,11 @@ import { Clients } from './screens/Clients';
 import { Books } from './screens/Books';
 import { Settings } from './screens/Settings';
 import { Locked } from './screens/Locked';
+import { Assistant } from './screens/Assistant';
 import { DemoPanel } from './components/DemoPanel';
 
 export const DEMO = import.meta.env.MODE === 'demo' || import.meta.env.VITE_DEMO === 'true';
-type Tab = 'today' | 'clients' | 'books' | 'settings';
+type Tab = 'today' | 'clients' | 'assistant' | 'books' | 'settings';
 
 const LANG_KEY = 'makas.lang';
 const savedLang = (): Lang | null => {
@@ -49,6 +50,7 @@ export function App() {
   const [phase, setPhase] = useState<'boot' | 'out' | 'in'>('boot');
   const [lang, setLangState] = useState<Lang>(savedLang() ?? detectLang());
   const [tab, setTab] = useState<Tab>('today');
+  const [autoMic, setAutoMic] = useState(false);
   const [toastMsg, setToast] = useState('');
   const [bump, setBump] = useState(0);
   const t = useMemo(() => makeT(lang), [lang]);
@@ -119,6 +121,10 @@ export function App() {
     demo: DEMO,
     bump,
     refreshAll: () => setBump((b) => b + 1),
+    openAssistant: (mic = false) => {
+      setAutoMic(mic);
+      setTab('assistant');
+    },
   };
 
   return (
@@ -137,6 +143,7 @@ export function App() {
             <>
               {tab === 'today' && <Today key={bump} />}
               {tab === 'clients' && <Clients />}
+              {tab === 'assistant' && <Assistant autoMic={autoMic} onMicUsed={() => setAutoMic(false)} />}
               {tab === 'books' && <Books />}
               {tab === 'settings' && <Settings />}
             </>
@@ -148,11 +155,12 @@ export function App() {
               [
                 ['today', 'calendar'],
                 ['clients', 'users'],
+                ['assistant', 'sparkle'],
                 ['books', 'book'],
                 ['settings', 'gear'],
               ] as [Tab, string][]
             ).map(([k, icon]) => (
-              <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined}>
+              <button key={k} className={`${tab === k ? 'on' : ''} ${k === 'assistant' ? 'center' : ''}`} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined}>
                 <Icon name={icon} size={22} />
                 <span>{t(k)}</span>
               </button>

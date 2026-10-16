@@ -8,6 +8,7 @@ import { clientRoutes } from './routes/clients';
 import { appointmentRoutes } from './routes/appointments';
 import { moneyRoutes } from './routes/money';
 import { adminRoutes, workerRoutes } from './routes/worker';
+import { assistantRoutes } from './routes/assistant';
 
 export interface ApiRequest {
   method: string;
@@ -29,6 +30,7 @@ export const routes: Route[] = [
   ...clientRoutes,
   ...appointmentRoutes,
   ...moneyRoutes,
+  ...assistantRoutes,
   ...workerRoutes,
   ...adminRoutes,
   { method: 'GET', path: '/health', auth: 'public', handler: async () => ({ ok: true }) },

@@ -34,6 +34,10 @@ export const env = {
   trustProxy: process.env.TRUST_PROXY === 'true',
   parseServiceUrl: process.env.PARSE_SERVICE_URL ?? '',
   parseServiceKey: process.env.PARSE_SERVICE_KEY ?? '',
+  // OpenAI-compatible chat API for the assistant (DeepSeek by default). Empty key = local engine only.
+  aiBaseUrl: process.env.AI_BASE_URL || 'https://api.deepseek.com',
+  aiApiKey: process.env.AI_API_KEY ?? '',
+  aiModel: process.env.AI_MODEL || 'deepseek-chat',
   seedDemo: process.env.SEED_DEMO === 'true',
 };
 

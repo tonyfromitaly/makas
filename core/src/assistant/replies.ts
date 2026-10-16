@@ -1,0 +1,157 @@
+type L = 'tr' | 'en' | 'es';
+type V = Record<string, string | number>;
+
+const fill = (s: string, v: V) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ''));
+
+const T: Record<L, Record<string, string>> = {
+  tr: {
+    period_today: 'Bugün',
+    period_yesterday: 'Dün',
+    period_tomorrow: 'Yarın',
+    period_this_week: 'Bu hafta',
+    period_last_week: 'Geçen hafta',
+    period_this_month: 'Bu ay',
+    period_last_month: 'Geçen ay',
+    period_this_year: 'Bu yıl',
+    income: '{p} ({range}) toplam gelir {amount}. {n} kayıttan.',
+    expense: '{p} ({range}) toplam masraf {amount}.{top}',
+    expense_top: ' En büyük kalem: {cat} ({catAmount}).',
+    net: '{p} ({range}): gelir {income}, gider {expense}, net {net}.',
+    payables: '{p} ödemen gereken toplam {amount}: {list}.',
+    payables_none: '{p} için kayıtlı bekleyen ödeme yok.',
+    receivables: 'Müşterilerden toplam alacağın {amount}. En çok: {list}.',
+    receivables_none: 'Şu an kimsenin borcu yok.',
+    appointments: '{p} {n} randevu var{done}. Beklenen ciro {amount}.',
+    appointments_done: ', {d} tanesi tamamlandı',
+    appointments_none: '{p} randevu yok.',
+    top_service: '{p} en çok yapılan hizmet: {name} ({n} kez, {amount}).',
+    top_service_none: '{p} tamamlanan randevu yok.',
+    client_balance: '{name} borcu: {amount}.',
+    client_balance_zero: '{name} borçlu değil.',
+    client_missing: '“{name}” adında bir müşteri bulamadım.',
+    reminders: '{p} {n} hatırlatman var: {list}.',
+    reminders_none: '{p} bekleyen hatırlatma yok.',
+    drafts_one: 'Bir kayıt hazırladım, kontrol edip onayla.',
+    drafts_many: '{n} kayıt hazırladım, kontrol edip onayla.',
+    need_time: 'Saati anlayamadım, kartta seçebilirsin.',
+    need_phone: 'Yeni müşteri için telefon numarası gerekli.',
+    duplicate: 'Bu numara zaten {name} adına kayıtlı.',
+    unknown:
+      'Tam anlayamadım. Örneğin şunları söyleyebilirsin: “yarın 3’te Ahmet saç”, “yeni müşteri Ali Kaya 555 123 4567”, “100 dolar kazandım 300 dolar kira ödedim”, “ayın 25’inde kira ödemesini hatırlat”, “geçen ay ne kadar kazandık?”',
+    brief_hello: 'Merhaba {name}!',
+    brief_appts: 'Bugün {n} randevun var ({left} tanesi sırada).',
+    brief_no_appts: 'Bugün randevu yok.',
+    brief_till: 'Kasada şu an {amount}.',
+    brief_tasks: 'Hatırlatmalar: {list}.',
+    overdue: 'gecikti',
+  },
+  en: {
+    period_today: 'Today',
+    period_yesterday: 'Yesterday',
+    period_tomorrow: 'Tomorrow',
+    period_this_week: 'This week',
+    period_last_week: 'Last week',
+    period_this_month: 'This month',
+    period_last_month: 'Last month',
+    period_this_year: 'This year',
+    income: '{p} ({range}) income was {amount}, from {n} entries.',
+    expense: '{p} ({range}) expenses were {amount}.{top}',
+    expense_top: ' Biggest item: {cat} ({catAmount}).',
+    net: '{p} ({range}): income {income}, expenses {expense}, net {net}.',
+    payables: '{p} you have {amount} to pay: {list}.',
+    payables_none: 'No open payments recorded for {p}.',
+    receivables: 'Clients owe you {amount} in total. Largest: {list}.',
+    receivables_none: 'Nobody owes you anything right now.',
+    appointments: '{p}: {n} appointments{done}. Expected takings {amount}.',
+    appointments_done: ', {d} done',
+    appointments_none: 'No appointments {p}.',
+    top_service: '{p} the most popular service was {name} ({n} times, {amount}).',
+    top_service_none: 'No finished appointments {p}.',
+    client_balance: '{name} owes {amount}.',
+    client_balance_zero: '{name} owes nothing.',
+    client_missing: 'I couldn’t find a client called “{name}”.',
+    reminders: '{p} you have {n} reminders: {list}.',
+    reminders_none: 'No open reminders {p}.',
+    drafts_one: 'I prepared one entry. Check it and confirm.',
+    drafts_many: 'I prepared {n} entries. Check them and confirm.',
+    need_time: 'I didn’t catch the time; pick it on the card.',
+    need_phone: 'A new client needs a phone number.',
+    duplicate: 'That number already belongs to {name}.',
+    unknown:
+      'I didn’t quite get that. Try: “tomorrow at 3 John haircut”, “new client Ali Kaya 555 123 4567”, “made 100 dollars, paid 300 rent”, “remind me to pay rent on the 25th”, “how much did we make last month?”',
+    brief_hello: 'Hi {name}!',
+    brief_appts: 'You have {n} appointments today ({left} still to come).',
+    brief_no_appts: 'No appointments today.',
+    brief_till: '{amount} in the till so far.',
+    brief_tasks: 'Reminders: {list}.',
+    overdue: 'overdue',
+  },
+  es: {
+    period_today: 'Hoy',
+    period_yesterday: 'Ayer',
+    period_tomorrow: 'Mañana',
+    period_this_week: 'Esta semana',
+    period_last_week: 'La semana pasada',
+    period_this_month: 'Este mes',
+    period_last_month: 'El mes pasado',
+    period_this_year: 'Este año',
+    income: '{p} ({range}) los ingresos fueron {amount}, en {n} asientos.',
+    expense: '{p} ({range}) los gastos fueron {amount}.{top}',
+    expense_top: ' La partida mayor: {cat} ({catAmount}).',
+    net: '{p} ({range}): ingresos {income}, gastos {expense}, neto {net}.',
+    payables: '{p} tienes {amount} por pagar: {list}.',
+    payables_none: 'No hay pagos pendientes para {p}.',
+    receivables: 'Tus clientes te deben {amount} en total. Los mayores: {list}.',
+    receivables_none: 'Ahora nadie te debe nada.',
+    appointments: '{p}: {n} citas{done}. Caja prevista {amount}.',
+    appointments_done: ', {d} hechas',
+    appointments_none: 'No hay citas {p}.',
+    top_service: '{p} el servicio más pedido fue {name} ({n} veces, {amount}).',
+    top_service_none: 'No hay citas terminadas {p}.',
+    client_balance: '{name} debe {amount}.',
+    client_balance_zero: '{name} no debe nada.',
+    client_missing: 'No encontré a ningún cliente llamado “{name}”.',
+    reminders: '{p} tienes {n} recordatorios: {list}.',
+    reminders_none: 'No hay recordatorios pendientes {p}.',
+    drafts_one: 'Preparé un asiento. Revísalo y confirma.',
+    drafts_many: 'Preparé {n} asientos. Revísalos y confirma.',
+    need_time: 'No entendí la hora; elígela en la tarjeta.',
+    need_phone: 'Un cliente nuevo necesita un teléfono.',
+    duplicate: 'Ese número ya es de {name}.',
+    unknown:
+      'No te entendí del todo. Prueba: “mañana a las 3 Pedro corte”, “nuevo cliente Ana Ruiz 555 123 4567”, “gané 100 y pagué 300 de alquiler”, “recuérdame pagar el alquiler el 25”, “¿cuánto ganamos el mes pasado?”',
+    brief_hello: '¡Hola {name}!',
+    brief_appts: 'Hoy tienes {n} citas ({left} por venir).',
+    brief_no_appts: 'Hoy no hay citas.',
+    brief_till: 'En caja llevas {amount}.',
+    brief_tasks: 'Recordatorios: {list}.',
+    overdue: 'atrasado',
+  },
+};
+
+export const CATEGORY_NAMES: Record<L, Record<string, string>> = {
+  tr: { service: 'hizmet', product: 'ürün satışı', tips: 'bahşiş', rent: 'kira', supplies: 'malzeme', utilities: 'fatura', wages: 'maaş', other: 'diğer' },
+  en: { service: 'services', product: 'product sales', tips: 'tips', rent: 'rent', supplies: 'supplies', utilities: 'utilities', wages: 'wages', other: 'other' },
+  es: { service: 'servicios', product: 'venta de productos', tips: 'propinas', rent: 'alquiler', supplies: 'insumos', utilities: 'servicios básicos', wages: 'sueldos', other: 'otros' },
+};
+
+const LOCALE: Record<L, string> = { tr: 'tr-TR', en: 'en-US', es: 'es-ES' };
+
+export function replier(lang: L, currency: string) {
+  const d = T[lang] ?? T.en;
+  const money = (c: number) =>
+    new Intl.NumberFormat(LOCALE[lang], { style: 'currency', currency, maximumFractionDigits: c % 100 ? 2 : 0, minimumFractionDigits: c % 100 ? 2 : 0 }).format(c / 100);
+  const day = (iso: string) =>
+    new Intl.DateTimeFormat(LOCALE[lang], { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`));
+  return {
+    say: (key: string, v: V = {}) => fill(d[key] ?? T.en[key] ?? key, v),
+    period: (p: string, lower = false) => {
+      const s = d[`period_${p}`] ?? p;
+      return lower ? s.toLocaleLowerCase(LOCALE[lang]) : s;
+    },
+    range: (from: string, to: string) => (from === to ? day(from) : `${day(from)} – ${day(to)}`),
+    money,
+    day,
+    category: (c: string) => CATEGORY_NAMES[lang]?.[c] ?? c,
+  };
+}

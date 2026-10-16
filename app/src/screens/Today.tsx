@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { DateTime } from 'luxon';
-import { parseVoiceAppointment, type VoiceDraft } from '@makas/core';
 import { useApp, useLoad } from '../state';
 import { addDays, dateLabel, timeIn, todayIn } from '../format';
-import { Empty, Icon, Sheet, useSpeech } from '../components/ui';
+import { Empty, Icon, Sheet } from '../components/ui';
 import { AppointmentForm } from './AppointmentForm';
 
 export function Today() {
-  const { api, me, t, lang, fmt } = useApp();
+  const { api, me, t, lang, fmt, openAssistant } = useApp();
   const tz = me.shop.timezone;
   const [date, setDate] = useState(todayIn(tz));
-  const [creating, setCreating] = useState<{ draft?: VoiceDraft } | null>(null);
+  const [creating, setCreating] = useState<{} | null>(null);
   const [acting, setActing] = useState<any>(null);
   const [report, setReport] = useState(false);
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const { data, reload } = useLoad(() => api.get(`/appointments?date=${date}`), [date]);
 
   const isToday = date === todayIn(tz);
@@ -59,6 +57,8 @@ export function Today() {
         </div>
       </section>
 
+      <TasksCard />
+
       <ol className="agenda">
         {data?.data.map((a: any) => (
           <li key={a.id} className={`appt status-${a.status}`}>
@@ -94,7 +94,7 @@ export function Today() {
       )}
 
       <div className="fab-row">
-        <button className="fab ghost" onClick={() => setVoiceOpen(true)} aria-label={t('speak')}>
+        <button className="fab ghost" onClick={() => openAssistant(true)} aria-label={t('speak')}>
           <Icon name="mic" size={22} />
         </button>
         <button className="fab" onClick={() => setCreating({})} aria-label={t('newAppointment')}>
@@ -106,7 +106,6 @@ export function Today() {
         {creating && (
           <AppointmentForm
             date={date}
-            draft={creating.draft}
             onDone={(d) => {
               setCreating(null);
               if (d && d !== date) setDate(d);
@@ -115,15 +114,6 @@ export function Today() {
           />
         )}
       </Sheet>
-
-      <VoiceSheet
-        open={voiceOpen}
-        onClose={() => setVoiceOpen(false)}
-        onDraft={(draft) => {
-          setVoiceOpen(false);
-          setCreating({ draft });
-        }}
-      />
 
       <Sheet open={!!acting} onClose={() => setActing(null)} title={acting ? `${timeIn(acting.starts_at, tz)} · ${acting.client_name}` : ''}>
         {acting && <ActionPanel appt={acting} onDone={() => (setActing(null), reload())} />}
@@ -216,57 +206,6 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
   );
 }
 
-function VoiceSheet({ open, onClose, onDraft }: { open: boolean; onClose(): void; onDraft(d: VoiceDraft): void }) {
-  const { api, me, t, lang, fail } = useApp();
-  const [text, setText] = useState('');
-  const run = async (sentence: string) => {
-    if (!sentence.trim()) return;
-    try {
-      const [services, barbers, clients] = await Promise.all([
-        api.get('/services?page_size=200'),
-        api.get('/barbers?page_size=200'),
-        api.get('/clients?page_size=200'),
-      ]);
-      const now = DateTime.now().setZone(me.shop.timezone);
-      onDraft(parseVoiceAppointment(sentence, now, { services: services.data, barbers: barbers.data, clients: clients.data }));
-      setText('');
-    } catch (e) {
-      fail(e);
-    }
-  };
-  const speech = useSpeech(lang, (s) => {
-    setText(s);
-    run(s);
-  });
-  return (
-    <Sheet open={open} onClose={onClose} title={t('newAppointment')}>
-      <div className="stack voice">
-        <button
-          className={`mic-orb ${speech.listening ? 'live' : ''}`}
-          disabled={!speech.supported}
-          onClick={() => (speech.listening ? speech.stop() : speech.start())}
-          aria-label={t('speak')}
-        >
-          <Icon name="mic" size={34} />
-        </button>
-        <p className="muted center">{speech.listening ? t('listening') : speech.supported ? t('speak') : t('voiceUnsupported')}</p>
-        <form
-          className="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            run(text);
-          }}
-        >
-          <input value={text} onChange={(e) => setText(e.target.value)} placeholder={t('typeInstead')} />
-          <button className="btn primary" type="submit">
-            <Icon name="chevR" />
-          </button>
-        </form>
-      </div>
-    </Sheet>
-  );
-}
-
 function DayReport({ date, appts }: { date: string; appts: any }) {
   const { api, me, t, lang, fmt, fail } = useApp();
   const { data } = useLoad(() => api.get(`/books/summary?period=day&date=${date}`), [date]);
@@ -314,3 +253,42 @@ function DayReport({ date, appts }: { date: string; appts: any }) {
   );
 }
 
+
+/** The barber's reminders and payments due today, overdue or in the next two days. */
+function TasksCard() {
+  const { api, me, t, lang, fmt, fail, bump } = useApp();
+  const today = todayIn(me.shop.timezone);
+  const { data, reload } = useLoad(() => api.get(`/tasks?status=open&until=${addDays(today, 2)}`), [today, bump]);
+  if (!data?.data.length) return null;
+  const done = async (id: string) => {
+    try {
+      await api.patch(`/tasks/${id}`, { status: 'done' });
+      reload();
+    } catch (e) {
+      fail(e);
+    }
+  };
+  return (
+    <section className="card tasks">
+      <h3 className="mini-title">
+        <Icon name="bell" size={16} /> {t('remindersToday')}
+      </h3>
+      <ul className="task-list">
+        {data.data.map((x: any) => (
+          <li key={x.id} className={x.due_date < today ? 'overdue' : ''}>
+            <button className="tick" onClick={() => done(x.id)} aria-label={t('markDone')}>
+              <Icon name="check" size={14} />
+            </button>
+            <span className="grow">
+              {x.title}
+              {x.amount_cents ? <strong className="numeral"> {fmt(x.amount_cents)}</strong> : null}
+            </span>
+            <span className="muted small">
+              {x.due_date < today ? t('overdueLabel') : x.due_date === today ? (x.due_time ?? t('today')) : dateLabel(x.due_date, lang, { weekday: 'short', day: 'numeric' })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

@@ -164,7 +164,7 @@ h3 {
   width: 100%;
   max-width: 560px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(14px);
@@ -1225,4 +1225,193 @@ input.narrow {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* --- assistant --- */
+.tabbar button.center svg {
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  margin-top: -14px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--brass);
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.5);
+}
+.tabbar button.center.on svg {
+  background: var(--brass);
+  color: #fff;
+}
+.assistant {
+  min-height: calc(100dvh - 140px);
+  padding-bottom: 84px;
+}
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  animation: rise 0.2s ease;
+}
+.msg.user {
+  justify-content: flex-end;
+}
+.msg-avatar {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--brass);
+}
+.msg-body {
+  display: grid;
+  gap: 8px;
+  max-width: 88%;
+  min-width: 0;
+}
+.bubble {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 16px 16px 16px 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  line-height: 1.45;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+}
+.msg.user .bubble {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+  border-radius: 16px 16px 4px 16px;
+  max-width: 85%;
+}
+.bubble.typing {
+  color: var(--ink-3);
+  font-style: italic;
+}
+.suggestions .chip-btn {
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: left;
+}
+.composer {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(70px + env(safe-area-inset-bottom));
+  width: calc(100% - 24px);
+  max-width: 536px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  z-index: 5;
+}
+.composer input {
+  border: 0;
+  box-shadow: none !important;
+  background: transparent;
+  min-height: 40px;
+}
+.icon-btn.send {
+  background: var(--ink);
+  color: var(--bg);
+}
+.icon-btn.send:disabled {
+  opacity: 0.35;
+}
+.draft-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px dashed var(--brass);
+}
+.draft-card input,
+.draft-card select {
+  min-height: 40px;
+  padding: 8px 10px;
+  font-size: 0.92rem;
+}
+.draft-card .row > * {
+  min-width: 0;
+}
+.draft-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.draft-done {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pos) 12%, transparent);
+  color: var(--pos);
+  font-weight: 600;
+}
+.draft-done.dismissed {
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+.stack.tight {
+  gap: 8px;
+}
+.check.small {
+  font-size: 0.82rem;
+}
+.tasks {
+  padding: 12px 14px;
+}
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.task-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+.task-list li:first-child {
+  border-top: 0;
+}
+.task-list li.overdue .muted {
+  color: var(--neg);
+  font-weight: 700;
+}
+.tick {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 8px;
+  border: 1.5px solid var(--ink-3);
+  background: none;
+  color: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.tick:hover {
+  color: var(--pos);
+  border-color: var(--pos);
 }

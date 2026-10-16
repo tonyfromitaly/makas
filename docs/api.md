@@ -66,13 +66,28 @@ parser in `core/src/parse/voice.ts` drafts the booking, the barber confirms, and
 ## Books (shop accounting)
 | | |
 |---|---|
-| `POST /books/parse` | `{text, lang?}` → `{draft: {kind, amount_cents, category, entry_date, note, raw_text}, engine: ai\|local}`. Saves nothing. |
+| `POST /books/parse` | `{text, lang?}` → `{drafts: [{kind, amount_cents, category, entry_date, note, raw_text}], engine: ai\|local}`, one draft per amount. Saves nothing. |
 | `POST /books` | `{kind, category, amount_cents, entry_date, note?, raw_text?, source: manual\|ai_note}` |
 | `GET /books?from=&to=&kind=` | entries |
 | `DELETE /books/:id` | not for rows that come from an appointment (`LINKED_TO_APPOINTMENT`) |
 | `GET /books/summary?period=day\|week\|month&date=` | `income_cents, expense_cents, net_cents, previous, by_category, series, insight`. All SQL. |
 
 Categories: `service, product, tips, rent, supplies, utilities, wages, other`.
+
+## Assistant
+| | |
+|---|---|
+| `POST /assistant` | `{text, lang?}` → `{reply, drafts[], engine: ai\|local}`. Understands bookings, client registration, money notes (one draft per amount), client tabs, reminders/payments and questions. **Writes nothing**: each draft is confirmed in the app and saved through the normal endpoints (`/appointments`, `/clients`, `/books`, `/ledger`, `/tasks`). Questions are answered in `reply` with SQL-computed numbers. |
+| `GET /assistant/brief` | the day's opening line: appointments, the till so far, reminders due (overdue first) |
+| `GET /tasks?status=open\|done\|all&until=` | the barber's reminders and payments |
+| `POST /tasks` | `{kind: reminder\|payment, title, due_date, due_time?, amount_cents?, source?}` |
+| `PATCH /tasks/:id` | `{status?, title?, due_date?, amount_cents?}`; `DELETE /tasks/:id` |
+
+Question metrics: `income, expense, net, payables` (open payment tasks due in the period, overdue included),
+`receivables` (client tabs), `appointments, top_service, client_balance, reminders`; periods `today … this_year`.
+
+LLM (optional): any OpenAI-compatible chat API (`AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`; DeepSeek by default)
+returns the plan described in `core/src/assistant/plan.ts`. Output is validated; on any failure the local engine is used.
 
 ## Message infrastructure (service key)
 | | |

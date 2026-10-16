@@ -6,7 +6,7 @@ import type { Lang, T } from '../i18n';
 
 const guessTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const guessCountry = (lang: Lang) => (lang === 'tr' ? 'TR' : lang === 'es' ? 'MX' : 'US');
-const guessCurrency = (lang: Lang) => (lang === 'tr' ? 'TRY' : lang === 'es' ? 'MXN' : 'USD');
+const guessCurrency = (_lang: Lang) => 'USD';
 
 export function Auth({ api, t, lang, setLang, onIn }: { api: Client; t: T; lang: Lang; setLang(l: Lang): void; onIn(): void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');

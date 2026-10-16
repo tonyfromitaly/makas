@@ -42,7 +42,7 @@ const STOP = new Set(
 /** Turkish case suffixes after a name or number: Ahmet'e, 3'te, besde. */
 const stripSuffix = (w: string) => w.replace(/'.*$/, '');
 
-function findTime(f: string): { h: number; m: number; span: string } | null {
+export function findTime(f: string): { h: number; m: number; span: string } | null {
   let h: number | null = null;
   let m = 0;
   let span = '';
@@ -81,7 +81,7 @@ function findTime(f: string): { h: number; m: number; span: string } | null {
   return { h, m, span };
 }
 
-function findDate(f: string, now: DateTime): DateTime {
+export function findDate(f: string, now: DateTime): DateTime {
   if (/\b(obur gun|ertesi gun|day after tomorrow|pasado manana)\b/.test(f)) return now.plus({ days: 2 });
   if (/\b(yarin|tomorrow)\b/.test(f) || (/\bmanana\b/.test(f) && !/de la manana/.test(f))) return now.plus({ days: 1 });
   for (const [w, wd] of WEEKDAYS) {
@@ -93,7 +93,7 @@ function findDate(f: string, now: DateTime): DateTime {
   return now;
 }
 
-function bestMatch(words: string[], items: Named[]): { item: Named; used: string[] } | null {
+export function bestMatch(words: string[], items: Named[]): { item: Named; used: string[] } | null {
   let best: { item: Named; used: string[]; score: number } | null = null;
   for (const item of items) {
     const tokens = fold(item.name).split(' ').filter((t) => t.length >= 3);

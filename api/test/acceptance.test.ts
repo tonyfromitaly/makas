@@ -120,15 +120,15 @@ describe('acceptance', () => {
 
   it('free notes become entries after confirmation; the summary equals the sum of the rows', async () => {
     const p1 = await t.call('POST', '/books/parse', { token, body: { text: 'bugün 500 kazandım', lang: 'tr' } });
-    expect(p1.body.draft).toMatchObject({ kind: 'income', amount_cents: 50000, category: 'service', entry_date: '2026-10-15' });
+    expect(p1.body.drafts[0]).toMatchObject({ kind: 'income', amount_cents: 50000, category: 'service', entry_date: '2026-10-15' });
     const p2 = await t.call('POST', '/books/parse', { token, body: { text: 'kira 1800 ödedim', lang: 'tr' } });
-    expect(p2.body.draft).toMatchObject({ kind: 'expense', amount_cents: 180000, category: 'rent' });
+    expect(p2.body.drafts[0]).toMatchObject({ kind: 'expense', amount_cents: 180000, category: 'rent' });
     // Parsing saves nothing.
     expect((await t.call('GET', '/books?from=2026-10-15&to=2026-10-15', { token })).body.data).toHaveLength(0);
     for (const p of [p1, p2]) {
-      const r = await t.call('POST', '/books', { token, body: { ...p.body.draft, source: 'ai_note' } });
+      const r = await t.call('POST', '/books', { token, body: { ...p.body.drafts[0], source: 'ai_note' } });
       expect(r.status).toBe(201);
-      expect(r.body.raw_text).toBe(p.body.draft.raw_text);
+      expect(r.body.raw_text).toBe(p.body.drafts[0].raw_text);
     }
     const s = await t.call('GET', '/books/summary?period=week&date=2026-10-15', { token });
     const rows = (await t.call('GET', `/books?from=${s.body.from}&to=${s.body.to}`, { token })).body.data;

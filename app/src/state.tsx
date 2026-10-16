@@ -34,6 +34,7 @@ interface AppState {
   demo: boolean;
   bump: number;
   refreshAll(): void;
+  openAssistant(mic?: boolean): void;
 }
 
 export const Ctx = createContext<AppState>(null as any);

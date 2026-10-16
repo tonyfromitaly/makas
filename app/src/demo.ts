@@ -27,7 +27,7 @@ export const DEMO_KEYS = { service: randomToken(), admin: randomToken() };
 export { DEMO_LOGIN };
 
 let lite: PGlite | null = null;
-const DATA_DIR = 'idb://makas-demo-v1';
+const DATA_DIR = 'idb://makas-demo-v2';
 
 export async function startDemo(): Promise<Transport> {
   try {
@@ -66,7 +66,7 @@ export async function startDemo(): Promise<Transport> {
 export async function resetDemo() {
   await lite?.close();
   await new Promise<void>((resolve) => {
-    const req = indexedDB.deleteDatabase('/pglite/makas-demo-v1');
+    const req = indexedDB.deleteDatabase('/pglite/makas-demo-v2');
     req.onsuccess = req.onerror = req.onblocked = () => resolve();
   });
   try {

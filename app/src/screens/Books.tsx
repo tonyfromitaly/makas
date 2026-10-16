@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { CATEGORIES } from '@makas/core';
 import { useApp, useLoad } from '../state';
-import { Empty, Field, Icon, Segmented, useSpeech } from '../components/ui';
-import { addDays, dateLabel, todayIn, toCents } from '../format';
+import { Empty, Icon, Segmented, useSpeech } from '../components/ui';
+import { DraftList } from '../components/Drafts';
+import { addDays, dateLabel, todayIn } from '../format';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -12,7 +12,7 @@ export function Books() {
   const [period, setPeriod] = useState<Period>('day');
   const [date, setDate] = useState(todayIn(tz));
   const [text, setText] = useState('');
-  const [draft, setDraft] = useState<any>(null);
+  const [drafts, setDrafts] = useState<any[] | null>(null);
   const [engine, setEngine] = useState<string>('');
   const summary = useLoad(() => api.get(`/books/summary?period=${period}&date=${date}`), [period, date]);
   const entries = useLoad(
@@ -24,8 +24,9 @@ export function Books() {
     if (!sentence.trim()) return;
     try {
       const r = await api.post('/books/parse', { text: sentence, lang });
-      setDraft({ ...r.draft, amount: String(r.draft.amount_cents / 100) });
+      setDrafts(r.drafts.map((d: any) => ({ ...d, type: 'book' })));
       setEngine(r.engine);
+      setText('');
     } catch (e) {
       fail(e);
     }
@@ -34,25 +35,6 @@ export function Books() {
     setText(s);
     parse(s);
   });
-  const save = async () => {
-    try {
-      await api.post('/books', {
-        kind: draft.kind,
-        category: draft.category,
-        amount_cents: toCents(draft.amount),
-        entry_date: draft.entry_date,
-        note: draft.note,
-        raw_text: draft.raw_text,
-        source: 'ai_note',
-      });
-      setDraft(null);
-      setText('');
-      toast(t('saved'));
-      summary.reload();
-    } catch (e) {
-      fail(e);
-    }
-  };
   const remove = async (id: string) => {
     try {
       await api.del(`/books/${id}`);
@@ -98,47 +80,15 @@ export function Books() {
         </div>
       </form>
 
-      {draft && (
-        <div className="card draft stack">
+      {drafts && (
+        <div className="card draft stack" key={drafts.map((d) => d.raw_text).join()}>
           <div className="row spread">
             <strong>{t('draftTitle')}</strong>
             <span className="chip">{t(`engine_${engine}` as any)}</span>
           </div>
-          <p className="muted small">“{draft.raw_text}”</p>
-          <Segmented
-            value={draft.kind}
-            onChange={(k) => setDraft({ ...draft, kind: k })}
-            options={[
-              { value: 'income', label: t('income') },
-              { value: 'expense', label: t('expense') },
-            ]}
-          />
-          <div className="row two">
-            <Field label={t('amount')}>
-              <input inputMode="decimal" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} />
-            </Field>
-            <Field label={t('date')}>
-              <input type="date" value={draft.entry_date} onChange={(e) => setDraft({ ...draft, entry_date: e.target.value })} />
-            </Field>
-          </div>
-          <Field label={t('category')}>
-            <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {t(`cat_${c}` as any)}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <p className="muted small">“{drafts[0]?.raw_text}”</p>
+          <DraftList drafts={drafts} />
           <p className="muted small">{t('draftHint')}</p>
-          <div className="row">
-            <button className="btn" onClick={() => setDraft(null)}>
-              {t('cancel')}
-            </button>
-            <button className="btn primary grow" onClick={save} disabled={!toCents(draft.amount)}>
-              <Icon name="check" /> {t('confirm')} · {fmt(toCents(draft.amount))}
-            </button>
-          </div>
         </div>
       )}
 

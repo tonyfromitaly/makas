@@ -2,7 +2,7 @@
 
 **Berber dükkânı sahibinin telefonunda tek ekran: randevu defteri, gün kazancı, müşteri veresiye defteri ve otomatik WhatsApp/SMS hatırlatmaları.**
 
-Abonelik ürünü olarak tasarlandı: her dükkân kendi verisini görür, işletme (biz) abonelikleri yönetir, mesajları ayrı bir altyapı gönderir. Arayüz Türkçe, İngilizce ve İspanyolca.
+Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olarak tasarlandı: her dükkân kendi verisini görür, işletme (biz) abonelikleri yönetir, mesajları ayrı bir altyapı gönderir. Arayüz Türkçe, İngilizce ve İspanyolca.
 
 > **Canlı demo:** https://tonyfromitaly.github.io/makas/
 > Demoda hiçbir kurulum yok: **gerçek sunucu kodu ve gerçek Postgres (PGlite, WebAssembly) tarayıcının içinde çalışır.** Sağ üstteki **Canlı demo** düğmesi mesaj altyapısını (Tony tarafı) ve işletme panelini oynamanı sağlar.
@@ -13,7 +13,8 @@ Abonelik ürünü olarak tasarlandı: her dükkân kendi verisini görür, işle
 
 | Ekran | İçerik |
 |---|---|
-| **Bugün** | Gün listesi, *Kasada / Beklenen* sayacı, tek dokunuşla tamamlandı/gelmedi/iptal, saat değiştirme, hatırlatma durum noktaları, **sesle randevu**, **Kasayı kapat** gün raporu (WhatsApp'tan paylaşılır) |
+| **Asistan** ✨ | Mikrofonla ya da yazıyla tek giriş noktası. Cümleyi anlar ve doğru yere hazırlar: **randevu**, **müşteri kaydı** ("yeni müşteri Ali Kaya 0532 444 55 66"), **defter** (bir cümlede birden çok tutar: "100 dolar kazandım, 300 dolar kira ödedim, 20 dolar bahşiş" → 3 ayrı kayıt), **veresiye**, **hatırlatma/ödeme** ("ayın 25'inde kira ödemesini hatırlat"). Sorulara cevap verir: "geçen ay ne kadar kazandık?", "bu ayki toplam masraf ne?", "bu ay ne kadar ödemem var?", "kim borçlu?", "yarın kaç randevum var?". Her kayıt tek dokunuşla onaylanır; **rakamları her zaman SQL hesaplar.** Açılışta gün özeti verir. |
+| **Bugün** | Günü gelen hatırlatmalar ve ödemeler (geciken kırmızı), gün listesi, *Kasada / Beklenen* sayacı, tek dokunuşla tamamlandı/gelmedi/iptal, saat değiştirme, hatırlatma durum noktaları, **sesle randevu**, **Kasayı kapat** gün raporu (WhatsApp'tan paylaşılır) |
 | **Müşteriler** | Arama; *Borçlu / Uzun süredir gelmeyen / Riskli* filtreleri; veresiye defteri (borç yaz, ödeme al); **gelmeme riski** rozeti; **geri çağır** mesajı; numara maskeli, açmak denetim kaydına düşer |
 | **Defter** | Serbest not veya ses ("kira 18.000 ödedim") → **onay taslağı** → kayıt. Gün/hafta/ay gelir-gider-net, kategori kırılımı, günlük grafik, tek cümlelik yorum. **Bütün rakamlar SQL'den gelir; yapay zekâ hiçbir toplamı üretmez.** |
 | **Ayarlar** | Dükkân, hizmetler, berberler, hatırlatma kuralı, dil, geri bildirim, verimi indir (JSON), dükkânı sil |
@@ -42,7 +43,7 @@ npm run build:demo && npx vite preview --outDir app/dist
 
 ### Testler
 ```bash
-npm test          # 43 test: kiracı yalıtımı, kabul ölçütleri, auth, ayrıştırıcılar, repo hijyeni
+npm test          # 53 test: kiracı yalıtımı, kabul ölçütleri, asistan, auth, ayrıştırıcılar, repo hijyeni
 npm run typecheck
 ```
 
@@ -69,7 +70,8 @@ Temel şemadaki boşluklar kapatıldı, üstüne yenilikler eklendi:
 6. **Geç alınan randevu:** vakti geçmiş hatırlatma `skipped / too_late` olarak yazılır. Zaman çizelgesi dürüst kalır, yaz saati geçişleri doğru hesaplanır.
 7. **İşletme uçları:** `ADMIN_API_KEY` ile geri bildirim okuma, abonelik güncelleme, 90 günlük saklama işi.
 8. **Çift katmanlı kiracı yalıtımı:** her sorgu `shop_id` ile filtrelenir, **ayrıca** Postgres row-level security kısıtlı bir rolle zorlanır. Bileşik yabancı anahtarlar başka dükkânın satırına bağ kurmayı veritabanı seviyesinde engeller.
-9. **Yenilikler:** gelmeme riski, uzun süredir gelmeyen müşteriyi geri çağırma, kasayı kapat raporu, PWA, tarayıcıda çalışan canlı demo, mesaj altyapısı simülatörü, TR/EN/ES.
+9. **AI asistan:** DeepSeek (ya da OpenAI uyumlu herhangi bir model) `AI_API_KEY` ile bağlanır; model yalnızca cümleyi yapılandırılmış bir plana çevirir (`core/src/assistant/plan.ts`). API planı doğrular, isimleri kayıtlara eşler, soruları SQL ile cevaplar; yazma işlemleri berber onayından geçer. Anahtar yoksa (ve canlı demoda) Türkçe/İngilizce/İspanyolca kural motoru (`core/src/assistant/local.ts`) aynı planı üretir.
+10. **Yenilikler:** gelmeme riski, uzun süredir gelmeyen müşteriyi geri çağırma, kasayı kapat raporu, PWA, tarayıcıda çalışan canlı demo, mesaj altyapısı simülatörü, TR/EN/ES.
 
 ## Kabul ölçütleri → testler
 
@@ -82,6 +84,7 @@ Temel şemadaki boşluklar kapatıldı, üstüne yenilikler eklendi:
 | Geri bildirim işletme tarafında okunur | aynı dosya |
 | Abonelik pasif → kilit (402) | aynı dosya |
 | A dükkânı B'nin müşterisini, randevusunu, defterini okuyamaz/yazamaz | `api/test/tenant-isolation.test.ts` |
+| Asistan: çok tutarlı not, sesli müşteri kaydı, hatırlatma, "ne kadar ödemem var", SQL ile birebir cevaplar | `api/test/assistant.test.ts` |
 | Repoda sır yok, `.env.example` değerleri boş | `api/test/repo-hygiene.test.ts` |
 
 ## Bu turda yok (şemada yeri hazır)

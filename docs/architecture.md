@@ -56,6 +56,19 @@ Only auth, the message worker and the operator run as the system role, and those
 * `GET /reminders/due` leases rows for 5 minutes (`locked_until`, `FOR UPDATE SKIP LOCKED`) and
   re-checks consent, booking state and subscription at send time.
 
+## Assistant
+
+```
+speech (Web Speech API, in the browser) ─▶ text ─▶ POST /assistant
+   understand:  LLM (AI_API_KEY)  ──or──  local rule engine (tr/en/es)  ─▶  Plan (zod-validated)
+   resolve:     names → client/service/barber ids, phone → E.164 (shop country), duplicates
+   questions:   SQL aggregates → one localized sentence (the model never sees or produces totals)
+   writes:      returned as drafts → barber confirms → regular endpoints (validated, audited, RLS)
+```
+
+The barber's own reminders and upcoming payments live in `shop_tasks` (RLS like every tenant table).
+"How much do I have to pay this month?" is the sum of open `payment` tasks due by month end.
+
 ## Money
 
 * All amounts are integer minor units (`*_cents`) with `shops.currency`.

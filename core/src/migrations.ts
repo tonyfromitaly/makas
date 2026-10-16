@@ -264,4 +264,30 @@ grant select on subscriptions to makas_tenant;
 grant select, insert on audit_log, feedback to makas_tenant;
 `;
 
-export const migrations: { id: string; sql: string }[] = [{ id: '001_init', sql: init }];
+// The barber's own reminders and upcoming payments (rent, bills, suppliers), created by the assistant or by hand.
+const tasks = `
+create table shop_tasks (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  kind text not null default 'reminder' check (kind in ('reminder', 'payment')),
+  title text not null check (length(title) between 1 and 200),
+  due_date date not null,
+  due_time time,
+  amount_cents int check (amount_cents > 0),
+  status text not null default 'open' check (status in ('open', 'done')),
+  done_at timestamptz,
+  source text not null default 'manual' check (source in ('manual', 'assistant')),
+  raw_text text check (length(raw_text) <= 500),
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index shop_tasks_due on shop_tasks (shop_id, status, due_date);
+${rls('shop_tasks')}
+grant select, insert, update, delete on shop_tasks to makas_tenant;
+`;
+
+export const migrations: { id: string; sql: string }[] = [
+  { id: '001_init', sql: init },
+  { id: '002_shop_tasks', sql: tasks },
+];

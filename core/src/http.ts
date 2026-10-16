@@ -20,6 +20,20 @@ export interface Deps {
   verifyPassword(hash: string, plain: string): Promise<boolean>;
   /** Tony's parse service (DeepSeek behind it). Optional: the local rule parser is the fallback. */
   parseNote?(input: { text: string; lang: string; today: string; timezone: string }): Promise<unknown>;
+  /** LLM that turns a sentence into a Plan (see assistant/plan.ts). Optional: the local engine is the fallback. */
+  assistant?(input: AssistantInput): Promise<unknown>;
+}
+
+export interface AssistantInput {
+  text: string;
+  lang: string;
+  today: string;
+  weekday: string;
+  timezone: string;
+  currency: string;
+  services: string[];
+  barbers: string[];
+  clients: string[];
 }
 
 export interface Config {

@@ -2,6 +2,7 @@ import { migrate, seedDemo } from '@makas/core';
 import { env, loadConfig } from './config';
 import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
+import { assistantClient } from './assistant-llm';
 import { argon2Deps, buildServer } from './server';
 
 const db = await openDatabase(env.databaseUrl);
@@ -19,7 +20,11 @@ if (!env.isProd) {
 const app = await buildServer({
   db,
   config,
-  deps: { ...argon2Deps, parseNote: parseServiceClient(env.parseServiceUrl, env.parseServiceKey) },
+  deps: {
+    ...argon2Deps,
+    parseNote: parseServiceClient(env.parseServiceUrl, env.parseServiceKey),
+    assistant: assistantClient({ url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel }),
+  },
   corsOrigins: env.corsOrigins,
   trustProxy: env.trustProxy,
   requireHttps: env.isProd && process.env.REQUIRE_HTTPS !== 'false',

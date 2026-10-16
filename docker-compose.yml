@@ -25,6 +25,9 @@ services:
       ADMIN_API_KEY: ${ADMIN_API_KEY:?set ADMIN_API_KEY in .env}
       PARSE_SERVICE_URL: ${PARSE_SERVICE_URL:-}
       PARSE_SERVICE_KEY: ${PARSE_SERVICE_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com}
+      AI_MODEL: ${AI_MODEL:-deepseek-chat}
+      AI_API_KEY: ${AI_API_KEY:-}
       CORS_ORIGINS: https://${APP_DOMAIN:-localhost}
       TRUST_PROXY: "true"
       SEED_DEMO: ${SEED_DEMO:-false}

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { ApiError, conflict, isoDate, noContent, notFound, ok, pageQuery, paged, positiveCents, uuid, type Ctx, type Route } from '../http';
-import { CATEGORIES, parseNoteLocal, type NoteDraft } from '../parse/note';
+import { CATEGORIES, parseNotesLocal, type NoteDraft } from '../parse/note';
 import { shopTz } from './appointments';
 
 const category = z.enum(CATEGORIES as [string, ...string[]]);
@@ -169,7 +169,7 @@ export const moneyRoutes: Route[] = [
     },
   },
   {
-    // Free text → draft. Nothing is saved here; the barber confirms on screen and then POSTs /books.
+    // Free text → drafts (one per amount). Nothing is saved here; the barber confirms and then POSTs /books.
     method: 'POST',
     path: '/books/parse',
     auth: 'user',
@@ -178,24 +178,24 @@ export const moneyRoutes: Route[] = [
     async handler(ctx, { body }) {
       const shop = (await ctx.db.query('select timezone, language from shops where id = $1', [ctx.shopId])).rows[0];
       const today = DateTime.fromJSDate(ctx.now, { zone: shop.timezone }).toISODate()!;
-      let draft: NoteDraft | null = null;
+      const l = body.lang ?? shop.language;
+      let drafts: NoteDraft[] = [];
       let engine: 'ai' | 'local' = 'local';
       if (ctx.deps.parseNote) {
         try {
-          const out = draftSchema.safeParse(
-            await ctx.deps.parseNote({ text: body.text, lang: body.lang ?? shop.language, today, timezone: shop.timezone }),
-          );
-          if (out.success) {
-            draft = out.data as NoteDraft;
+          const out: any = await ctx.deps.parseNote({ text: body.text, lang: l, today, timezone: shop.timezone });
+          const list = z.array(draftSchema).min(1).safeParse(Array.isArray(out) ? out : out?.entries ?? [out]);
+          if (list.success) {
+            drafts = list.data as NoteDraft[];
             engine = 'ai';
           }
         } catch {
           /* fall back to the local parser */
         }
       }
-      draft ??= parseNoteLocal(body.text, today);
-      if (!draft) throw new ApiError(422, 'PARSE_FAILED', 'Could not find an amount in that note');
-      return { draft: { ...draft, raw_text: body.text }, engine };
+      if (!drafts.length) drafts = parseNotesLocal(body.text, today, l);
+      if (!drafts.length) throw new ApiError(422, 'PARSE_FAILED', 'Could not find an amount in that note');
+      return { drafts: drafts.map((d) => ({ ...d, raw_text: body.text })), engine };
     },
   },
   {
