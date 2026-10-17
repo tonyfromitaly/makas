@@ -56,6 +56,7 @@ export const planItem = z.discriminatedUnion('type', [
     client_name: z.string().max(80).nullable().optional(),
   }),
   z.object({ type: z.literal('chat'), question: z.string().min(1).max(600) }),
+  z.object({ type: z.literal('cancel') }), // "boşver", "never mind": drop the draft being discussed
   z.object({ type: z.literal('unknown') }),
 ]);
 

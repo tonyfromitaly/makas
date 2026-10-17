@@ -1695,6 +1695,17 @@ input.narrow {
     transform: rotate(1turn);
   }
 }
+.assistant-hero .grow {
+  flex: 1;
+  min-width: 0;
+}
+.chat-break {
+  margin: 10px 0 2px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
 .assistant-hero h1 {
   font-size: 1.8rem;
 }

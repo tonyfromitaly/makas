@@ -2,7 +2,7 @@
   "name": "makas",
   "private": true,
   "version": "0.1.0",
-  "description": "Fade: berber dükkânları için randevu defteri, gün kazancı, borç defteri ve otomatik hatırlatmalar.",
+  "description": "Fade: berber d\u00fckk\u00e2nlar\u0131 i\u00e7in randevu defteri, g\u00fcn kazanc\u0131, bor\u00e7 defteri ve otomatik hat\u0131rlatmalar.",
   "workspaces": [
     "core",
     "api",
@@ -17,7 +17,8 @@
     "mail:check": "npm run mail:check -w api --",
     "build": "npm run build -w app",
     "build:demo": "npm run build:demo -w app",
-    "typecheck": "npm run typecheck -w core && npm run typecheck -w api && npm run typecheck -w app"
+    "typecheck": "npm run typecheck -w core && npm run typecheck -w api && npm run typecheck -w app",
+    "ai:stress": "npm run ai:stress -w api"
   },
   "engines": {
     "node": ">=20"

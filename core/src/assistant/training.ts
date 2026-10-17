@@ -31,6 +31,7 @@ Reply with ONLY a JSON object: {"items":[...]}. Item types:
 - {"type":"ledger","client_name":string,"kind":"charge"|"payment","amount_cents":int,"note":string|null}
 - {"type":"query","metric":"income"|"expense"|"net"|"payables"|"receivables"|"appointments"|"top_service"|"client_balance"|"reminders","period":"today"|"yesterday"|"tomorrow"|"this_week"|"last_week"|"this_month"|"last_month"|"this_year","client_name":string|null}
 - {"type":"chat","question":string}  (advice or an open question about the shop: "why are clients dropping", "how can I earn more", "which day is busiest")
+- {"type":"cancel"}  ("boşver", "vazgeçtim", "never mind", "olvídalo" right after a draft: drop it)
 - {"type":"unknown"}
 
 ## Rules
@@ -41,7 +42,12 @@ Reply with ONLY a JSON object: {"items":[...]}. Item types:
 5. Amounts are integer cents of the shop currency ("1.800" in Turkish = 1800.00; "12,50" = 12.50; "2 bin" = 2000). Never add amounts together and never answer a numeric question yourself: emit a "query" item and the app answers from its database.
 6. Resolve relative dates from "today" in the input ("yarın" = tomorrow, "ayın 25'i" = the 25th of this month, or next month if already past; weekday names = the next such day). Times are 24h; in a barber shop "3" or "saat 3" without am/pm means 15:00, "10" means 10:00.
 7. Prefer names from the given services, barbers and clients lists when they match, even with speech-to-text spelling errors ("Ahmed" → "Ahmet Yılmaz").
-8. If the message is unclear, return {"type":"unknown"} rather than guessing a write.`;
+8. If the message is unclear, return {"type":"unknown"} rather than guessing a write.
+9. The input may carry "context": the conversation so far. "focus" is what is being talked about (last client, last question's metric and period, the appointment or reminder just drafted); "recent" are the last turns word for word; "earlier" are one-line notes of older turns. Use it only to understand the NEW "message":
+   - pronouns and references ("onun", "ona", "him", "her", "él", "aynı müşteri") mean focus.client;
+   - a short correction ("saat 4 olsun", "Emre'ye ver", "cuma yap", "make it 3", "mejor a las 6") repeats focus.appointment with only the changed fields;
+   - a short follow-up question ("peki geçen ay?", "giderler?", "and this week?", "¿y el mes pasado?") keeps focus.metric or focus.period and changes the other;
+   - never re-emit items for earlier turns; plan only what the new message asks. If the message stands on its own, ignore the context.`;
 
 /** Worked examples, given to the model as prior conversation turns. Today in these examples: Friday 2026-10-16. */
 export const FEW_SHOT: { input: string; output: unknown }[] = [
@@ -104,6 +110,52 @@ export const FEW_SHOT: { input: string; output: unknown }[] = [
     output: { items: [{ type: 'reminder', kind: 'payment', title: 'Pagar al proveedor', due_date: '2026-10-20', due_time: null, amount_cents: 26000 }] },
   },
   { input: '¿cuánto gastamos el mes pasado?', output: { items: [{ type: 'query', metric: 'expense', period: 'last_month', client_name: null }] } },
+];
+
+/** Worked follow-ups: the same context as FEW_SHOT plus a conversation. */
+export const FEW_SHOT_CONTEXT: { context: unknown; input: string; output: unknown }[] = [
+  {
+    context: {
+      focus: { client: 'Ahmet Yılmaz', appointment: { type: 'appointment', client_name: 'Ahmet Yılmaz', phone: null, service: 'Sakal tıraşı', barber: 'Halil Usta', date: '2026-10-17', time: '15:00' } },
+      earlier: [],
+      recent: [
+        { role: 'user', text: "yarın 3'te Ahmet'e sakal" },
+        { role: 'assistant', text: 'Bir kayıt hazırladım, kontrol edip onayla.' },
+      ],
+    },
+    input: "yok 4'e al, Emre yapsın",
+    output: { items: [{ type: 'appointment', client_name: 'Ahmet Yılmaz', phone: null, service: 'Sakal tıraşı', barber: 'Emre', date: '2026-10-17', time: '16:00' }] },
+  },
+  {
+    context: {
+      focus: { metric: 'income', period: 'this_month' },
+      earlier: [],
+      recent: [
+        { role: 'user', text: 'bu ay ne kadar kazandık' },
+        { role: 'assistant', text: 'Bu ay 4.200 $ gelir var, 96 işlem.' },
+      ],
+    },
+    input: 'peki geçen ay?',
+    output: { items: [{ type: 'query', metric: 'income', period: 'last_month', client_name: null }] },
+  },
+  {
+    context: {
+      focus: { client: 'Mehmet Kaya' },
+      earlier: ['"Mehmet 40 dolar veresiye yaz" → tab charge Mehmet Kaya 40'],
+      recent: [{ role: 'user', text: 'Mehmet 40 dolar veresiye yaz' }, { role: 'assistant', text: 'Bir kayıt hazırladım, kontrol edip onayla.' }],
+    },
+    input: 'onun toplam borcu ne kadar',
+    output: { items: [{ type: 'query', metric: 'client_balance', period: 'this_month', client_name: 'Mehmet Kaya' }] },
+  },
+  {
+    context: {
+      focus: { client: 'Mehmet Kaya', metric: 'client_balance', period: 'this_month' },
+      earlier: [],
+      recent: [{ role: 'user', text: 'onun toplam borcu ne kadar' }, { role: 'assistant', text: 'Mehmet Kaya’nın açık hesabı 40 $.' }],
+    },
+    input: 'yarın 10da saç kesimi yaz',
+    output: { items: [{ type: 'appointment', client_name: null, phone: null, service: 'Saç kesimi', barber: null, date: '2026-10-17', time: '10:00' }] },
+  },
 ];
 
 /** The chat prompt: open questions answered in words, grounded on a SQL snapshot of the shop. */

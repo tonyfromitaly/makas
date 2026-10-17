@@ -1,3 +1,4 @@
+import type { Focus, Turn } from './assistant/memory';
 import { z } from 'zod';
 import type { Queryable } from './db';
 
@@ -23,7 +24,7 @@ export interface Deps {
   /** LLM that turns a sentence into a Plan (see assistant/plan.ts). Optional: the local engine is the fallback. */
   assistant?(input: AssistantInput): Promise<unknown>;
   /** LLM that answers an open question in words, grounded on a SQL snapshot. Optional: local advice is the fallback. */
-  chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown }): Promise<string>;
+  chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown; history?: Turn[] }): Promise<string>;
 }
 
 export interface AssistantInput {
@@ -36,6 +37,8 @@ export interface AssistantInput {
   services: string[];
   barbers: string[];
   clients: string[];
+  /** The conversation so far (assistant/memory.ts), when there is one. */
+  context?: { focus: Focus; earlier: string[]; recent: Turn[] };
 }
 
 export interface Config {

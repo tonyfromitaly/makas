@@ -7,7 +7,7 @@ export const SERVICE_KEY = 'test-service-key-0123456789abcdef';
 export const ADMIN_KEY = 'test-admin-key-0123456789abcdef';
 
 /** Fresh in-memory Postgres (PGlite) + the real Fastify server, with a clock the test controls. */
-export async function setup(start = '2026-10-15T09:00:00Z') {
+export async function setup(start = '2026-10-15T09:00:00Z', extraDeps: Record<string, unknown> = {}) {
   const db = await openDatabase('pglite:memory');
   await migrate(db);
   const clock = { now: new Date(start) };
@@ -17,8 +17,8 @@ export async function setup(start = '2026-10-15T09:00:00Z') {
     adminApiKey: ADMIN_KEY,
     now: () => clock.now,
   });
-  const deps = { ...argon2Deps };
-  const app = await buildServer({ db, config, deps, authRateLimit: 1000 });
+  const deps = { ...argon2Deps, ...extraDeps };
+  const app = await buildServer({ db, config, deps, authRateLimit: 1000, rateLimit: 100_000, assistantRateLimit: 100_000 });
 
   async function call(method: string, url: string, opts: { token?: string; body?: unknown } = {}) {
     const res = await app.inject({

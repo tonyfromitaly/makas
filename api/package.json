@@ -13,7 +13,8 @@
     "ai:eval": "tsx src/scripts/ai-eval.ts",
     "mail:check": "tsx src/scripts/mail-check.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ai:stress": "tsx src/scripts/ai-stress.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.15",

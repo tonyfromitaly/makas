@@ -1,4 +1,4 @@
-import { CHAT_SYSTEM, FEW_SHOT, UNDERSTAND_SYSTEM, type AssistantInput, type Deps } from '@makas/core';
+import { CHAT_SYSTEM, FEW_SHOT, FEW_SHOT_CONTEXT, UNDERSTAND_SYSTEM, type AssistantInput, type Deps } from '@makas/core';
 
 // DeepSeek (or any OpenAI-compatible chat API). The model is grounded on every call with the training
 // in core/src/assistant/training.ts. It only understands sentences and words answers: it never sees
@@ -34,8 +34,11 @@ const EXAMPLE_CONTEXT = {
   clients: ['Ahmet Yılmaz', 'Mehmet Kaya', 'Can Demir', 'John Carter'],
 };
 
-const examples = FEW_SHOT.flatMap((ex) => [
-  { role: 'user', content: JSON.stringify({ ...EXAMPLE_CONTEXT, language: 'auto', message: ex.input }) },
+const examples = [
+  ...FEW_SHOT.map((ex) => ({ ex, context: undefined as unknown })),
+  ...FEW_SHOT_CONTEXT.map((ex) => ({ ex, context: ex.context })),
+].flatMap(({ ex, context }) => [
+  { role: 'user', content: JSON.stringify({ ...EXAMPLE_CONTEXT, language: 'auto', ...(context ? { context } : {}), message: ex.input }) },
   { role: 'assistant', content: JSON.stringify(ex.output) },
 ]);
 
@@ -61,6 +64,7 @@ export function assistantClient(env: Env): Deps['assistant'] {
               barbers: input.barbers,
               clients: input.clients.slice(0, 300),
               language: input.lang,
+              ...(input.context ? { context: input.context } : {}),
               message: input.text,
             }),
           },
@@ -82,6 +86,8 @@ export function chatClient(env: Env): Deps['chat'] {
         max_tokens: 400,
         messages: [
           { role: 'system', content: CHAT_SYSTEM },
+          // The conversation so far, so "peki bunu nasıl düzeltirim?" knows what "bunu" is.
+          ...(input.history ?? []).map((t) => ({ role: t.role, content: t.text })),
           { role: 'user', content: JSON.stringify({ language: input.lang, shop: input.shop, currency: input.currency, snapshot: input.snapshot, question: input.question }) },
         ],
       },

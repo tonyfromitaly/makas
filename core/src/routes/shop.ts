@@ -82,6 +82,7 @@ export const shopRoutes: Route[] = [
         ledger_entries: await q('select * from ledger_entries where shop_id = $1 order by created_at'),
         book_entries: await q('select * from book_entries where shop_id = $1 order by entry_date'),
         reminders: await q('select * from reminder_queue where shop_id = $1 order by scheduled_at'),
+        assistant_conversations: await q('select user_id, role, text, drafts, created_at from assistant_turns where shop_id = $1 order by created_at'),
         audit_log: await q('select * from audit_log where shop_id = $1 order by at'),
       };
       await audit(ctx, 'shop.export', 'shop', ctx.shopId);

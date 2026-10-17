@@ -36,6 +36,31 @@ Model ince ayar (fine-tune) ile değiştirilmiyor; bunun yerine **her çağrıda
 
 Her şey Türkçe, İngilizce ve İspanyolca çalışır.
 
+## Konuşma hafızası
+
+Asistan artık konuşmayı hatırlıyor. Her kullanıcının tek bir sohbeti var; her mesaj veritabanına (`assistant_turns`) kaydedilir, uygulama yenilense de sohbet geri gelir. Kod: `core/src/assistant/memory.ts`.
+
+Modele her turda konuşmanın tamamı değil, **sınırlı bir görünümü** gider; böylece 10. mesajla 300. mesajın maliyeti aynıdır:
+
+| Parça | Ne | Sınır |
+| --- | --- | --- |
+| `focus` | Konuşulan şey: son müşteri, son sorunun metriği ve dönemi, az önce hazırlanan randevu/hatırlatma taslağı | tek nesne |
+| `recent` | Son mesajlar, kelimesi kelimesine | 8 mesaj |
+| `earlier` | Daha eski her mesaj için tek satırlık özet (`"Mehmet 40 dolar veresiye yaz" → tab charge Mehmet Kaya 40`) | 24 satır |
+
+Bununla çözülenler:
+- **Zamirler:** "onun borcu ne kadar", "ona yarın 10'da yaz", "how much does he owe me?", "¿cuánto me debe él?"
+- **Düzeltmeler:** "saat 4 olsun", "Emre'ye ver", "saç sakal olsun", "pazartesi yap", "make it 3 instead", "mejor a las 6"
+- **Devam soruları:** "peki geçen ay?" (metrik aynı kalır), "giderler?" (dönem aynı kalır), "and this week?"
+- **Vazgeçme:** "boşver", "never mind" → taslak bırakılır, hiçbir şey kaydedilmez
+
+Kurallar:
+- **6 saat** mesaj gelmezse bağlam sıfırlanır: ertesi sabah "saat 5 olsun" dünkü taslağı değiştirmez. Uygulamada bu ara tarih çizgisiyle gösterilir.
+- Hafıza hiçbir zaman kayıt yazmaz; her taslak yine berberin onayından geçer.
+- Zamir yalnızca cümlede başka bir müşteri adı yoksa çözülür; "Ali Kaya" gibi listede olmayan bir isim, soyadı tuttu diye "Mehmet Kaya"ya çevrilmez.
+- Kullanıcı sohbeti **Asistan → çöp kutusu** ile siler; konuşmalar 90 günden eski olunca `npm run retention -w api` ile otomatik silinir. Konuşmalar dükkân verisi dışa aktarımına dahildir.
+- Asistana kullanıcı başına dakikada en fazla 30 mesaj gönderilebilir (model maliyetine karşı koruma).
+
 ## İki motor
 
 - **DeepSeek** (`.env` içinde `AI_API_KEY` varsa): eğitim paketiyle çalışır, serbest konuşmayı ve konuşma dilinden metne çeviri hatalarını daha iyi tolere eder, açık sorulara doğal cevap verir.
@@ -47,6 +72,9 @@ Her şey Türkçe, İngilizce ve İspanyolca çalışır.
 npm test          # yerel motor 40/40 cümleyi geçmek zorunda (CI'da da koşar)
 npm run ai:check  # .env'deki anahtarı tek bir anlama ve tek bir sohbet çağrısıyla dener
 npm run ai:eval   # 40 cümleyi hem yerel motora hem DeepSeek'e sorar, isabet oranını ve her hatayı yazar
+npm run ai:stress # çok turlu diyaloglar + hiç temizlenmeyen 120 turluk uzun konuşma (STRESS_TURNS ile değişir)
 ```
+
+Çok turlu diyaloglar `api/test/assistant-dialogues.json` dosyasında. Her turda beklenen anlama (`expect`) ya da kesinlikle üretilmemesi gereken şey (`not`) yazılır. `npm test` bu diyalogları ve 300 turluk bir konuşmayı yerel motorla koşar.
 
 Yeni bir cümle türü öğretmek için: önce `assistant-eval.json`'a örneği ve beklenen sonucu ekle, gerekiyorsa `FEW_SHOT`'a çözülmüş bir örnek koy, sonra `npm run ai:eval` ile ölç.

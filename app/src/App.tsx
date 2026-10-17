@@ -10,7 +10,7 @@ import { Clients } from './screens/Clients';
 import { Books } from './screens/Books';
 import { Settings } from './screens/Settings';
 import { Locked } from './screens/Locked';
-import { Assistant } from './screens/Assistant';
+import { Assistant, forgetConversation } from './screens/Assistant';
 import { DemoPanel } from './components/DemoPanel';
 import { Welcome } from './components/Welcome';
 import { Operator } from './screens/Operator';
@@ -159,6 +159,7 @@ export function App() {
     },
     signOut: async () => {
       await api.signOut();
+      forgetConversation();
       setMe(null);
       setPhase('out');
     },

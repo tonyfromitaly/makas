@@ -23,6 +23,10 @@ export interface ServerOptions {
   trustProxy?: boolean;
   requireHttps?: boolean;
   authRateLimit?: number;
+  /** Requests per minute per IP for everything (default 300). */
+  rateLimit?: number;
+  /** Assistant messages per minute per signed-in user (default 30): each may cost a model call. */
+  assistantRateLimit?: number;
   logger?: boolean;
   /** "/api" when the same server also serves the website and the app. */
   prefix?: string;
@@ -46,7 +50,7 @@ export async function buildServer(o: ServerOptions) {
   });
   await app.register(rateLimit, {
     global: true,
-    max: 300,
+    max: o.rateLimit ?? 300,
     timeWindow: '1 minute',
     errorResponseBuilder: (_req, ctx) => ({
       statusCode: 429,
@@ -100,6 +104,14 @@ export async function buildServer(o: ServerOptions) {
     method: ['GET', 'POST', 'PATCH', 'DELETE'],
     url: `${prefix}/auth/*`,
     config: { rateLimit: { max: o.authRateLimit ?? 10, timeWindow: '1 minute' } },
+    handler: forward,
+  });
+  app.route({
+    method: 'POST',
+    url: `${prefix}/assistant`,
+    config: {
+      rateLimit: { max: o.assistantRateLimit ?? 30, timeWindow: '1 minute', keyGenerator: (req) => String(req.headers.authorization ?? req.ip) },
+    },
     handler: forward,
   });
   app.route({ method: ['GET', 'POST', 'PATCH', 'DELETE'], url: `${prefix}/*`, handler: forward });

@@ -1,0 +1,114 @@
+{
+  "about": "Multi-turn conversations for the assistant's memory. Each turn's 'expect' is checked against what the API understood (field by field); 'not' lists items the turn must NOT produce. Clock starts Friday 2026-10-16 09:00 Istanbul and moves 1 minute per turn unless 'after_hours' is set. Run with: npm run ai:stress",
+  "start": "2026-10-16T06:00:00Z",
+  "shop": {
+    "timezone": "Europe/Istanbul",
+    "country": "TR",
+    "language": "tr",
+    "owner": "Halil Usta",
+    "barbers": ["Emre"],
+    "services": [["Saç kesimi", 3000, 30], ["Sakal tıraşı", 1500, 20], ["Saç + sakal", 4000, 45], ["Çocuk tıraşı", 2000, 25]],
+    "clients": [["Ahmet Yılmaz", "+905321112233"], ["Mehmet Kaya", "+905324445566"], ["Can Demir", "+905327778899"], ["John Carter", "+14155550199"]]
+  },
+  "dialogues": [
+    {
+      "name": "Randevu kurup adım adım düzeltmek",
+      "lang": "tr",
+      "turns": [
+        { "say": "yarın saat 3'te Ahmet'e sakal randevusu", "expect": [{ "type": "appointment", "client_name": "Ahmet Yılmaz", "date": "2026-10-17", "time": "15:00", "service": "Sakal tıraşı" }] },
+        { "say": "yok saat 4 olsun", "expect": [{ "type": "appointment", "client_name": "Ahmet Yılmaz", "date": "2026-10-17", "time": "16:00", "service": "Sakal tıraşı" }] },
+        { "say": "Emre'ye ver", "expect": [{ "type": "appointment", "client_name": "Ahmet Yılmaz", "time": "16:00", "barber": "Emre" }] },
+        { "say": "saç sakal olsun", "expect": [{ "type": "appointment", "client_name": "Ahmet Yılmaz", "service": "Saç + sakal", "barber": "Emre", "time": "16:00" }] },
+        { "say": "pazartesi yap", "expect": [{ "type": "appointment", "client_name": "Ahmet Yılmaz", "date": "2026-10-19", "time": "16:00" }] },
+        { "say": "onun borcu ne kadar", "expect": [{ "type": "query", "metric": "client_balance", "client_name": "Ahmet Yılmaz" }] }
+      ]
+    },
+    {
+      "name": "Soru üstüne soru",
+      "lang": "tr",
+      "turns": [
+        { "say": "bu ay ne kadar kazandık", "expect": [{ "type": "query", "metric": "income", "period": "this_month" }] },
+        { "say": "peki geçen ay?", "expect": [{ "type": "query", "metric": "income", "period": "last_month" }] },
+        { "say": "giderler?", "expect": [{ "type": "query", "metric": "expense", "period": "last_month" }] },
+        { "say": "ya bu hafta", "expect": [{ "type": "query", "metric": "expense", "period": "this_week" }] },
+        { "say": "net ne kaldı", "expect": [{ "type": "query", "metric": "net", "period": "this_week" }] },
+        { "say": "bu ayki toplam masraf ne?", "expect": [{ "type": "query", "metric": "expense", "period": "this_month" }] }
+      ]
+    },
+    {
+      "name": "Veresiye ve zamirler",
+      "lang": "tr",
+      "turns": [
+        { "say": "Mehmet 40 dolar veresiye yaz", "expect": [{ "type": "ledger", "client_name": "Mehmet Kaya", "kind": "charge", "amount_cents": 4000 }] },
+        { "say": "onun toplam borcu ne kadar", "expect": [{ "type": "query", "metric": "client_balance", "client_name": "Mehmet Kaya" }] },
+        { "say": "o 20 dolar ödedi", "expect": [{ "type": "ledger", "client_name": "Mehmet Kaya", "kind": "payment", "amount_cents": 2000 }] },
+        { "say": "Can da 15 dolar veresiye", "expect": [{ "type": "ledger", "client_name": "Can Demir", "kind": "charge", "amount_cents": 1500 }] },
+        { "say": "kim bana borçlu", "expect": [{ "type": "query", "metric": "receivables" }] }
+      ]
+    },
+    {
+      "name": "Hatırlatma, randevu, vazgeçme",
+      "lang": "tr",
+      "turns": [
+        { "say": "ayın 25'inde kira ödemesini hatırlat 1800 dolar", "expect": [{ "type": "reminder", "kind": "payment", "amount_cents": 180000, "due_date": "2026-10-25" }] },
+        { "say": "bu ay ne kadar ödemem var", "expect": [{ "type": "query", "metric": "payables", "period": "this_month" }] },
+        { "say": "Can Demir'e pazartesi 11'de saç kesimi", "expect": [{ "type": "appointment", "client_name": "Can Demir", "date": "2026-10-19", "time": "11:00", "service": "Saç kesimi" }] },
+        { "say": "saat 12 yap", "expect": [{ "type": "appointment", "client_name": "Can Demir", "date": "2026-10-19", "time": "12:00" }] },
+        { "say": "boşver", "expect": [{ "type": "cancel" }] },
+        { "say": "saat 5 olsun", "not": [{ "type": "appointment" }, { "type": "book" }] }
+      ]
+    },
+    {
+      "name": "English follow-ups",
+      "lang": "en",
+      "turns": [
+        { "say": "book John for a beard trim tomorrow at 2", "expect": [{ "type": "appointment", "client_name": "John Carter", "date": "2026-10-17", "time": "14:00" }] },
+        { "say": "make it 3 instead", "expect": [{ "type": "appointment", "client_name": "John Carter", "date": "2026-10-17", "time": "15:00" }] },
+        { "say": "how much did we make last week?", "expect": [{ "type": "query", "metric": "income", "period": "last_week" }] },
+        { "say": "and this week?", "expect": [{ "type": "query", "metric": "income", "period": "this_week" }] },
+        { "say": "what about expenses", "expect": [{ "type": "query", "metric": "expense", "period": "this_week" }] },
+        { "say": "how much does he owe me?", "expect": [{ "type": "query", "metric": "client_balance", "client_name": "John Carter" }] }
+      ]
+    },
+    {
+      "name": "Seguimiento en español",
+      "lang": "es",
+      "turns": [
+        { "say": "¿cuánto ganamos este mes?", "expect": [{ "type": "query", "metric": "income", "period": "this_month" }] },
+        { "say": "¿y el mes pasado?", "expect": [{ "type": "query", "metric": "income", "period": "last_month" }] },
+        { "say": "cita para Can mañana a las 5", "expect": [{ "type": "appointment", "client_name": "Can Demir", "date": "2026-10-17", "time": "17:00" }] },
+        { "say": "mejor a las 6", "expect": [{ "type": "appointment", "client_name": "Can Demir", "date": "2026-10-17", "time": "18:00" }] },
+        { "say": "¿cuánto me debe él?", "expect": [{ "type": "query", "metric": "client_balance", "client_name": "Can Demir" }] }
+      ]
+    },
+    {
+      "name": "Yeni müşteri, hemen randevu",
+      "lang": "tr",
+      "turns": [
+        { "say": "yeni müşteri Ali Kaya 0532 444 55 66", "expect": [{ "type": "client", "name": "Ali Kaya" }] },
+        { "say": "ona yarın 10'da saç kesimi yaz", "expect": [{ "type": "appointment", "client_name": "Ali Kaya", "date": "2026-10-17", "time": "10:00" }] }
+      ]
+    },
+    {
+      "name": "Ertesi sabah bağlam sıfırlanır",
+      "lang": "tr",
+      "turns": [
+        { "say": "yarın 3'te Ahmet'e saç kesimi", "expect": [{ "type": "appointment", "client_name": "Ahmet Yılmaz", "time": "15:00" }] },
+        { "say": "saat 5 olsun", "after_hours": 10, "not": [{ "type": "appointment" }, { "type": "book" }] },
+        { "say": "onun borcu ne kadar", "not": [{ "type": "query", "metric": "client_balance", "client_name": "Ahmet Yılmaz" }] }
+      ]
+    },
+    {
+      "name": "Konu değişiyor",
+      "lang": "tr",
+      "turns": [
+        { "say": "bugün 100 dolar saç kesiminden kazandım, 300 dolar kira ödedim", "expect": [{ "type": "book", "kind": "income", "amount_cents": 10000 }, { "type": "book", "kind": "expense", "amount_cents": 30000 }] },
+        { "say": "yarın kaç randevum var", "expect": [{ "type": "query", "metric": "appointments", "period": "tomorrow" }] },
+        { "say": "peki bugün?", "expect": [{ "type": "query", "metric": "appointments", "period": "today" }] },
+        { "say": "Ahmet'e yarın 2'de saç sakal", "expect": [{ "type": "appointment", "client_name": "Ahmet Yılmaz", "time": "14:00", "service": "Saç + sakal" }] },
+        { "say": "bu ay ne kadar kazandık?", "expect": [{ "type": "query", "metric": "income", "period": "this_month" }] },
+        { "say": "Mehmet'e de cumartesi 5'te sakal", "expect": [{ "type": "appointment", "client_name": "Mehmet Kaya", "date": "2026-10-17", "time": "17:00" }] }
+      ]
+    }
+  ]
+}

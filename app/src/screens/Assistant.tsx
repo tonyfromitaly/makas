@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../state';
+import { LOCALES } from '../i18n';
 import { Icon, useSpeech } from '../components/ui';
 import { DraftList, type Draft } from '../components/Drafts';
 
@@ -9,11 +10,22 @@ interface Msg {
   text: string;
   drafts?: Draft[];
   engine?: string;
+  at: number;
+  /** Loaded from the server: its drafts were handled back then, so they are shown, not offered again. */
+  past?: boolean;
 }
 
-// Kept outside the component so the conversation survives switching tabs.
+// Kept outside the component so the conversation survives switching tabs; the server keeps it across reloads.
 let history: Msg[] = [];
+let loaded = false;
 let seq = 0;
+/** Signing out must not leave one person's conversation on screen for the next. */
+export function forgetConversation() {
+  history = [];
+  loaded = false;
+}
+// After this long without a message the assistant starts a fresh context (core/src/assistant/memory.ts).
+const SESSION_GAP_MS = 6 * 3600_000;
 
 export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed?(): void }) {
   const { api, t, lang, fail } = useApp();
@@ -23,24 +35,54 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
   const [lists, setLists] = useState<{ services: any[]; barbers: any[] }>();
   const end = useRef<HTMLDivElement>(null);
 
-  const push = (m: Omit<Msg, 'id'>) =>
+  const push = (m: Omit<Msg, 'id' | 'at'>) =>
     setMsgs((x) => {
-      const next = [...x, { ...m, id: ++seq }];
+      const next = [...x, { ...m, id: ++seq, at: Date.now() }];
       history = next;
       return next;
     });
+  const replace = (next: Msg[]) => {
+    history = next;
+    setMsgs(next);
+  };
+  const brief = () =>
+    api
+      .get(`/assistant/brief?lang=${lang}`)
+      .then((r) => push({ role: 'assistant', text: r.reply }))
+      .catch(fail);
 
   useEffect(() => {
     Promise.all([api.get('/services?page_size=200'), api.get('/barbers?page_size=200')])
       .then(([s, b]) => setLists({ services: s.data, barbers: b.data }))
       .catch(fail);
-    if (!history.length)
-      api
-        .get(`/assistant/brief?lang=${lang}`)
-        .then((r) => push({ role: 'assistant', text: r.reply }))
-        .catch(fail);
+    if (loaded) return;
+    loaded = true;
+    api
+      .get('/assistant/history?limit=60')
+      .then((r) => {
+        const past: Msg[] = r.data.map((x: any) => ({ id: ++seq, role: x.role, text: x.text, drafts: x.drafts ?? undefined, engine: x.engine, at: Date.parse(x.created_at), past: true }));
+        replace(past);
+        // The day's opening line when the conversation is new or was left a while ago.
+        const last = past[past.length - 1];
+        if (!last || Date.now() - last.at > SESSION_GAP_MS) brief();
+      })
+      .catch(() => {
+        if (!history.length) brief();
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const clear = async () => {
+    if (!confirm(t('clearChatConfirm'))) return;
+    try {
+      await api.del('/assistant/history');
+      replace([]);
+      brief();
+    } catch (e) {
+      fail(e);
+    }
+  };
+  const when = (ms: number) => new Date(ms).toLocaleString(LOCALES[lang], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   useEffect(() => {
     // Only follow the conversation once it has started, so the header stays in view on open.
@@ -77,15 +119,23 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
     <div className="screen assistant">
       <div className="assistant-hero">
         <span className={`orb ${busy || speech.listening ? 'busy' : ''}`} aria-hidden />
-        <div>
+        <div className="grow">
           <h1>{t('assistant')}</h1>
           <p className="muted small">{t('assistantHint')}</p>
         </div>
+        {msgs.some((m) => m.role === 'user') && (
+          <button className="icon-btn" onClick={clear} aria-label={t('clearChat')} title={t('clearChat')}>
+            <Icon name="trash" size={18} />
+          </button>
+        )}
       </div>
 
       <div className="chat">
-        {msgs.map((m) => (
-          <div key={m.id} className={`msg ${m.role}`}>
+        {msgs.map((m, i) => (
+          <div key={m.id} className="msg-wrap">
+          {/* A break this long starts a fresh context: show it, so "saat 4 olsun" is not expected to reach back. */}
+          {(i === 0 ? m.past : m.at - msgs[i - 1].at > SESSION_GAP_MS) && <p className="chat-break">{when(m.at)}</p>}
+          <div className={`msg ${m.role}`}>
             {m.role === 'assistant' && (
               <span className="msg-avatar">
                 <Icon name="sparkle" size={16} />
@@ -93,8 +143,9 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
             )}
             <div className="msg-body">
               <p className="bubble">{m.text}</p>
-              {!!m.drafts?.length && <DraftList drafts={m.drafts} lists={lists} />}
+              {!!m.drafts?.length && (m.past ? <p className="muted small">{t('draftsEarlier', { n: m.drafts.length })}</p> : <DraftList drafts={m.drafts} lists={lists} />)}
             </div>
+          </div>
           </div>
         ))}
         {busy && (

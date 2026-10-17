@@ -96,7 +96,9 @@ Categories: `service, product, tips, rent, supplies, utilities, wages, other`.
 ## Assistant
 | | |
 |---|---|
-| `POST /assistant` | `{text, lang?}` → `{reply, drafts[], engine: ai\|local}`. Understands bookings, client registration, money notes (one draft per amount), client tabs, reminders/payments and questions. **Writes nothing**: each draft is confirmed in the app and saved through the normal endpoints (`/appointments`, `/clients`, `/books`, `/ledger`, `/tasks`). Questions are answered in `reply` with SQL-computed numbers. |
+| `POST /assistant` | `{text, lang?}` → `{reply, drafts[], engine: ai\|local, understood[], turn_id}`. Remembers the conversation per user (see `docs/asistan-egitimi.md` → Konuşma hafızası); 30 messages per minute per user. Understands bookings, client registration, money notes (one draft per amount), client tabs, reminders/payments and questions. **Writes nothing**: each draft is confirmed in the app and saved through the normal endpoints (`/appointments`, `/clients`, `/books`, `/ledger`, `/tasks`). Questions are answered in `reply` with SQL-computed numbers. |
+| `GET /assistant/history?limit=60` | the stored conversation, oldest first: `{data: [{id, role, text, drafts, engine, created_at}]}` |
+| `DELETE /assistant/history` | forgets this user's conversation and context (204); saved records stay |
 | `GET /assistant/brief` | the day's opening line: appointments, the till so far, reminders due (overdue first) |
 | `GET /tasks?status=open\|done\|all&until=` | the barber's reminders and payments |
 | `POST /tasks` | `{kind: reminder\|payment, title, due_date, due_time?, amount_cents?, source?}` |

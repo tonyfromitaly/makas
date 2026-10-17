@@ -10,6 +10,7 @@ import { fold } from '../parse/text';
 import { updateRow } from './shop';
 import { shopSnapshot } from '../assistant/snapshot';
 import { localAdvice } from '../assistant/advice';
+import { EARLIER_MAX, RECENT, earlierLine, nextFocus, sessionView, type Focus } from '../assistant/memory';
 
 type Lang = 'tr' | 'en' | 'es';
 
@@ -54,7 +55,11 @@ export function periodRange(period: string, now: DateTime) {
 const match = (name: string | null | undefined, items: Named[]) => {
   if (!name) return null;
   const exact = items.find((i) => fold(i.name) === fold(name));
-  return exact ?? bestMatch(fold(name).split(' '), items)?.item ?? null;
+  if (exact) return exact;
+  // "Ahmed" finds Ahmet Yılmaz, but "Ali Kaya" must not become Mehmet Kaya on the surname alone.
+  const said = fold(name).split(' ');
+  const m = bestMatch(said, items);
+  return m && (said.length === 1 || m.used.length >= 2) ? m.item : null;
 };
 
 /** Answers a question. Every number comes from SQL; this only words the result. */
@@ -188,6 +193,38 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
   }
 }
 
+async function loadMemory(ctx: Ctx) {
+  const { rows } = await ctx.db.query(
+    `select role, text, summary, created_at from assistant_turns
+      where shop_id = $1 and user_id = $2 order by created_at desc, role asc limit $3`,
+    [ctx.shopId, ctx.userId, RECENT + EARLIER_MAX * 2],
+  );
+  const m = (await ctx.db.query('select focus from assistant_memory where shop_id = $1 and user_id = $2', [ctx.shopId, ctx.userId])).rows[0];
+  return { focus: (m?.focus ?? {}) as Focus, view: sessionView(rows, ctx.now) };
+}
+
+/** Stores one exchange. The assistant turn is a millisecond later so the order survives equal clocks. */
+async function saveTurn(ctx: Ctx, t: { text: string; reply: string; items: PlanItem[]; drafts: unknown[]; engine: string; focus: Focus }) {
+  const at = ctx.now;
+  const later = new Date(at.getTime() + 1);
+  const u = await ctx.db.query(
+    `insert into assistant_turns (shop_id, user_id, role, text, summary, items, created_at)
+     values ($1, $2, 'user', $3, $4, $5, $6) returning id`,
+    [ctx.shopId, ctx.userId, t.text, earlierLine(t.text, t.items, t.reply).slice(0, 300), JSON.stringify(t.items), at],
+  );
+  const a = await ctx.db.query(
+    `insert into assistant_turns (shop_id, user_id, role, text, drafts, engine, created_at)
+     values ($1, $2, 'assistant', $3, $4, $5, $6) returning id`,
+    [ctx.shopId, ctx.userId, t.reply.slice(0, 4000), t.drafts.length ? JSON.stringify(t.drafts) : null, t.engine, later],
+  );
+  await ctx.db.query(
+    `insert into assistant_memory (shop_id, user_id, focus) values ($1, $2, $3)
+     on conflict (shop_id, user_id) do update set focus = excluded.focus`,
+    [ctx.shopId, ctx.userId, JSON.stringify(t.focus)],
+  );
+  return { user: u.rows[0].id as string, assistant: a.rows[0].id as string };
+}
+
 const taskSelect = `id, kind, title, to_char(due_date, 'YYYY-MM-DD') as due_date, to_char(due_time, 'HH24:MI') as due_time,
   amount_cents, status, done_at, source, raw_text, created_at`;
 
@@ -205,6 +242,11 @@ export const assistantRoutes: Route[] = [
       const L = await lists(ctx);
       const now = DateTime.fromJSDate(ctx.now, { zone: shop.timezone });
 
+      // The conversation so far (this user's, this session's): what "him" or "make it 4" refers to.
+      const mem = await loadMemory(ctx);
+      const focus = mem.view.active ? mem.focus : {};
+      const local = () => understandLocal(body.text, { now, lang: l, ...L, focus });
+
       // The LLM (when configured) only understands; it never sees totals and never writes.
       let plan: Plan | null = null;
       let engine: 'ai' | 'local' = 'local';
@@ -221,34 +263,49 @@ export const assistantRoutes: Route[] = [
               services: L.services.map((s) => s.name),
               barbers: L.barbers.map((b) => b.name),
               clients: L.clients.map((c) => c.name),
+              context: mem.view.active ? { focus, earlier: mem.view.earlier, recent: mem.view.recent } : undefined,
             }),
           );
           if (out.success) (plan = out.data), (engine = 'ai');
         } catch {
           /* fall back to the local engine */
         }
+        // When the model gives up, the rules may still read a follow-up from the conversation. Only that:
+        // a sentence the rules read the same way without context stays "not understood".
+        if (plan && plan.items.every((i) => i.type === 'unknown')) {
+          const p = local();
+          const bare = understandLocal(body.text, { now, lang: l, ...L });
+          if (p.items.some((i) => i.type !== 'unknown') && JSON.stringify(p) !== JSON.stringify(bare)) (plan = p), (engine = 'local');
+        }
       }
-      plan ??= understandLocal(body.text, { now, lang: l, ...L });
+      plan ??= local();
 
       const texts: string[] = [];
       const drafts: any[] = [];
+      const seen: PlanItem[] = []; // the plan with names as resolved, for the next turn's focus
       for (const item of plan.items) {
         if (item.type === 'query') {
           const a = await answer(ctx, item, shop, l, L.clients);
           if (a) texts.push(a.text);
+          const c = item.metric === 'client_balance' ? match(item.client_name, L.clients) : null;
+          seen.push({ ...item, client_name: c?.name ?? item.client_name ?? null });
         } else if (item.type === 'chat') {
           // Open question: the shop's numbers come from SQL; the model (or local rules) only words them.
           const snapshot = await shopSnapshot(ctx.db, ctx.shopId, now);
           let reply: string | null = null;
           if (ctx.deps.chat) {
             try {
-              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot })).trim() || null;
+              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot, history: mem.view.recent })).trim() || null;
               if (reply) engine = 'ai';
             } catch {
               /* fall back to local advice */
             }
           }
           texts.push(reply ?? localAdvice(item.question, snapshot, l, shop.currency));
+          seen.push(item);
+        } else if (item.type === 'cancel') {
+          texts.push(r.say('cancelled'));
+          seen.push(item);
         } else if (item.type === 'appointment') {
           const client = match(item.client_name, L.clients);
           const service = match(item.service, L.services) ?? L.services[0] ?? null;
@@ -267,27 +324,65 @@ export const assistantRoutes: Route[] = [
             date: item.date,
             time: item.time,
           });
+          seen.push({ ...item, client_name: client?.name ?? item.client_name, service: service?.name ?? null, barber: barber?.name ?? null });
           if (!item.time) texts.push(r.say('need_time'));
           if (!client && !phone) texts.push(r.say('need_phone'));
         } else if (item.type === 'client') {
           const phone = item.phone ? toE164(item.phone, shop.country) : null;
           const dup = phone ? (L.clients as any[]).find((c) => c.phone_e164 === phone) : null;
           drafts.push({ type: 'client', name: item.name, phone_e164: phone, phone_raw: item.phone, language: item.language ?? shop.language, duplicate_of: dup?.name ?? null });
+          seen.push(item);
           if (!phone) texts.push(r.say('need_phone'));
           if (dup) texts.push(r.say('duplicate', { name: dup.name }));
         } else if (item.type === 'ledger') {
           const c = match(item.client_name, L.clients);
           if (!c) texts.push(r.say('client_missing', { name: item.client_name }));
-          else drafts.push({ type: 'ledger', client_id: c.id, client_name: c.name, kind: item.kind, amount_cents: item.amount_cents, note: item.note ?? null });
+          else {
+            drafts.push({ type: 'ledger', client_id: c.id, client_name: c.name, kind: item.kind, amount_cents: item.amount_cents, note: item.note ?? null });
+            seen.push({ ...item, client_name: c.name });
+          }
         } else if (item.type === 'book') {
           drafts.push({ ...item, raw_text: body.text });
+          seen.push(item);
         } else if (item.type === 'reminder') {
           drafts.push({ ...item, raw_text: body.text });
+          seen.push(item);
         }
       }
       if (drafts.length) texts.unshift(r.say(drafts.length === 1 ? 'drafts_one' : 'drafts_many', { n: drafts.length }));
       if (!texts.length) texts.push(r.say('unknown'));
-      return { reply: texts.join(' '), drafts, engine };
+      const reply = texts.join(' ');
+
+      const turns = await saveTurn(ctx, { text: body.text, reply, items: seen, drafts, engine, focus: nextFocus(focus, seen) });
+      return { reply, drafts, engine, understood: seen, turn_id: turns.assistant };
+    },
+  },
+  {
+    // The conversation as the app shows it after a reload: oldest first, the last `limit` turns.
+    method: 'GET',
+    path: '/assistant/history',
+    auth: 'user',
+    gated: true,
+    query: z.object({ limit: z.coerce.number().int().min(1).max(200).default(60) }),
+    async handler(ctx, { query }) {
+      const { rows } = await ctx.db.query(
+        `select id, role, text, drafts, engine, created_at from assistant_turns
+          where shop_id = $1 and user_id = $2 order by created_at desc, role desc limit $3`,
+        [ctx.shopId, ctx.userId, query.limit],
+      );
+      return { data: rows.reverse() };
+    },
+  },
+  {
+    // "Sohbeti temizle": forgets the whole conversation and the focus. Records already saved stay.
+    method: 'DELETE',
+    path: '/assistant/history',
+    auth: 'user',
+    gated: true,
+    async handler(ctx) {
+      await ctx.db.query('delete from assistant_turns where shop_id = $1 and user_id = $2', [ctx.shopId, ctx.userId]);
+      await ctx.db.query('delete from assistant_memory where shop_id = $1 and user_id = $2', [ctx.shopId, ctx.userId]);
+      return noContent();
     },
   },
   {

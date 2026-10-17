@@ -4,6 +4,7 @@ import { parseNotesLocal } from '../parse/note';
 import { bestMatch, findDate, findTime, parseVoiceAppointment, type Named } from '../parse/voice';
 import { extractPhone } from './phone';
 import type { Plan, PlanItem } from './plan';
+import { FOLLOW, followUp, periodWord, resolvePronoun, type Focus } from './memory';
 
 export interface AssistantContext {
   now: DateTime; // in the shop's timezone
@@ -11,6 +12,8 @@ export interface AssistantContext {
   services: Named[];
   barbers: Named[];
   clients: Named[];
+  /** What the conversation is about (see memory.ts). Without it every sentence stands alone. */
+  focus?: Focus;
 }
 
 const re = (words: string[]) => new RegExp(`(^|\\s)(${words.join('|')})`);
@@ -27,6 +30,7 @@ const LEDGER_PAY = /(^|\s)(odedi|borcunu odedi|borcunu kapatti|kapatti|paid me|p
 // Words that make a number a time of day ("saat 3", "3'te", "beş buçukta", "at 11", "a las 4").
 const TIME_HINT = /(saat|\bat\b|a las|\d{1,2}[:.]\d{2}|bucuk|ceyrek|half past|o ?clock|y media|\d{1,2}'?(te|ta|de|da)\b|\b(bir|iki|uc|dort|bes|alti|yedi|sekiz|dokuz|on)(de|da|te|ta)\b)/;
 
+const MONEY_WORD = /(\$|€|₺|dolar|dollar|bucks|usd|lira|\btl\b|euro|peso|bin\b|kazan|gelir|gider|odedim|aldim|harcad|bahsis|kira|fatura|made|paid|spent|bought|tip|rent|gane|pague|gaste|propina|alquiler)/;
 const METRIC_RULES: [string, RegExp][] = [
   ['payables', re(['odemem', 'odeyecegim', 'odenecek', 'odemeler', 'odemem gereken', 'borcum', 'faturalar', 'have to pay', 'need to pay', 'i owe', 'bills', 'payments due', 'due', 'debo', 'tengo que pagar', 'pagos', 'por pagar'])],
   ['receivables', re(['alacak', 'veresiye', 'borclu', 'bana borc', 'owe me', 'owed', 'outstanding', 'receivable', 'me deben', 'fiado', 'por cobrar'])],
@@ -123,10 +127,33 @@ function reminderTitle(text: string) {
  * Rule-based understanding for tr/en/es. It runs offline (and in the browser demo); with an API key
  * configured the LLM produces the same Plan instead. Neither ever computes a total.
  */
-export function understandLocal(text: string, ctx: AssistantContext): Plan {
+export function understandLocal(said: string, base: AssistantContext): Plan {
+  let ctx = base;
+  let text = said;
+  const focus = base.focus;
+  if (focus) {
+    // A client drafted a moment ago may not be saved yet; still let "ona" find them.
+    if (focus.client && !base.clients.some((c) => c.name === focus.client))
+      ctx = { ...base, clients: [...base.clients, { id: '', name: focus.client }] };
+    const fu = followUp(said, focus, ctx);
+    if (fu) return fu;
+    text = resolvePronoun(said, focus, ctx.lang, ctx.clients);
+  }
   const f = fold(text);
   const today = ctx.now.toISODate()!;
   const items: PlanItem[] = [];
+
+  // 0. A short follow-up to the last question keeps what it does not change:
+  //    "peki geçen ay?" keeps the metric, "giderler?" keeps the period.
+  if (focus?.metric && !hasAny(f, REMIND) && !parseAmountCents(f)) {
+    const n = f.split(' ').length;
+    const short = n <= 6 && (FOLLOW.test(f) || /\?\s*$/.test(text.trim()) || n <= 3);
+    const hit = METRIC_RULES.find(([, r]) => r.test(f))?.[0] as any;
+    const period = periodWord(f);
+    if (short && !!hit !== !!period && !ADVICE.test(f)) {
+      return { items: [{ type: 'query', metric: hit ?? focus.metric, period: period ?? focus.period ?? 'this_month', client_name: null }] };
+    }
+  }
 
   // 1. Questions about the shop's numbers.
   const isQuestion = /\?\s*$/.test(text.trim()) || QUESTION.test(f) || (QUESTION_WEAK.test(f) && !parseAmountCents(f));
@@ -209,8 +236,9 @@ export function understandLocal(text: string, ctx: AssistantContext): Plan {
     };
   }
 
-  // 6. Money notes, one entry per amount.
-  if (amount) {
+  // 6. Money notes, one entry per amount. "saat 5 olsun" holds a time, not five dollars.
+  const onlyATime = hasTime && !MONEY_WORD.test(f) && (f.match(/\d+/g) ?? []).length === 1;
+  if (amount && !onlyATime) {
     const drafts = parseNotesLocal(text, today, ctx.lang);
     if (drafts.length) return { items: drafts.map((d) => ({ type: 'book' as const, ...d })) };
   }

@@ -367,10 +367,48 @@ alter table signups add column business_type text not null default 'barber'
   check (business_type in ('barber', 'salon', 'beauty', 'other'));
 `;
 
+// The assistant remembers the conversation: every turn per (shop, user), each user turn with a
+// one-line summary for when it leaves the recent window, plus the focus ("him", "make it 4").
+// Turns are kept 90 days (retention job) and can be cleared by the user at any time.
+const assistantMemory = `
+create table assistant_turns (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  user_id uuid not null,
+  role text not null check (role in ('user', 'assistant')),
+  text text not null check (length(text) between 1 and 4000),
+  summary text check (length(summary) <= 300),
+  items jsonb,
+  drafts jsonb,
+  engine text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  foreign key (shop_id, user_id) references users(shop_id, id) on delete cascade
+);
+create index assistant_turns_thread on assistant_turns (shop_id, user_id, created_at desc);
+${rls('assistant_turns')}
+
+create table assistant_memory (
+  shop_id uuid not null references shops(id) on delete cascade,
+  user_id uuid not null,
+  focus jsonb not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (shop_id, user_id),
+  foreign key (shop_id, user_id) references users(shop_id, id) on delete cascade
+);
+${rls('assistant_memory')}
+${['assistant_turns', 'assistant_memory']
+  .map((t) => `alter policy tenant_isolation on ${t} using ${POLICY('shop_id')} with check ${POLICY('shop_id')};`)
+  .join('\n')}
+${toTenant('grant select, insert, update, delete on assistant_turns, assistant_memory to makas_tenant;')}
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
   { id: '003_support_thread', sql: support },
   { id: '004_billing_access', sql: billing },
   { id: '005_business_types', sql: businessTypes },
+  { id: '006_assistant_memory', sql: assistantMemory },
 ];
