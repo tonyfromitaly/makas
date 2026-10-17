@@ -32,6 +32,7 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
+    "puppeteer-core": "^25.14.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

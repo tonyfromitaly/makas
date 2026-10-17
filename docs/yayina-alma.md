@@ -1,4 +1,14 @@
-# Fade'i yayına almak: Render + Stripe + Resend
+# Fade'i yayına almak: Netlify + Render (+ Resend, sonra Stripe)
+
+**Güncel düzen:** web sitesi, demo ve uygulama Netlify'da (`https://usta-fade.netlify.app`); API ve veritabanı Render'da. Netlify, `/api/*` isteklerini Render'a yönlendirir; kullanıcı tek adres görür.
+
+1. Render'da Blueprint ile repoyu bağla (`render.yaml`). Render yalnızca API'yi çalıştırır.
+2. Render adresini (ör. `https://fade-xxxx.onrender.com`) Netlify → Site configuration → Environment variables'a `API_ORIGIN` olarak gir, sonra yeniden yayınla.
+3. Render'da `PUBLIC_URL` Netlify adresidir; e-postadaki davet linkleri oraya gider.
+
+Aşağıdaki bölümler Stripe açıldığında da geçerlidir.
+
+# Eski tek sunucu düzeni: Render + Stripe + Resend
 
 Sonuç: `https://<senin-adın>.onrender.com` adresinde web sitesi, `/app/` altında kilitli uygulama. Biri siteden abone olur, kartla öder, uygulama linki ve erişim anahtarı e-postasına düşer.
 

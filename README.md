@@ -4,7 +4,7 @@
 
 Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olarak tasarlandı: her dükkân kendi verisini görür, işletme (biz) abonelikleri yönetir, mesajları ayrı bir altyapı gönderir. Arayüz Türkçe, İngilizce ve İspanyolca.
 
-> **Canlı demo:** https://tonyfromitaly.github.io/makas/
+> **Web sitesi:** https://usta-fade.netlify.app · **Canlı demo:** https://usta-fade.netlify.app/demo/ (örnek verili: `/demo/?ornek=berber`, `/demo/?ornek=kuafor`)
 > Demoda hiçbir kurulum yok: **gerçek sunucu kodu ve gerçek Postgres (PGlite, WebAssembly) tarayıcının içinde çalışır.** Sağ üstteki **Canlı demo** düğmesi mesaj altyapısını (Tony tarafı) ve işletme panelini oynamanı sağlar.
 
 **Tanıtım filmi (19 sn):** [app/public/media/fade-film.mp4](app/public/media/fade-film.mp4). Demoyu ilk açışta da oynar.
@@ -19,6 +19,15 @@ Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olar
 4. `npm run dev` → http://localhost:5173 → "Demo · fatihyahyayildizz@gmail.com" düğmesi → Asistan sekmesi.
 
 Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldüğü: [docs/asistan-egitimi.md](docs/asistan-egitimi.md). GitHub Pages'teki canlı demo statik bir sayfa olduğu için anahtar taşıyamaz; orada her zaman yerleşik kural motoru çalışır.
+
+## Web sitesi (Usta · Fade)
+
+`site/` tek sayfalık tanıtım sitesi: buğulu ayna (silince uygulama görünür), "Kimin için" sekmeleri (berber, kuaför, güzellik, sırada ne var), kaydırınca değişen telefon anlatımı, nasıl başlarız, güvenlik, hakkında ve **Demo talep et** formu (Netlify Forms). Marka adı, ürün adı ve e-posta tek dosyada: `site/brand.json`.
+
+- Netlify'da yayın: `node scripts/build-netlify.mjs` → `netlify-dist/` (site `/`, demo `/demo/`, uygulama `/app/`); güvenlik başlıkları `netlify.toml` ve `_headers` içinde.
+- `/api/*` istekleri Render'daki API'ye yönlendirilir: Netlify'da `API_ORIGIN` ortam değişkenini Render adresine ayarla.
+- Yerelde kontrol: `node scripts/serve-netlify.mjs` (aynı başlık ve yönlendirmelerle) ve `node scripts/csp-check.mjs http://localhost:8888 / /demo/`.
+- Uygulama ekran görüntüleri örnek verili demodan otomatik çekilir: `node scripts/shots.mjs`.
 
 ## Abonelik ve kilit
 

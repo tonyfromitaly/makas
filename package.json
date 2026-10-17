@@ -3,7 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "description": "Fade: berber dükkânları için randevu defteri, gün kazancı, borç defteri ve otomatik hatırlatmalar.",
-  "workspaces": ["core", "api", "app"],
+  "workspaces": [
+    "core",
+    "api",
+    "app",
+    "site"
+  ],
   "scripts": {
     "dev": "npm run dev -w api & npm run dev -w app",
     "test": "npm test -w api",
@@ -14,5 +19,7 @@
     "build:demo": "npm run build:demo -w app",
     "typecheck": "npm run typecheck -w core && npm run typecheck -w api && npm run typecheck -w app"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

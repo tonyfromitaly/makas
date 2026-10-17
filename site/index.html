@@ -3,111 +3,251 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#14110d" />
-    <title>Fade · berberin defteri</title>
-    <meta name="description" content="Fade: berber dükkânları için randevu defteri, gün kazancı, veresiye, otomatik hatırlatmalar ve sesle çalışan AI asistan." />
-    <link rel="icon" href="/app/icon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="style.css" />
+    <meta name="theme-color" content="#0E1416" />
+    <title>{{name}} · {{product}}: dükkânının aynası</title>
+    <meta name="description" content="{{product}}, berberler ve kuaförler için randevu, kasa, veresiye ve müşteri hatırlatmalarını tek ekranda toplar. Sesle konuşursun, yazar; sorarsın, defterinden cevaplar." />
+    <meta property="og:title" content="{{name}} · {{product}}: dükkânının aynası" />
+    <meta property="og:description" content="Randevu, kasa, veresiye ve hatırlatmalar tek ekranda; sesle çalışan bir asistanla." />
+    <meta property="og:image" content="/media/og.jpg" />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
-    <header class="nav">
-      <a class="logo" href="#top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 7.9 20 20M8.1 16.1 20 4"/></svg> Fade</a>
-      <nav>
-        <a href="#ozellikler" data-i18n="navFeatures">Özellikler</a>
-        <a href="#fiyat" data-i18n="navPricing">Fiyat</a>
-        <a href="#sss" data-i18n="navFaq">SSS</a>
-        <a class="ghost" href="https://tonyfromitaly.github.io/makas/" target="_blank" rel="noopener" data-i18n="tryDemo">Demoyu dene</a>
-        <a class="cta" href="#abone-ol" data-i18n="subscribe">Abone ol</a>
+    <a class="skip" href="#urun" data-k="skip">İçeriğe geç</a>
+
+    <header class="nav" id="nav">
+      <a class="wordmark" href="#top" aria-label="{{name}}">
+        <span class="wm-name">{{name}}</span><span class="wm-dot" aria-hidden="true"></span>
+      </a>
+      <nav class="nav-links" aria-label="Bölümler">
+        <a href="#kimin-icin" data-k="navWho">Kimin için</a>
+        <a href="#urun" data-k="navProduct">{{product}}</a>
+        <a href="#guvenlik" data-k="navTrust">Güvenlik</a>
+        <a href="#hakkinda" data-k="navAbout">Hakkında</a>
       </nav>
-      <div class="langs"><button data-lang="tr">TR</button><button data-lang="en">EN</button><button data-lang="es">ES</button></div>
+      <div class="nav-end">
+        <button class="lang" type="button" id="lang" aria-label="Dil / Language">EN</button>
+        <a class="btn btn-solid btn-sm" href="#demo" data-k="ctaDemo">Demo talep et</a>
+      </div>
     </header>
 
-    <section class="hero" id="top">
-      <video class="hero-video" src="/app/media/dukkan-loop.mp4" poster="/app/media/dukkan-poster.jpg" autoplay muted loop playsinline aria-hidden="true"></video>
-      <div class="shade"></div>
-      <div class="pole"></div>
-      <div class="hero-inner">
-        <div>
-          <h1><span data-i18n="heroA">Her kesik,</span><br /><em data-i18n="heroB">kayıtta.</em></h1>
-          <p class="lead" data-i18n="lead">Randevu defteri, gün kazancı, veresiye, otomatik WhatsApp hatırlatmaları ve sesle çalışan bir AI asistan. Berberin telefonunda, tek ekranda.</p>
-          <div class="actions">
-            <a class="btn primary" href="#abone-ol" data-i18n="subscribe">Abone ol</a>
-            <a class="btn light" href="https://tonyfromitaly.github.io/makas/" target="_blank" rel="noopener" data-i18n="tryDemo">Demoyu dene</a>
+    <main>
+      <!-- Hero: the fogged shop mirror. Wipe it to see the app. -->
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow"><span>{{name}}</span> · <span>{{product}}</span></p>
+          <h1 class="hero-title" data-k="heroTitle">Dükkânının aynası.</h1>
+          <p class="hero-lead" data-k="heroLead">Randevular, günün kasası, veresiye ve müşteri hatırlatmaları tek ekranda. Sesle konuşursun, {{product}} yazar; sorarsın, defterinden cevaplar.</p>
+          <div class="hero-actions">
+            <a class="btn btn-solid" href="#demo" data-k="ctaDemo">Demo talep et</a>
+            <a class="btn btn-line" href="{{demoUrl}}?ornek=berber" data-k="ctaSample">Örnek dükkânı gez</a>
           </div>
-          <p class="price-hint" id="price-hint"></p>
+          <p class="hero-note" data-k="heroNote">Berberler ve kadın kuaförleri için. Türkçe ve İngilizce.</p>
         </div>
-        <div class="phone"><video src="/app/media/fade-film.mp4" poster="/app/media/fade-film-poster.jpg" autoplay muted loop playsinline></video></div>
-      </div>
-    </section>
 
-    <section class="features" id="ozellikler">
-      <h2 data-i18n="featuresTitle">Dükkânı yürüten her şey, cebinde.</h2>
-      <div class="grid">
-        <article><span class="ic">✦</span><h3 data-i18n="f1t">AI asistan</h3><p data-i18n="f1">“Yarın 3’te Ahmet sakal”, “100 dolar kazandım, 300 dolar kira ödedim” de; asistan doğru yere yazsın. “Geçen ay ne kadar kazandık?” diye sor, veritabanından cevaplasın.</p></article>
-        <article><span class="ic">◷</span><h3 data-i18n="f2t">Randevu defteri</h3><p data-i18n="f2">Gün listesi, kasada ve beklenen tutar, tek dokunuşla tamamlandı ya da gelmedi. Aynı koltuğa çift randevu imkânsız.</p></article>
-        <article><span class="ic">✉</span><h3 data-i18n="f3t">Otomatik hatırlatma</h3><p data-i18n="f3">Bir gün önce 18.00’de ve randevudan 2 saat önce WhatsApp/SMS. Gelmeyen müşteri azalır; izin vermeyen müşteriye hiç mesaj gitmez.</p></article>
-        <article><span class="ic">≡</span><h3 data-i18n="f4t">Defter ve özet</h3><p data-i18n="f4">Gelir, gider, net; gün, hafta, ay. Karışık bir notu bile ayrı kayıtlara böler. Rakamları her zaman veritabanı hesaplar.</p></article>
-        <article><span class="ic">₺</span><h3 data-i18n="f5t">Veresiye</h3><p data-i18n="f5">Kimin ne kadar borcu var, tek bakışta. Borç yaz, ödeme al, kapat.</p></article>
-        <article><span class="ic">✆</span><h3 data-i18n="f6t">Canlı destek</h3><p data-i18n="f6">Uygulamanın içinden bize yaz; ekibimiz aynı sohbetten cevaplasın. Türkçe, English, Español.</p></article>
-      </div>
-    </section>
+        <figure class="mirror-wrap">
+          <div class="mirror" id="mirror">
+            <canvas class="mirror-canvas" id="mirror-canvas" aria-hidden="true"></canvas>
+            <img class="mirror-fallback" src="/shots/barber-today.webp" alt="" />
+            <span class="mirror-glint" aria-hidden="true"></span>
+          </div>
+          <figcaption class="mirror-plaque">
+            <span class="plaque-name">{{product}}</span>
+            <span class="plaque-hint" data-k="mirrorHint">Buğuyu sil</span>
+          </figcaption>
+        </figure>
+      </section>
 
-    <section class="steps">
-      <h2 data-i18n="stepsTitle">Üç adımda dükkânın açık.</h2>
-      <ol>
-        <li><b>1</b><span data-i18n="s1">Aşağıdan abone ol; ödeme Stripe’ın güvenli sayfasında.</span></li>
-        <li><b>2</b><span data-i18n="s2">Uygulama linkin ve erişim anahtarın e-postana gelsin.</span></li>
-        <li><b>3</b><span data-i18n="s3">Linke dokun, şifreni belirle, ilk randevuyu sesle gir.</span></li>
-      </ol>
-    </section>
+      <!-- Who it is for: the tabs carry the vision beyond barbers. -->
+      <section class="who" id="kimin-icin" aria-labelledby="who-title">
+        <div class="section-head">
+          <p class="eyebrow" data-k="whoEyebrow">Kimin için</p>
+          <h2 id="who-title" class="h2" data-k="whoTitle">Her koltuğun kendi düzeni var.</h2>
+        </div>
+        <div class="tabs" role="tablist" aria-label="İşletme türü">
+          <button role="tab" id="tab-barber" aria-controls="panel" aria-selected="true" data-type="barber" data-k="tBarber">Berber</button>
+          <button role="tab" id="tab-salon" aria-controls="panel" aria-selected="false" tabindex="-1" data-type="salon" data-k="tSalon">Kadın kuaförü</button>
+          <button role="tab" id="tab-beauty" aria-controls="panel" aria-selected="false" tabindex="-1" data-type="beauty" data-k="tBeauty">Güzellik &amp; tırnak</button>
+          <button role="tab" id="tab-next" aria-controls="panel" aria-selected="false" tabindex="-1" data-type="next" data-k="tNext">Sırada ne var</button>
+          <span class="tab-rail" aria-hidden="true"></span>
+        </div>
+        <div class="panel" id="panel" role="tabpanel" aria-labelledby="tab-barber" tabindex="0">
+          <div class="panel-media">
+            <img class="panel-photo" id="panel-photo" src="/media/barber.webp" alt="" width="1400" height="934" loading="lazy" />
+            <img class="panel-shot" id="panel-shot" src="/shots/barber-today.webp" alt="" width="780" height="1688" loading="lazy" />
+            <div class="panel-next" id="panel-next" aria-hidden="true"></div>
+          </div>
+          <div class="panel-copy">
+            <h3 class="h3" id="panel-title">Kasa, sıra ve müdavim; hepsi aynı ekranda.</h3>
+            <ul class="pains" id="panel-points">
+              <li><b>Gelmeyen müşteri</b><span>Bir gün önce akşam ve randevudan iki saat önce otomatik hatırlatma; daha önce gelmeyen işaretli.</span></li>
+              <li><b>Veresiye defteri</b><span>Kim ne kadar borçlu tek bakışta; ödeyince kapanır.</span></li>
+              <li><b>Akşam hesabı</b><span>Kasa gün içinde kendini toplar; kira ve faturalar zamanında hatırlatılır.</span></li>
+            </ul>
+            <p class="menu-label" data-k="menuLabel">Hazır hizmet menüsü</p>
+            <ul class="menu" id="panel-menu"><li>Saç kesimi<b>$30</b></li><li>Sakal tıraşı<b>$15</b></li><li>Saç + sakal<b>$40</b></li><li>Çocuk tıraşı<b>$20</b></li></ul>
+            <a class="link-arrow" id="panel-link" href="{{demoUrl}}?ornek=berber"><span data-k="tryThis">Bu dükkânı canlı gez</span> <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+      </section>
 
-    <section class="pricing" id="fiyat">
-      <div class="plan">
-        <p class="eyebrow" data-i18n="planName">Fade Pro</p>
-        <p class="amount"><span id="price">—</span><small id="interval" data-i18n="perMonth">/ ay</small></p>
-        <ul>
-          <li data-i18n="p1">Sınırsız randevu, müşteri ve defter kaydı</li>
-          <li data-i18n="p2">AI asistan (sesle ve yazıyla)</li>
-          <li data-i18n="p3">Otomatik WhatsApp/SMS hatırlatmaları</li>
-          <li data-i18n="p4">Canlı destek, verini istediğin an dışa aktar</li>
-          <li data-i18n="p5">İstediğin zaman iptal</li>
+      <!-- What Fade does: a phone that stays while the story scrolls past. -->
+      <section class="product" id="urun" aria-labelledby="product-title">
+        <div class="section-head">
+          <p class="eyebrow">{{product}}</p>
+          <h2 id="product-title" class="h2" data-k="productTitle">Telefonda bir dükkân müdürü.</h2>
+        </div>
+        <div class="story">
+          <div class="story-phone" aria-hidden="true">
+            <div class="phone">
+              <img class="phone-shot is-on" data-shot="assistant" src="/shots/barber-assistant.webp" alt="" />
+              <img class="phone-shot" data-shot="today" src="/shots/barber-today.webp" alt="" />
+              <img class="phone-shot" data-shot="books" src="/shots/barber-books.webp" alt="" />
+              <img class="phone-shot" data-shot="clients" src="/shots/barber-clients.webp" alt="" />
+            </div>
+          </div>
+          <div class="story-steps">
+            <article class="beat" data-shot="assistant">
+              <p class="beat-tag" data-k="b1Tag">Asistan</p>
+              <h3 class="h3" data-k="b1Title">Söyle, yazsın. Sor, cevaplasın.</h3>
+              <p data-k="b1Body">“Yarın üçte Ahmet sakal”, “yüz dolar kazandım, üç yüz dolar kira ödedim”. Asistan cümleyi doğru yere işler, sen tek dokunuşla onaylarsın. “Bu ay ne kadar ödemem var?” diye sor; rakamı yapay zekâ uydurmaz, defterin hesaplar.</p>
+              <img class="beat-shot" src="/shots/barber-assistant.webp" alt="Asistan ekranı: bir cümleden iki defter kaydı" loading="lazy" />
+            </article>
+            <article class="beat" data-shot="today">
+              <p class="beat-tag" data-k="b2Tag">Bugün</p>
+              <h3 class="h3" data-k="b2Title">Günün tamamı tek bakışta.</h3>
+              <p data-k="b2Body">Kasada ne var, akşama ne beklenir, kim sırada. Daha önce gelmeyen müşteri işaretli. Hatırlatmalar bir gün önce akşam ve randevudan iki saat önce kendiliğinden gider.</p>
+              <img class="beat-shot" src="/shots/barber-today.webp" alt="Bugün ekranı: kasa, hatırlatmalar ve randevular" loading="lazy" />
+            </article>
+            <article class="beat" data-shot="books">
+              <p class="beat-tag" data-k="b3Tag">Defter</p>
+              <h3 class="h3" data-k="b3Title">Defter kendini tutar.</h3>
+              <p data-k="b3Body">Gelir, gider ve net; gün, hafta, ay. Karışık bir notu bile ayrı kayıtlara böler, en büyük gider kalemini söyler. Akşam hesap yapmak yok.</p>
+              <img class="beat-shot" src="/shots/barber-books.webp" alt="Defter ekranı: aylık gelir, gider ve net" loading="lazy" />
+            </article>
+            <article class="beat" data-shot="clients">
+              <p class="beat-tag" data-k="b4Tag">Müşteriler</p>
+              <h3 class="h3" data-k="b4Title">Müdavimini kaybetme.</h3>
+              <p data-k="b4Body">Kim ne kadar borçlu, kim altı haftadır gelmedi, kim mesaj almak istemiyor. Geri çağırma mesajı tek dokunuş; izin vermeyen müşteriye hiçbir şey gitmez.</p>
+              <img class="beat-shot" src="/shots/barber-clients.webp" alt="Müşteriler ekranı: borç ve geliş geçmişi" loading="lazy" />
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- How we start: a real sequence, so it is numbered. -->
+      <section class="start" aria-labelledby="start-title">
+        <div class="section-head">
+          <p class="eyebrow" data-k="startEyebrow">Nasıl başlarız</p>
+          <h2 id="start-title" class="h2" data-k="startTitle">Satış ekibi değil, dükkânına gelen biri.</h2>
+        </div>
+        <ol class="steps">
+          <li>
+            <span class="step-n">1</span>
+            <h3 class="h4" data-k="s1Title">Demo talep et</h3>
+            <p data-k="s1Body">Formu doldur, dükkânını birkaç cümleyle anlat. Mesajını okuruz.</p>
+          </li>
+          <li>
+            <span class="step-n">2</span>
+            <h3 class="h4" data-k="s2Title">Tanışalım</h3>
+            <p data-k="s2Body">Seni ararız ya da dükkânına geliriz. Hizmet menünü ve fiyatlarını birlikte kurarız.</p>
+          </li>
+          <li>
+            <span class="step-n">3</span>
+            <h3 class="h4" data-k="s3Title">Davet linkin gelir</h3>
+            <p data-k="s3Body">E-postandaki linke dokunursun, şifreni belirlersin; {{product}} telefonunda açılır.</p>
+          </li>
+        </ol>
+      </section>
+
+      <!-- Trust: what we promise about data, in plain words. -->
+      <section class="trust" id="guvenlik" aria-labelledby="trust-title">
+        <div class="section-head">
+          <p class="eyebrow" data-k="trustEyebrow">Güvenlik ve gizlilik</p>
+          <h2 id="trust-title" class="h2" data-k="trustTitle">Dükkânının verisi senindir.</h2>
+        </div>
+        <ul class="promises">
+          <li><h3 class="h4" data-k="p1Title">Her dükkân ayrı kasada</h3><p data-k="p1Body">Bir işletmenin kaydı başka bir işletmeye görünmez. Bu ayrım uygulamada ve veritabanında iki kez yapılır.</p></li>
+          <li><h3 class="h4" data-k="p2Title">Şifreler okunamaz halde</h3><p data-k="p2Body">Şifreler argon2id ile saklanır, hiçbir zaman düz metin olarak tutulmaz. Giriş anahtarları tek kullanımlıktır.</p></li>
+          <li><h3 class="h4" data-k="p3Title">İzinsiz mesaj yok</h3><p data-k="p3Body">Müşterine yalnızca onay verdiyse hatırlatma gider; her mesajda çıkış (STOP) yazar.</p></li>
+          <li><h3 class="h4" data-k="p4Title">İstediğin an al ya da sil</h3><p data-k="p4Body">Tüm verini tek dosya olarak indirebilir ya da dükkânını kalıcı olarak silebilirsin.</p></li>
+          <li><h3 class="h4" data-k="p5Title">Rakamlar senin defterinden</h3><p data-k="p5Body">Yapay zekâ cümleyi anlar ama toplam üretmez; her rakam kayıtlarından hesaplanır.</p></li>
+          <li><h3 class="h4" data-k="p6Title">Kart bilgisi bizde durmaz</h3><p data-k="p6Body">Ödemeler açıldığında kart işlemleri ödeme kuruluşunda yapılır; kart numarası sistemimize hiç gelmez.</p></li>
         </ul>
-        <a class="btn primary block" href="#abone-ol" data-i18n="subscribe">Abone ol</a>
+        <a class="link-arrow" href="/gizlilik.html"><span data-k="privacyLink">Gizlilik ve KVKK aydınlatma metni</span> <span aria-hidden="true">→</span></a>
+      </section>
+
+      <!-- About: the founder's note. -->
+      <section class="about" id="hakkinda" aria-labelledby="about-title">
+        <div class="about-grid">
+          <div>
+            <p class="eyebrow" data-k="aboutEyebrow">Hakkında</p>
+            <h2 id="about-title" class="h2" data-k="aboutTitle">Sahadan, esnafın yanından.</h2>
+          </div>
+          <div class="about-text">
+            <p data-k="aboutP1">Ben {{founder}}. {{name}}’yı, mahallenin berberinden köşedeki kuaföre kadar küçük işletmelerin her gün yaşadığı işi kolaylaştırmak için kuruyorum.</p>
+            <p data-k="aboutP2">Randevu defteri kâğıtta, veresiye akılda, kasa akşam elle hesaplanır. {{product}} bunları tek bir telefonda toplar ve ustanın diliyle konuşur.</p>
+            <p data-k="aboutP3">Uzaktan satılan bir yazılım olmak istemiyoruz. Dükkânlara gidiyor, ustalarla oturup konuşuyor, ürünü onlarla birlikte geliştiriyoruz. Berber ve kuaförle başlıyoruz; sırada randevuyla, müdavimle ve veresiyeyle çalışan bütün esnaf var.</p>
+            <p class="signature">{{founder}} <span>·</span> <a href="mailto:{{email}}">{{email}}</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Demo request: the page's one job. -->
+      <section class="demo" id="demo" aria-labelledby="demo-title">
+        <div class="demo-grid">
+          <div class="demo-intro">
+            <p class="eyebrow" data-k="demoEyebrow">Demo talep et</p>
+            <h2 id="demo-title" class="h2" data-k="demoTitle">Dükkânını anlat, gerisini konuşalım.</h2>
+            <p data-k="demoBody">Formu bırak; mesajını okuyup seni arar ya da yazarız. Uygun görürsek dükkânına gelir, {{product}}’ı birlikte kurarız.</p>
+            <p class="demo-mail"><span data-k="demoMail">Doğrudan yazmak istersen:</span> <a href="mailto:{{email}}">{{email}}</a></p>
+          </div>
+          <form class="form" id="demo-form" name="demo" method="POST" data-netlify="true" netlify-honeypot="company_url" action="/?gonderildi=1#demo">
+            <input type="hidden" name="form-name" value="demo" />
+            <p class="hp"><label>Bu alanı boş bırak <input name="company_url" tabindex="-1" autocomplete="off" /></label></p>
+            <div class="field-row">
+              <label class="field"><span data-k="fName">Adın soyadın</span><input name="name" required maxlength="120" autocomplete="name" /></label>
+              <label class="field"><span data-k="fShop">İşletmenin adı</span><input name="business" required maxlength="120" autocomplete="organization" /></label>
+            </div>
+            <fieldset class="field choice">
+              <legend data-k="fType">İşletme türü</legend>
+              <label><input type="radio" name="type" value="berber" checked /><span data-k="tBarber">Berber</span></label>
+              <label><input type="radio" name="type" value="kuafor" /><span data-k="tSalon">Kadın kuaförü</span></label>
+              <label><input type="radio" name="type" value="guzellik" /><span data-k="tBeauty">Güzellik &amp; tırnak</span></label>
+              <label><input type="radio" name="type" value="diger" /><span data-k="tOther">Diğer</span></label>
+            </fieldset>
+            <div class="field-row">
+              <label class="field"><span data-k="fEmail">E-posta</span><input name="email" type="email" required maxlength="200" autocomplete="email" /></label>
+              <label class="field"><span data-k="fPhone">Telefon (isteğe bağlı)</span><input name="phone" type="tel" maxlength="40" autocomplete="tel" /></label>
+            </div>
+            <label class="field"><span data-k="fCity">Şehir ve ülke</span><input name="city" maxlength="120" autocomplete="address-level2" /></label>
+            <label class="field"><span data-k="fMsg">Mesajın (isteğe bağlı)</span><textarea name="message" rows="3" maxlength="1500"></textarea></label>
+            <fieldset class="field choice">
+              <legend data-k="fContact">Sana nasıl ulaşalım?</legend>
+              <label><input type="radio" name="contact" value="arayin" checked /><span data-k="fCall">Arayın</span></label>
+              <label><input type="radio" name="contact" value="eposta" /><span data-k="fWrite">E-posta atın</span></label>
+            </fieldset>
+            <label class="consent"><input type="checkbox" name="consent" value="evet" required /><span><span data-k="fConsent">Bilgilerimin demo talebim için işlenmesini kabul ediyorum.</span> <a href="/gizlilik.html" data-k="fConsentLink">Aydınlatma metni</a></span></label>
+            <p class="form-error" id="form-error" role="alert"></p>
+            <button class="btn btn-solid btn-block" type="submit" id="form-submit" data-k="fSubmit">Demo talebini gönder</button>
+            <p class="form-done" id="form-done" hidden data-k="fDone">Talebin bize ulaştı. En geç iki iş günü içinde dönüyoruz.</p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-top">
+        <span class="wordmark wm-small"><span class="wm-name">{{name}}</span><span class="wm-dot" aria-hidden="true"></span></span>
+        <p data-k="footerLine">{{product}}, {{name}}’nın berber ve kuaför ürünüdür.</p>
       </div>
-    </section>
-
-    <section class="signup" id="abone-ol">
-      <h2 data-i18n="formTitle">Dükkânını aç</h2>
-      <p class="muted" data-i18n="formSub">Bilgilerini gir, ödemeyi tamamla; uygulama linkin e-postana düşsün.</p>
-      <form id="signup-form" novalidate>
-        <label><span data-i18n="shopName">Dükkân adı</span><input name="shop_name" required maxlength="120" autocomplete="organization" /></label>
-        <label><span data-i18n="ownerName">Adın soyadın</span><input name="owner_name" required maxlength="120" autocomplete="name" /></label>
-        <label><span data-i18n="email">E-posta</span><input name="email" type="email" required autocomplete="email" /></label>
-        <label><span data-i18n="country">Ülke</span>
-          <select name="country">
-            <option value="TR">Türkiye</option><option value="US">United States</option><option value="MX">México</option>
-            <option value="ES">España</option><option value="GB">United Kingdom</option><option value="DE">Deutschland</option><option value="CA">Canada</option>
-          </select>
-        </label>
-        <label class="check"><input type="checkbox" name="terms" required /><span data-i18n="terms">Abonelik ve gizlilik koşullarını kabul ediyorum.</span></label>
-        <p class="error" id="form-error" role="alert"></p>
-        <button class="btn primary block" type="submit" id="submit" data-i18n="pay">Ödemeye geç</button>
-        <p class="secure" data-i18n="secure">🔒 Kart bilgilerin Stripe’ta işlenir, bize hiç ulaşmaz.</p>
-      </form>
-    </section>
-
-    <section class="faq" id="sss">
-      <h2 data-i18n="faqTitle">Sık sorulanlar</h2>
-      <details><summary data-i18n="q1">Kart bilgilerim güvende mi?</summary><p data-i18n="a1">Ödeme Stripe’ın sayfasında alınır; kart bilgin Fade’e hiç gelmez.</p></details>
-      <details><summary data-i18n="q2">İptal edebilir miyim?</summary><p data-i18n="a2">Evet, istediğin an uygulamadaki “Aboneliği yönet” bağlantısından. Dönem sonuna kadar kullanmaya devam edersin.</p></details>
-      <details><summary data-i18n="q3">Verilerim ne olur?</summary><p data-i18n="a3">Veriler yalnızca senin dükkânına aittir; istediğin an dışa aktarabilirsin. İptalden 90 gün sonra kalıcı olarak silinir.</p></details>
-      <details><summary data-i18n="q4">Hangi dillerde çalışıyor?</summary><p data-i18n="a4">Uygulama, asistan ve müşteri mesajları Türkçe, İngilizce ve İspanyolca.</p></details>
-      <details><summary data-i18n="q5">E-posta gelmedi?</summary><p data-i18n="a5">Gereksiz (spam) klasörüne bak. Yine yoksa uygulamadaki canlı destekten ya da bu sayfadaki demodan bize yaz; yeni anahtar gönderelim.</p></details>
-    </section>
-
-    <footer><span>✂ Fade</span><span data-i18n="footer">Berberin defteri · Türkçe · English · Español</span></footer>
-    <script src="site.js"></script>
+      <div class="footer-bottom">
+        <a href="mailto:{{email}}">{{email}}</a>
+        <a href="/gizlilik.html" data-k="privacyShort">Gizlilik</a>
+        <span data-k="social">Sosyal medya: yakında</span>
+        <span>© {{year}} {{name}}</span>
+      </div>
+    </footer>
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>

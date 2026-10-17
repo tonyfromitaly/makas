@@ -359,9 +359,18 @@ ${[...TENANT_TABLES, 'shop_tasks', 'access_keys']
   .join('\n')}
 `;
 
+// Beyond barbers: the kind of business picks the starting service menu and wording.
+const businessTypes = `
+alter table shops add column business_type text not null default 'barber'
+  check (business_type in ('barber', 'salon', 'beauty', 'other'));
+alter table signups add column business_type text not null default 'barber'
+  check (business_type in ('barber', 'salon', 'beauty', 'other'));
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
   { id: '003_support_thread', sql: support },
   { id: '004_billing_access', sql: billing },
+  { id: '005_business_types', sql: businessTypes },
 ];

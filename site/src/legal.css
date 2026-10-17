@@ -1,0 +1,25 @@
+.legal-head {
+  padding: 18px var(--gutter);
+}
+.legal {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px var(--gutter) 96px;
+}
+.legal .h2 {
+  font-size: clamp(40px, 6vw, 72px);
+  margin-bottom: 32px;
+}
+.legal h2:not(.h2) {
+  font-family: var(--body);
+  font-size: 20px;
+  margin: 32px 0 8px;
+}
+.legal p {
+  color: var(--ink-2);
+}
+.legal hr {
+  border: 0;
+  border-top: 1px solid var(--grout);
+  margin: 48px 0;
+}

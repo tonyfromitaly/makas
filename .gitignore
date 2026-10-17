@@ -7,3 +7,8 @@ coverage
 .DS_Store
 .claude
 api/local-site.sh
+netlify-dist
+app/dist-netlify
+app/dist-demo
+.netlify
+site/dist

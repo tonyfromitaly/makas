@@ -36,7 +36,7 @@ const app = await buildServer({
   logger: true,
   prefix: env.apiPrefix,
   staticDirs: env.serveStatic
-    ? { site: fileURLToPath(new URL('../../site', import.meta.url)), app: fileURLToPath(new URL('../../app/dist', import.meta.url)) }
+    ? { site: fileURLToPath(new URL('../../site/dist', import.meta.url)), app: fileURLToPath(new URL('../../app/dist', import.meta.url)) }
     : undefined,
   payments:
     env.stripeSecretKey && env.stripePriceId && env.stripeWebhookSecret

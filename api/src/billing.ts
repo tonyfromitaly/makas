@@ -102,6 +102,7 @@ const checkoutBody = z.object({
   country: z.string().trim().length(2).toUpperCase(),
   timezone: z.string().refine((tz) => IANAZone.isValidZone(tz), 'Unknown timezone'),
   language: z.enum(['tr', 'en', 'es']).default('en'),
+  business_type: z.enum(['barber', 'salon', 'beauty', 'other']).default('barber'),
 });
 
 /**
@@ -141,8 +142,8 @@ export async function billingRoutes(
       }
       return (
         await tx.query(
-          `insert into signups (email, shop_name, owner_name, country, timezone, language) values ($1, $2, $3, $4, $5, $6) returning id`,
-          [b.email, b.shop_name, b.owner_name, b.country, b.timezone, b.language],
+          `insert into signups (email, shop_name, owner_name, country, timezone, language, business_type) values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+          [b.email, b.shop_name, b.owner_name, b.country, b.timezone, b.language, b.business_type],
         )
       ).rows[0];
     });
@@ -202,6 +203,8 @@ export async function billingRoutes(
         timezone: s.timezone,
         language: s.language,
         currency: s.currency,
+        businessType: s.business_type,
+        defaultServices: true,
         subscription: { status: sub.status, planKey: sub.planKey, periodEnd: sub.periodEnd, stripeCustomerId: sub.customerId, stripeSubscriptionId: sub.subscriptionId },
         now,
       });
@@ -275,7 +278,7 @@ export async function billingRoutes(
     const status = (req.query as any)?.status ?? 'pending';
     const { rows } = await withSystem(o.db, (tx) =>
       tx.query(
-        `select id, email, shop_name, owner_name, country, timezone, language, status, stripe_session_id is not null as paid_checkout, created_at
+        `select id, email, shop_name, owner_name, country, timezone, language, business_type, status, stripe_session_id is not null as paid_checkout, created_at
            from signups where ($1 = 'all' or status = $1) order by created_at desc limit 200`,
         [status],
       ),
@@ -299,6 +302,33 @@ export async function billingRoutes(
     );
     if (!r) return fail(reply, 409, 'NOT_PENDING', 'This application is no longer pending');
     return { shop_id: r.shopId, emailed: r.emailed };
+  });
+
+  // Field sales: the operator opens a shop for someone they met and e-mails the invitation in one step.
+  app.post(`${o.prefix}/admin/invites`, async (req, reply) => {
+    if (!(await admin(req, reply))) return;
+    const body = checkoutBody
+      .extend({ status: z.enum(['trial', 'active']).default('trial'), days: z.number().int().min(1).max(366).default(o.config.trialDays) })
+      .safeParse(req.body ?? {});
+    if (!body.success) return fail(reply, 400, 'VALIDATION_ERROR', body.error.issues[0]?.message ?? 'Invalid input');
+    const b = body.data;
+    const signup = await withSystem(o.db, async (tx) => {
+      if ((await tx.query('select 1 from users where lower(email) = $1', [b.email])).rows[0]) return null;
+      return (
+        await tx.query(
+          `insert into signups (email, shop_name, owner_name, country, timezone, language, business_type) values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+          [b.email, b.shop_name, b.owner_name, b.country, b.timezone, b.language, b.business_type],
+        )
+      ).rows[0];
+    });
+    if (!signup) return fail(reply, 409, 'EMAIL_TAKEN', 'An account with this email already exists');
+    const end = new Date(o.config.now().getTime() + b.days * 86400_000);
+    const r = await openShop(
+      { sql: 'id = $1', param: signup.id },
+      { status: b.status, periodEnd: end, planKey: b.status === 'trial' ? 'trial' : 'pro' },
+      b.status === 'trial' ? b.days : undefined,
+    );
+    return { shop_id: r?.shopId, emailed: !!r?.emailed };
   });
 
   app.post(`${o.prefix}/admin/signups/:id/reject`, async (req, reply) => {

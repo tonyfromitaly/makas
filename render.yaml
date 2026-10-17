@@ -1,4 +1,5 @@
-# Render blueprint: one web service (website at /, app at /app/, API at /api) and a Postgres database.
+# Render blueprint: the API (under /api) and its Postgres database. The website, demo and app are on Netlify,
+# which proxies /api/* here (set API_ORIGIN on Netlify to this service's URL).
 # New → Blueprint → pick this repository. Secrets marked sync: false are entered in the Render dashboard.
 services:
   - type: web
@@ -6,7 +7,7 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm ci --include=dev && VITE_BASE=/app/ npm run build -w app
+    buildCommand: npm ci --include=dev
     startCommand: npm start -w api
     healthCheckPath: /api/health
     envVars:
@@ -19,7 +20,10 @@ services:
           name: fade-db
           property: connectionString
       - key: SERVE_STATIC
-        value: "true"
+        value: "false"
+      # The public address people use (Netlify), for links in e-mails.
+      - key: PUBLIC_URL
+        value: https://usta-fade.netlify.app
       - key: API_PREFIX
         value: /api
       - key: TRUST_PROXY

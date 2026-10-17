@@ -79,6 +79,24 @@ describe('applications (payments off)', () => {
     expect(mails).toHaveLength(1);
   });
 
+  it('field sales: the operator invites a salon directly; it starts with the salon menu', async () => {
+    const r = await call('POST', '/api/admin/invites', {
+      token: ADMIN,
+      body: { shop_name: 'Salon Elif', owner_name: 'Elif Hanım', email: 'elif@example.com', country: 'TR', timezone: 'Europe/Istanbul', language: 'tr', business_type: 'salon', status: 'trial', days: 14 },
+    });
+    expect(r.body.emailed).toBe(true);
+    const mail = mails[mails.length - 1];
+    expect(mail.to).toBe('elif@example.com');
+    const key = mail.text.match(/FADE-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)![0];
+    const k = await call('POST', '/api/auth/key', { body: { key, password: 'elif-secret-12' } });
+    const me = await call('GET', '/api/shops/me', { token: k.body.access_token });
+    expect(me.body.shop.business_type).toBe('salon');
+    const services = (await call('GET', '/api/services', { token: k.body.access_token })).body.data.map((s: any) => s.name);
+    expect(services).toEqual(expect.arrayContaining(['Kesim & fön', 'Boya', 'Röfle']));
+    expect((await call('POST', '/api/admin/invites', { token: ADMIN, body: { shop_name: 'X', owner_name: 'X', email: 'elif@example.com', country: 'TR', timezone: 'UTC' } })).body.error.code).toBe('EMAIL_TAKEN');
+    mails.pop();
+  });
+
   it('the operator can e-mail a fresh key to an existing owner', async () => {
     const shop = (await db.query(`select id from shops where name = 'Berber Selim'`)).rows[0];
     expect((await call('POST', `/api/admin/shops/${shop.id}/invite`, { token: ADMIN })).body.emailed).toBe(true);

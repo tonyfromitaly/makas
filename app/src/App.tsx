@@ -35,9 +35,10 @@ function boot(onSignedOut: () => void) {
   booting ??= (async () => {
     const signedOut = () => signedOutHandlers.forEach((f) => f());
     if (DEMO) {
-      const { startDemo, DEMO_LOGIN } = await import('./demo');
+      const { startDemo, demoLogin, sampleKind } = await import('./demo');
       const client = createClient(await startDemo(), signedOut);
-      if (!(await client.resume())) await client.signIn(await client.post('/auth/login', DEMO_LOGIN));
+      // Sample shops and the empty demo keep separate sessions.
+      if (sampleKind() || !(await client.resume())) await client.signIn(await client.post('/auth/login', demoLogin()));
       return { client, signedIn: true };
     }
     const client = createClient(httpTransport(import.meta.env.VITE_API_URL ?? '/api'), signedOut);
@@ -54,7 +55,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [autoMic, setAutoMic] = useState(false);
   const [welcome, setWelcome] = useState(() => {
-    if (!DEMO) return false;
+    if (!DEMO || new URLSearchParams(location.search).has('ornek')) return false;
     try {
       return !localStorage.getItem('makas.welcomed');
     } catch {
@@ -180,7 +181,8 @@ export function App() {
           <span className="brand">
             <Icon name="scissors" size={18} /> {me.shop.name}
           </span>
-          {DEMO && <DemoPanel />}
+          {/* ?shot hides the demo controls for website screenshots. */}
+          {DEMO && !new URLSearchParams(location.search).has('shot') && <DemoPanel />}
         </header>
         <main>
           {me.locked ? (

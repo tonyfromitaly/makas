@@ -15,7 +15,7 @@ export async function loadSubscription(db: Queryable, shopId: string) {
   ).rows[0];
 }
 
-const SHOP_FIELDS = `id, name, country, timezone, language, currency, status,
+const SHOP_FIELDS = `id, name, country, timezone, language, currency, status, business_type,
   reminder_day_before_hour, reminder_hours_before, created_at`;
 
 export const shopRoutes: Route[] = [

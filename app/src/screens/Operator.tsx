@@ -18,7 +18,15 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   // Applications come from the website and live on the real server only (not in the browser demo).
-  const [view, setView] = useState<'support' | 'apps'>('support');
+  const [view, setView] = useState<'support' | 'apps' | 'invite'>('support');
+  const [inv, setInv] = useState({ shop_name: '', owner_name: '', email: '', business_type: 'barber', country: 'TR', language: 'tr', status: 'trial', days: 14 });
+  const sendInvite = async () => {
+    const r = await api.raw('POST', '/admin/invites', key, { ...inv, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', days: Number(inv.days) });
+    if (r.status === 200) {
+      setNote(r.body.emailed ? t('emailSent') : t('emailFailed'));
+      setInv({ ...inv, shop_name: '', owner_name: '', email: '' });
+    } else setNote(r.body?.error?.message ?? 'Error');
+  };
   const [apps, setApps] = useState<any[] | null>(null);
   const [note, setNote] = useState('');
   const loadApps = async () => {
@@ -97,9 +105,35 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
         <div className="segmented">
           <button className={view === 'support' ? 'on' : ''} onClick={() => setView('support')}>{t('feedback')}</button>
           <button className={view === 'apps' ? 'on' : ''} onClick={() => (setView('apps'), loadApps())}>{t('applications')}</button>
+          <button className={view === 'invite' ? 'on' : ''} onClick={() => setView('invite')}>{t('newInvite')}</button>
         </div>
       )}
       {note && <p className="notice small">{note}</p>}
+
+      {!open && view === 'invite' && (
+        <form className="card stack" onSubmit={(e) => (e.preventDefault(), sendInvite())}>
+          <p className="muted small">{t('inviteHint')}</p>
+          <input required placeholder={t('shopName')} value={inv.shop_name} onChange={(e) => setInv({ ...inv, shop_name: e.target.value })} />
+          <input required placeholder={t('ownerName')} value={inv.owner_name} onChange={(e) => setInv({ ...inv, owner_name: e.target.value })} />
+          <input required type="email" placeholder={t('email')} value={inv.email} onChange={(e) => setInv({ ...inv, email: e.target.value })} />
+          <select aria-label={t('businessType')} value={inv.business_type} onChange={(e) => setInv({ ...inv, business_type: e.target.value })}>
+            {['barber', 'salon', 'beauty', 'other'].map((b) => <option key={b} value={b}>{t(`bt_${b}` as any)}</option>)}
+          </select>
+          <div className="row">
+            <select aria-label={t('language')} value={inv.language} onChange={(e) => setInv({ ...inv, language: e.target.value })}>
+              <option value="tr">Türkçe</option><option value="en">English</option><option value="es">Español</option>
+            </select>
+            <input className="narrow" maxLength={2} aria-label={t('country')} value={inv.country} onChange={(e) => setInv({ ...inv, country: e.target.value.toUpperCase() })} />
+          </div>
+          <div className="row">
+            <select aria-label={t('subscription')} value={inv.status} onChange={(e) => setInv({ ...inv, status: e.target.value })}>
+              <option value="trial">{t('sub_trial')}</option><option value="active">{t('sub_active')}</option>
+            </select>
+            <input className="narrow" type="number" min={1} max={366} aria-label="days" value={inv.days} onChange={(e) => setInv({ ...inv, days: Number(e.target.value) })} />
+          </div>
+          <button className="btn primary">{t('sendInvite')}</button>
+        </form>
+      )}
 
       {!open && view === 'apps' && (
         <ul className="list">

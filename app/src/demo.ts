@@ -1,7 +1,7 @@
 // In-browser backend for the live demo: the real @makas/core API on PGlite (Postgres in WebAssembly).
 import { PGlite } from '@electric-sql/pglite';
 import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
-import { createApi, fromPGlite, migrate, randomToken, seedDemo, DEMO_LOGIN, type Database } from '@makas/core';
+import { createApi, fromPGlite, migrate, randomToken, seedDemo, seedSample, DEMO_LOGIN, SAMPLE_LOGINS, type Database, type SampleKind } from '@makas/core';
 import type { Transport } from './api';
 
 // PBKDF2 stands in for argon2 here (argon2 is native code on the server).
@@ -31,7 +31,19 @@ const DATA_DIR = 'idb://fade-demo-v4';
 // Earlier demo databases (with sample data) are removed so every visitor starts from the empty shop.
 const OLD_DBS = ['/pglite/makas-demo-v1', '/pglite/makas-demo-v2', '/pglite/fade-demo-v3'];
 
+/** ?ornek=berber or ?ornek=kuafor opens a lived-in sample shop (website "try with sample data"). */
+export function sampleKind(): SampleKind | null {
+  const v = new URLSearchParams(location.search).get('ornek');
+  return v === 'berber' || v === 'barber' ? 'barber' : v === 'kuafor' || v === 'salon' ? 'salon' : null;
+}
+
+export function demoLogin() {
+  const k = sampleKind();
+  return k ? SAMPLE_LOGINS[k] : DEMO_LOGIN;
+}
+
 export async function startDemo(): Promise<Transport> {
+  const kind = sampleKind();
   for (const name of OLD_DBS) {
     try {
       indexedDB.deleteDatabase(name);
@@ -40,14 +52,15 @@ export async function startDemo(): Promise<Transport> {
     }
   }
   try {
-    lite = await PGlite.create({ dataDir: DATA_DIR, extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
+    lite = await PGlite.create({ dataDir: kind ? `idb://fade-sample-${kind}-v1` : DATA_DIR, extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
   } catch {
     // IndexedDB blocked (private mode): fall back to memory.
     lite = await PGlite.create({ extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
   }
   const db: Database = fromPGlite(lite as any);
   await migrate(db);
-  await seedDemo(db, { hashPassword: deps.hashPassword, now: new Date() });
+  if (kind) await seedSample(db, kind, { hashPassword: deps.hashPassword, now: new Date() });
+  else await seedDemo(db, { hashPassword: deps.hashPassword, now: new Date() });
   const handle = createApi({
     db,
     deps,

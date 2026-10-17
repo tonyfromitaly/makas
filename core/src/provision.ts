@@ -1,6 +1,32 @@
 import type { Queryable } from './db';
 import { sha256 } from './auth';
 
+export type BusinessType = 'barber' | 'salon' | 'beauty' | 'other';
+
+/** Starting menus (name, USD, minutes). The owner edits them in Settings. */
+export const DEFAULT_SERVICES: Record<BusinessType, [string, number, number][]> = {
+  barber: [
+    ['Saç kesimi', 30, 30],
+    ['Sakal tıraşı', 15, 20],
+    ['Saç + sakal', 40, 45],
+    ['Çocuk tıraşı', 20, 25],
+  ],
+  salon: [
+    ['Kesim & fön', 45, 60],
+    ['Fön', 25, 30],
+    ['Boya', 90, 120],
+    ['Röfle', 120, 150],
+    ['Keratin bakım', 150, 150],
+  ],
+  beauty: [
+    ['Manikür', 25, 40],
+    ['Pedikür', 35, 50],
+    ['Kaş & bıyık', 10, 15],
+    ['Cilt bakımı', 60, 60],
+  ],
+  other: [],
+};
+
 export interface ProvisionInput {
   shopName: string;
   ownerName: string;
@@ -11,6 +37,9 @@ export interface ProvisionInput {
   timezone: string;
   language: 'tr' | 'en' | 'es';
   currency: string;
+  businessType?: BusinessType;
+  /** Start with the menu for the business type (invited and website shops). */
+  defaultServices?: boolean;
   subscription: {
     status: 'trial' | 'active' | 'past_due' | 'cancelled';
     planKey: string;
@@ -24,12 +53,13 @@ export interface ProvisionInput {
 /** Opens a shop: owner account, first barber (the owner), subscription and an audit entry. System transaction. */
 export async function provisionShop(tx: Queryable, p: ProvisionInput) {
   const shop = (
-    await tx.query(`insert into shops (name, country, timezone, language, currency) values ($1, $2, $3, $4, $5) returning id`, [
+    await tx.query(`insert into shops (name, country, timezone, language, currency, business_type) values ($1, $2, $3, $4, $5, $6) returning id`, [
       p.shopName,
       p.country,
       p.timezone,
       p.language,
       p.currency,
+      p.businessType ?? 'barber',
     ])
   ).rows[0];
   const user = (
@@ -43,6 +73,9 @@ export async function provisionShop(tx: Queryable, p: ProvisionInput) {
   ).rows[0];
   await tx.query('update shops set owner_user_id = $1 where id = $2', [user.id, shop.id]);
   await tx.query('insert into barbers (shop_id, name) values ($1, $2)', [shop.id, p.ownerName]);
+  if (p.defaultServices)
+    for (const [name, usd, min] of DEFAULT_SERVICES[p.businessType ?? 'barber'])
+      await tx.query('insert into services (shop_id, name, price_cents, duration_min) values ($1, $2, $3, $4)', [shop.id, name, usd * 100, min]);
   await tx.query(
     `insert into subscriptions (shop_id, plan_key, status, current_period_end, stripe_customer_id, stripe_subscription_id)
      values ($1, $2, $3, $4, $5, $6)`,
