@@ -26,13 +26,18 @@ export function Auth({ api, t, lang, setLang, onIn }: { api: Client; t: T; lang:
   const initialKey = keyFromHash();
   const [mode, setMode] = useState<Mode>(initialKey ? 'key' : 'login');
   const [meta, setMeta] = useState<Meta | null>(null);
+  const [offline, setOffline] = useState(false);
   const [f, setF] = useState({ email: '', password: '', key: initialKey, shop_name: '', owner_name: '', country: guessCountry(lang), currency: 'USD', timezone: guessTz() });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
   useEffect(() => {
-    api.get<Meta>('/meta').then(setMeta).catch(() => setMeta({ signup: 'open', billing: false, site_url: null }));
+    // Without the server we can't sign anyone in; say so instead of offering a sign-up that would fail.
+    api.get<Meta>('/meta').then(setMeta).catch(() => {
+      setOffline(true);
+      setMeta({ signup: 'subscribe', billing: false, site_url: '' });
+    });
     // The key is in the form now; keep it out of the address bar and history.
     if (initialKey) history.replaceState(null, '', location.pathname + location.search);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,6 +112,7 @@ export function Auth({ api, t, lang, setLang, onIn }: { api: Client; t: T; lang:
             </Field>
           </div>
         )}
+        {offline && <p className="notice warn">{t('serverOffline')}</p>}
         {err && <p className="notice warn">{err}</p>}
         <button className="btn primary block" disabled={busy}>
           {mode === 'login' ? t('login') : mode === 'key' ? t('setPasswordEnter') : t('register')}
