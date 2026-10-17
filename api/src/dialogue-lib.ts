@@ -11,13 +11,14 @@ type Call = (method: string, url: string, opts?: { token?: string; body?: unknow
 interface Harness {
   call: Call;
   clock: { now: Date };
-  registerShop(name?: string, overrides?: Record<string, unknown>): Promise<{ token: string; email: string }>;
+  registerShop(name?: string, overrides?: Record<string, unknown>): Promise<{ token: string; email: string; shopId: string }>;
 }
 
 /** A signed-in barber whose session outlives the test clock: signs in again when the token expires. */
 export interface Session {
   token: string;
   email: string;
+  shopId?: string;
 }
 
 async function send(t: Harness, s: Session, method: string, url: string, body?: unknown) {
@@ -32,11 +33,11 @@ async function send(t: Harness, s: Session, method: string, url: string, body?: 
 
 export async function prepareShop(t: Harness) {
   const s = dialogueSet.shop;
-  const { token, email } = await t.registerShop('Berber Halil', { owner_name: s.owner, timezone: s.timezone, country: s.country, language: s.language });
+  const { token, email, shopId } = await t.registerShop('Berber Halil', { owner_name: s.owner, timezone: s.timezone, country: s.country, language: s.language });
   for (const name of s.barbers) await t.call('POST', '/barbers', { token, body: { name } });
   for (const [name, price_cents, duration_min] of s.services) await t.call('POST', '/services', { token, body: { name, price_cents, duration_min } });
   for (const [name, phone_e164] of s.clients) await t.call('POST', '/clients', { token, body: { name, phone_e164, consent: true } });
-  return { token, email } as Session;
+  return { token, email, shopId } as Session;
 }
 
 const matches = (got: Record<string, unknown>, want: Record<string, unknown>) => Object.entries(want).every(([k, v]) => got[k] === v);

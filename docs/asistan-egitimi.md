@@ -61,6 +61,29 @@ Kurallar:
 - Kullanıcı sohbeti **Asistan → çöp kutusu** ile siler; konuşmalar 90 günden eski olunca `npm run retention -w api` ile otomatik silinir. Konuşmalar dükkân verisi dışa aktarımına dahildir.
 - Asistana kullanıcı başına dakikada en fazla 30 mesaj gönderilebilir (model maliyetine karşı koruma).
 
+## Uzun süreli hafıza (3 ay)
+
+Asistanın karakteri ve hafıza kuralları iki dosyada; ikisini de sen düzenleyebilirsin:
+- [`core/agent/SOUL.md`](../core/agent/SOUL.md): asistan kimdir, nasıl konuşur, asla ne yapmaz.
+- [`core/agent/AGENT.md`](../core/agent/AGENT.md): elindeki bağlam katmanları, not türleri, hafızayı nasıl güncelleyeceği, roller.
+Düzenledikten sonra `npm run agent:sync` çalıştır (unutursan test hatırlatır).
+
+Dükkânın hafızası **DÜKKÂN.md**: kısa notlar, dört kaynaktan gelir:
+
+| Kaynak | Nasıl | Örnek |
+| --- | --- | --- |
+| Usta söyler | "aklında tut", "unutma ki", "remember that" | "Ahmet sakalını kısa ister" |
+| Konuşmalardan öğrenir | Sohbet 20 dk sessiz kalınca DeepSeek konuşmayı gözden geçirir, not ekler/günceller/siler | "Burak her seferinde ense de ister" |
+| Kayıtlardan çıkarır | Her saat yeniden hesaplanır | "Kira genelde ayın 3'ünde; son ödeme $1.800", "En yoğun gün salı" |
+| Usta yazar | Asistan → Hafıza ekranı | "Pazar günleri kapalıyız" |
+
+- Her not son doğrulandığı günden itibaren **90 gün** yaşar; tekrar duyulursa tazelenir, sabitlenen hiç silinmez.
+- Hassas bilgi (sağlık, din, siyaset, telefon, adres, kart) **hiç tutulmaz**; söylense de, model önerse de reddedilir.
+- Her mesajla en alakalı 24 not modele gider (adı geçen müşterinin notları önce).
+- Asistan → **Hafıza**: her not, kaynağı ve kalan günü; sabitle, sil, elle ekle, DÜKKÂN.md olarak gör.
+- Randevuda hizmet söylenmezse müşterinin **her zamanki** hizmeti seçilir.
+- Bakım işi API içinde saatte bir çalışır (`runMemoryUpkeep`); elle: `POST /admin/memory/run`.
+
 ## İki motor
 
 - **DeepSeek** (`.env` içinde `AI_API_KEY` varsa): eğitim paketiyle çalışır, serbest konuşmayı ve konuşma dilinden metne çeviri hatalarını daha iyi tolere eder, açık sorulara doğal cevap verir.

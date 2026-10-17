@@ -1,7 +1,7 @@
 // In-browser backend for the live demo: the real @makas/core API on PGlite (Postgres in WebAssembly).
 import { PGlite } from '@electric-sql/pglite';
 import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
-import { createApi, fromPGlite, migrate, randomToken, seedDemo, seedSample, DEMO_LOGIN, SAMPLE_LOGINS, type Database, type SampleKind } from '@makas/core';
+import { createApi, fromPGlite, migrate, randomToken, runMemoryUpkeep, seedDemo, seedSample, DEMO_LOGIN, SAMPLE_LOGINS, type Database, type SampleKind } from '@makas/core';
 import type { Transport } from './api';
 
 // PBKDF2 stands in for argon2 here (argon2 is native code on the server).
@@ -61,6 +61,8 @@ export async function startDemo(): Promise<Transport> {
   await migrate(db);
   if (kind) await seedSample(db, kind, { hashPassword: deps.hashPassword, now: new Date() });
   else await seedDemo(db, { hashPassword: deps.hashPassword, now: new Date() });
+  // The server keeps the assistant's memory up to date every hour; the demo does it once per visit.
+  await runMemoryUpkeep(db, deps, new Date()).catch(() => {});
   const handle = createApi({
     db,
     deps,

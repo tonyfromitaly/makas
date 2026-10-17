@@ -22,6 +22,11 @@ const QUESTION = re(['ne kadar', 'kac', 'hangi', 'kim', 'nedir', 'ne zaman', 'va
 // Open questions and requests for advice go to the data-grounded chat.
 const ADVICE = re(['ne yapmali', 'ne yapsam', 'nasil', 'neden', 'niye', 'oneri', 'tavsiye', 'fikir', 'yorumla', 'durum ne', 'nasil gidiyor', 'why', 'how can', 'how do i', 'what should', 'advice', 'suggest', 'tips', 'por que', 'como puedo', 'que hago', 'consejo', 'recomienda']);
 const QUESTION_WEAK = re(['toplam', 'goster', 'listele', 'ozet', 'total', 'show', 'list', 'summary', 'muestra', 'resumen']);
+// "Keep this in mind" is a note for the assistant's memory, not a dated reminder ("unutma ki" ≠ "unutma").
+const REMEMBER = re(['aklinda tut', 'aklinda olsun', 'aklina yaz', 'kafana yaz', 'bilmen gereken', 'bilesin', 'not et ki', 'unutma ki', 'sunu bil', 'sunu aklinda', 'remember that', 'keep in mind', 'note that', 'for the record', 'ten en cuenta', 'recuerda que', 'apunta que', 'que sepas']);
+const REMEMBER_STRIP = /(şunu\s+|sunu\s+)?(aklında tut|aklinda tut|aklında olsun|aklinda olsun|aklına yaz|aklina yaz|kafana yaz|bilmen gereken|bilesin|not et ki|unutma ki|şunu bil|sunu bil|remember that|keep in mind( that)?|note that|for the record|ten en cuenta( que)?|recuerda que|apunta que|que sepas)[:,]?\s*/gi;
+const MONEY_TOPIC = re(['kira', 'fatura', 'odeme', 'tedarik', 'fiyat', 'zam', 'komisyon', 'pos', 'rent', 'bill', 'price', 'supplier', 'payment', 'alquiler', 'factura', 'precio', 'proveedor']);
+const PREFERENCE_TOPIC = re(['bana', 'cevap', 'kisa tut', 'uzun', 'soyleme', 'sabah ozet', 'me ', 'answer', 'reply', 'tell me', 'dont tell', 'respuesta', 'dime', 'no me']);
 const REMIND = ['hatirlat', 'unutma', 'not al', 'remind', 'dont forget', 'don t forget', 'recuerda', 'recordar', 'recordatorio', 'no olvid'];
 const CLIENT_NEW = ['musteri ekle', 'musteri kaydet', 'yeni musteri', 'musteri kayd', 'musteriyi kaydet', 'kaydet', 'new client', 'add client', 'new customer', 'add customer', 'register', 'save client', 'nuevo cliente', 'agrega', 'registra', 'anade', 'guarda'];
 const APPT = ['randevu', 'appointment', 'book ', 'booking', 'cita', 'reserva', 'agenda'];
@@ -153,6 +158,18 @@ export function understandLocal(said: string, base: AssistantContext): Plan {
     if (short && !!hit !== !!period && !ADVICE.test(f)) {
       return { items: [{ type: 'query', metric: hit ?? focus.metric, period: period ?? focus.period ?? 'this_month', client_name: null }] };
     }
+  }
+
+  // 0b. A note for the assistant's long-term memory.
+  if (REMEMBER.test(f)) {
+    const note = text.replace(REMEMBER_STRIP, ' ').replace(/\s+/g, ' ').trim().replace(/^(ki|that|que)\s+/i, '').replace(/[\s,;:]+$/, '');
+    const toks = fold(note).split(' ').map((w) => w.replace(/'.*$/, ''));
+    const client = bestMatch(toks, ctx.clients);
+    const barber = bestMatch(toks, ctx.barbers);
+    const nf = fold(note);
+    const kind = client ? 'client' : barber ? 'team' : MONEY_TOPIC.test(nf) ? 'money' : PREFERENCE_TOPIC.test(nf) ? 'preference' : 'shop';
+    if (note.length >= 3)
+      return { items: [{ type: 'remember', kind, subject: client?.item.name ?? barber?.item.name ?? null, text: (note.charAt(0).toLocaleUpperCase('tr') + note.slice(1)).slice(0, 200) }] };
   }
 
   // 1. Questions about the shop's numbers.

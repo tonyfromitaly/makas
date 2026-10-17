@@ -19,3 +19,5 @@ export { localAdvice } from './assistant/advice';
 export { provisionShop, createAccessKey, generateAccessKey, normalizeKey, DEFAULT_SERVICES, type ProvisionInput, type BusinessType } from './provision';
 export { seedSample, SAMPLE_LOGINS, type SampleKind } from './sample';
 export { followUp, resolvePronoun, nextFocus, sessionView, earlierLine, RECENT, EARLIER_MAX, SESSION_GAP_HOURS, type Focus, type Turn, type Memory } from './assistant/memory';
+export { runMemoryUpkeep, memoryUpkeepIn, refreshDataNotes, liveNotes, memoryMarkdown, notesForPrompt, addNote, isSensitive, reflectSchema, NOTE_DAYS, type Note } from './assistant/notes';
+export { SOUL, REFLECT_RULES } from './assistant/agent-files';

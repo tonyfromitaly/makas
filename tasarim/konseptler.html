@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fade · Uygulama Konseptleri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;700&family=JetBrains+Mono:wght@400;600;800&family=Big+Shoulders+Display:wght@600;800;900&family=Hanken+Grotesk:wght@400;500;700&family=Bowlby+One&family=Figtree:wght@400;600;800&family=Caveat:wght@600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --board: #e6e8ea;
+    --board-ink: #15191c;
+    --board-muted: #5d666b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--board); color: var(--board-ink); font: 15px/1.5 'Hanken Grotesk', system-ui, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 48px 16px 80px; }
+  header.top h1 { font: 900 clamp(2.4rem, 6vw, 4.2rem)/0.95 'Big Shoulders Display', sans-serif; letter-spacing: 0.01em; margin: 0 0 14px; text-transform: uppercase; }
+  header.top p { max-width: 640px; color: var(--board-muted); margin: 0; }
+  .dir { margin-top: 72px; }
+  .dir-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 32px; align-items: end; border-top: 2px solid var(--board-ink); padding-top: 18px; }
+  .dir-head .tag { font: 600 0.75rem 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; color: var(--board-muted); }
+  .dir-head h2 { margin: 4px 0 6px; font: 800 2.2rem/1 'Big Shoulders Display', sans-serif; text-transform: uppercase; }
+  .dir-head p { margin: 0; max-width: 620px; color: var(--board-muted); }
+  .swatches { display: flex; gap: 6px; }
+  .swatches span { width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); }
+  .phones { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 26px; }
+  .phone { width: 300px; height: 630px; border-radius: 38px; padding: 10px; background: #0d0f10; box-shadow: 0 30px 60px -30px rgba(0,0,0,0.45); flex: none; }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 29px; overflow: hidden; }
+  .caption { width: 300px; margin-top: 10px; font-size: 0.85rem; color: var(--board-muted); }
+  .cap-title { font-weight: 700; color: var(--board-ink); }
+  figure { margin: 0; }
+  .notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 84px; height: 22px; border-radius: 14px; background: #0d0f10; z-index: 5; }
+  .why { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; font-size: 0.88rem; color: var(--board-muted); }
+  .why b { color: var(--board-ink); }
+
+  /* ---------- A · ADİSYON ---------- */
+  .a { --paper: #fbfbf8; --ink: #1d2433; --stamp: #c8322b; --carbon: #2b4fd8; --steel: #c9cfd3; background: var(--steel); font-family: 'JetBrains Mono', monospace; color: var(--ink); }
+  .a .bar { display: flex; justify-content: space-between; padding: 38px 18px 8px; font: 700 0.7rem 'Archivo Narrow', sans-serif; letter-spacing: 0.14em; text-transform: uppercase; }
+  .a .roll { margin: 6px 14px 0; background: var(--paper); padding: 16px 16px 22px; position: relative; box-shadow: 0 8px 18px -12px rgba(0,0,0,0.5); }
+  .a .roll::after { content: ''; position: absolute; left: 0; right: 0; bottom: -9px; height: 10px; background: linear-gradient(-45deg, transparent 6px, var(--paper) 0) 0 0 / 12px 12px, linear-gradient(45deg, transparent 6px, var(--paper) 0) 0 0 / 12px 12px; }
+  .a .shop { text-align: center; font: 700 1.25rem 'Archivo Narrow', sans-serif; letter-spacing: 0.06em; }
+  .a .meta { text-align: center; font-size: 0.62rem; letter-spacing: 0.12em; opacity: 0.7; margin-bottom: 10px; }
+  .a .rule { border-top: 1px dashed var(--ink); opacity: 0.45; margin: 9px 0; }
+  .a .ln { display: flex; gap: 6px; font-size: 0.7rem; line-height: 1.85; }
+  .a .ln .dots { flex: 1; border-bottom: 1px dotted rgba(29,36,51,0.45); transform: translateY(-5px); }
+  .a .ln.done { opacity: 0.45; text-decoration: line-through; }
+  .a .ln.now { color: var(--carbon); font-weight: 800; }
+  .a .big { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; }
+  .a .big strong { font-size: 1.9rem; letter-spacing: -0.02em; }
+  .a .stamp { position: absolute; right: 18px; top: 92px; transform: rotate(-12deg); border: 3px solid var(--stamp); color: var(--stamp); font: 800 0.85rem 'Archivo Narrow', sans-serif; letter-spacing: 0.14em; padding: 4px 10px; border-radius: 6px; opacity: 0.82; mix-blend-mode: multiply; }
+  .a .tear { margin: 22px 14px 0; display: flex; gap: 8px; }
+  .a .btn { flex: 1; background: var(--ink); color: var(--paper); text-align: center; padding: 12px 0; font: 700 0.72rem 'Archivo Narrow', sans-serif; letter-spacing: 0.14em; text-transform: uppercase; }
+  .a .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .a .slip { margin: 8px 14px; background: var(--paper); padding: 11px 12px 12px 26px; font-size: 0.68rem; line-height: 1.55; position: relative; }
+  .a .slip::before { content: ''; position: absolute; left: 9px; top: 13px; width: 8px; height: 8px; border-radius: 50%; background: var(--steel); }
+  .a .slip.you { background: transparent; border: 1.5px dashed var(--ink); margin-left: 54px; }
+  .a .slip.you::before { display: none; }
+  .a .slip.you { padding-top: 8px; padding-bottom: 8px; }
+  .a .slip .who { font: 700 0.58rem 'Archivo Narrow', sans-serif; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.6; display: block; margin-bottom: 2px; }
+  .a .carbon { color: var(--carbon); }
+  .a .pin { margin: 4px 14px 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .a .pin span { background: #fff6a8; font: 600 1.05rem/1 'Caveat', cursive; padding: 6px 9px 7px; transform: rotate(-1.5deg); box-shadow: 0 3px 6px -3px rgba(0,0,0,0.35); }
+  .a .pin span:nth-child(2) { transform: rotate(1.8deg); }
+  .a .input { position: absolute; left: 14px; right: 14px; bottom: 16px; border: 1.5px solid var(--ink); background: var(--paper); padding: 11px 12px; font-size: 0.7rem; display: flex; justify-content: space-between; }
+
+  /* ---------- B · AYNA ---------- */
+  .b { --leather: #2a0f14; --leather-2: #3b151c; --chrome: #cfd5da; --brass: #c69a4b; --tile: #eef1f3; background: var(--leather); color: var(--tile); font-family: 'Hanken Grotesk', sans-serif; }
+  .b .bar { padding: 40px 18px 0; display: flex; justify-content: space-between; align-items: baseline; }
+  .b .bar h3 { margin: 0; font: 900 1.65rem/1 'Big Shoulders Display', sans-serif; text-transform: uppercase; letter-spacing: 0.02em; }
+  .b .bar small { color: var(--brass); font-weight: 700; letter-spacing: 0.12em; font-size: 0.62rem; text-transform: uppercase; }
+  .b .lanes { display: grid; grid-template-columns: 26px 1fr 1fr; gap: 8px; padding: 16px 14px 0; height: 470px; position: relative; }
+  .b .hours { display: grid; grid-template-rows: repeat(8, 1fr); font: 600 0.6rem 'Big Shoulders Display', sans-serif; color: rgba(238,241,243,0.45); }
+  .b .lane { position: relative; border-radius: 14px; background: var(--leather-2); box-shadow: inset 0 0 0 1px rgba(198,154,75,0.22); }
+  .b .lane h4 { margin: 0; padding: 9px 10px 0; font: 800 0.95rem 'Big Shoulders Display', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brass); }
+  .b .appt { position: absolute; left: 6px; right: 6px; border-radius: 9px; padding: 6px 8px; font-size: 0.66rem; line-height: 1.3; background: var(--tile); color: var(--leather); }
+  .b .appt b { display: block; font-size: 0.72rem; }
+  .b .appt.done { background: transparent; color: rgba(238,241,243,0.5); box-shadow: inset 0 0 0 1px rgba(238,241,243,0.18); }
+  .b .appt.risk { box-shadow: inset 4px 0 0 #e2342b; }
+  .b .now { position: absolute; left: 40px; right: 14px; height: 14px; border-radius: 7px; background: repeating-linear-gradient(115deg, #e2342b 0 8px, var(--tile) 8px 16px, #2c55c9 16px 24px, var(--tile) 24px 32px); box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  .b .now::after { content: 'ŞİMDİ 14:20'; position: absolute; right: 6px; top: -16px; font: 800 0.58rem 'Big Shoulders Display', sans-serif; letter-spacing: 0.1em; color: var(--chrome); }
+  .b .tabbar { position: absolute; left: 14px; right: 14px; bottom: 16px; display: flex; justify-content: space-around; padding: 11px; border-radius: 18px; background: rgba(0,0,0,0.3); font: 700 0.6rem 'Big Shoulders Display', sans-serif; letter-spacing: 0.1em; color: rgba(238,241,243,0.55); }
+  .b .tabbar .on { color: var(--brass); }
+  .b .mirror { margin: 16px 14px 0; height: 430px; border-radius: 120px 120px 22px 22px; padding: 10px; background: linear-gradient(135deg, #f4f6f7, #9aa3a9 45%, #eef1f3 55%, #7f888e); position: relative; }
+  .b .glass { height: 100%; border-radius: 112px 112px 15px 15px; background: radial-gradient(ellipse at 30% 10%, rgba(255,255,255,0.22), transparent 55%), linear-gradient(170deg, #34454d, #1c262b); padding: 70px 14px 14px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .b .say { align-self: flex-end; max-width: 78%; background: rgba(238,241,243,0.14); padding: 8px 10px; border-radius: 12px 12px 3px 12px; font-size: 0.7rem; }
+  .b .ans { max-width: 86%; background: var(--tile); color: var(--leather); padding: 8px 10px; border-radius: 12px 12px 12px 3px; font-size: 0.7rem; }
+  .b .ans em { font-style: normal; color: #8b2a35; font-weight: 700; }
+  .b .tuck { position: absolute; font: 600 1rem/1.05 'Caveat', cursive; background: #fbf7ea; color: #2a2a2a; padding: 6px 8px; width: 92px; box-shadow: 0 4px 8px -3px rgba(0,0,0,0.5); }
+  .b .tuck.t1 { left: -4px; top: 22px; transform: rotate(-9deg); }
+  .b .tuck.t2 { right: -6px; top: 36px; transform: rotate(8deg); background: #e9f1ff; }
+  .b .tuck.t3 { left: 30px; bottom: -14px; transform: rotate(4deg); background: #fff1f0; width: 110px; }
+  .b .plate { margin: 18px 14px 0; border-radius: 18px; padding: 16px; background: linear-gradient(160deg, #d8b26a, #a87b31); color: #2a1a06; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
+  .b .plate h5 { margin: 0; font: 800 0.66rem 'Big Shoulders Display', sans-serif; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; }
+  .b .plate .sum { font: 900 3rem/1 'Big Shoulders Display', sans-serif; margin: 4px 0 2px; }
+  .b .rows { margin: 14px 14px 0; }
+  .b .row { display: flex; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid rgba(198,154,75,0.22); font-size: 0.78rem; }
+  .b .row span:last-child { font-weight: 700; }
+  .b .row.minus span:last-child { color: #ff8a80; }
+  .b .note { margin: 14px 14px 0; font-size: 0.68rem; color: rgba(238,241,243,0.55); }
+
+  /* ---------- C · TABELA ---------- */
+  .c { --enamel: #f7f8fb; --cobalt: #1f3fbf; --red: #e2342b; --mustard: #f2b705; --ink: #111; background: var(--enamel); color: var(--ink); font-family: 'Figtree', sans-serif; }
+  .c .sign { margin: 34px 12px 0; background: var(--cobalt); color: var(--enamel); border-radius: 18px; padding: 14px 14px 16px; box-shadow: inset 0 0 0 3px var(--enamel), inset 0 0 0 5px var(--cobalt); }
+  .c .sign .lbl { font: 800 0.62rem 'Figtree', sans-serif; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; }
+  .c .flaps { display: flex; gap: 4px; margin-top: 8px; }
+  .c .flaps span { position: relative; width: 38px; height: 54px; border-radius: 6px; background: #0d1f6b; display: grid; place-items: center; font: 400 2.1rem 'Bowlby One', sans-serif; color: var(--enamel); }
+  .c .flaps span::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,0.6); }
+  .c .flaps span.cur { background: var(--mustard); color: var(--ink); width: 30px; }
+  .c .sub { margin-top: 8px; font-size: 0.7rem; opacity: 0.85; }
+  .c h6 { margin: 18px 16px 8px; font: 400 0.95rem 'Bowlby One', sans-serif; text-transform: uppercase; letter-spacing: 0.02em; }
+  .c .plate { margin: 0 12px 8px; display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px; padding: 10px 12px; box-shadow: 0 0 0 2px var(--ink); }
+  .c .plate .time { font: 400 1rem 'Bowlby One', sans-serif; min-width: 52px; }
+  .c .plate .time.name { font-size: 0.82rem; min-width: 60px; }
+  .c .plate .who { flex: 1; font-size: 0.74rem; line-height: 1.3; }
+  .c .plate .who b { display: block; font-size: 0.82rem; }
+  .c .chip { font: 800 0.58rem 'Figtree', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; background: var(--mustard); }
+  .c .chip.red { background: var(--red); color: #fff; }
+  .c .chip.ok { background: #d8f0dc; }
+  .c .mic { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: 72px; height: 72px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 6px var(--enamel), 0 0 0 8px var(--ink); display: grid; place-items: center; color: #fff; font: 400 0.7rem 'Bowlby One', sans-serif; }
+  .c .bubble { margin: 8px 12px; padding: 11px 13px; border-radius: 16px; font-size: 0.76rem; line-height: 1.45; box-shadow: 0 0 0 2px var(--ink); background: #fff; }
+  .c .bubble.you { background: var(--ink); color: var(--enamel); margin-left: 60px; border-bottom-right-radius: 4px; }
+  .c .bubble.me { margin-right: 40px; border-bottom-left-radius: 4px; }
+  .c .bubble .num { font: 400 1.1rem 'Bowlby One', sans-serif; color: var(--cobalt); }
+  .c .md { margin: 10px 12px; border-radius: 14px; background: var(--mustard); padding: 10px 12px; font-size: 0.7rem; line-height: 1.5; }
+  .c .md b { font: 400 0.8rem 'Bowlby One', sans-serif; display: block; margin-bottom: 4px; }
+  .c .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 12px; }
+  .c .card { border-radius: 16px; padding: 12px; box-shadow: 0 0 0 2px var(--ink); background: #fff; }
+  .c .card.blue { background: var(--cobalt); color: var(--enamel); box-shadow: none; }
+  .c .card .k { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.75; }
+  .c .card .v { font: 400 1.6rem/1.1 'Bowlby One', sans-serif; margin-top: 4px; }
+  .c .seg { display: flex; margin: 16px 12px 10px; border-radius: 999px; box-shadow: 0 0 0 2px var(--ink); overflow: hidden; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+  .c .seg span { flex: 1; text-align: center; padding: 9px 0; }
+  .c .seg .on { background: var(--ink); color: var(--enamel); }
+  .c .paybtn { margin: 12px; background: var(--red); color: #fff; text-align: center; padding: 15px; border-radius: 16px; font: 400 0.9rem 'Bowlby One', sans-serif; text-transform: uppercase; box-shadow: 0 0 0 2px var(--ink); }
+
+  @media (max-width: 680px) { .dir-head { grid-template-columns: 1fr; } .phones { justify-content: center; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Fade · Uygulama<br />konseptleri</h1>
+    <p>Üç farklı yön, her biri dükkânın kendi dünyasından: kasa fişi, berber aynası, esnaf tabelası. Her yönde aynı üç ekran var: <b>Bugün</b>, <b>Asistan + hafıza</b> ve yeni <b>Hakediş</b> (dükkân sahibi ve berber hesapları). Birini seç, ya da karıştıralım.</p>
+  </header>
+
+  <!-- A · ADİSYON -->
+  <section class="dir">
+    <div class="dir-head">
+      <div>
+        <div class="tag">Yön A</div>
+        <h2>Adisyon</h2>
+        <p>Uygulama bir kasa rulosu. Gün bir fiş gibi akar, biten iş üstü çizilir, ödenen hesaba kauçuk "ÖDENDİ" damgası vurulur. Asistanın cevapları adisyon koçanından koparılmış fişler; hafıza notları sarı kâğıtlar.</p>
+      </div>
+      <div class="swatches"><span style="background:#fbfbf8"></span><span style="background:#1d2433"></span><span style="background:#c8322b"></span><span style="background:#2b4fd8"></span><span style="background:#c9cfd3"></span></div>
+    </div>
+    <div class="phones">
+      <figure>
+        <div class="phone"><div class="screen a"><div class="notch"></div>
+          <div class="bar"><span>Bugün</span><span>Cmt 17.10</span></div>
+          <div class="roll">
+            <div class="shop">BERBER HALİL</div>
+            <div class="meta">FİŞ NO 0291 · HALİL USTA · EMRE</div>
+            <div class="ln done"><span>10:00</span><span>CAN D.</span><span class="dots"></span><span>$30</span></div>
+            <div class="ln done"><span>11:30</span><span>MEHMET K.</span><span class="dots"></span><span>$40</span></div>
+            <div class="ln done"><span>13:00</span><span>JOHN C.</span><span class="dots"></span><span>$15</span></div>
+            <div class="ln now"><span>14:30</span><span>AHMET Y. ▸</span><span class="dots"></span><span>$40</span></div>
+            <div class="ln"><span>16:00</span><span>BURAK Ş. !</span><span class="dots"></span><span>$30</span></div>
+            <div class="ln"><span>17:30</span><span>ALİ Ö.</span><span class="dots"></span><span>$20</span></div>
+            <div class="rule"></div>
+            <div class="big"><span>KASA</span><strong>$412</strong></div>
+            <div class="ln"><span>AKŞAMA BEKLENEN</span><span class="dots"></span><span>$90</span></div>
+            <div class="ln"><span>VERESİYE AÇIK</span><span class="dots"></span><span>$55</span></div>
+            <div class="rule"></div>
+            <div class="ln carbon"><span>! BURAK 2 KEZ GELMEDİ, TEYİT ET</span></div>
+            <div style="height:34px"></div>
+            <div class="stamp" style="top:auto;bottom:12px;right:16px;transform:rotate(-6deg)">KİRA ÖDENDİ</div>
+          </div>
+          <div class="tear"><div class="btn">+ Randevu</div><div class="btn ghost">Konuş</div></div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Bugün:</span> günün fişi. Kasa, akşama beklenen ve riskli müşteri tek rulo üstünde.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone"><div class="screen a"><div class="notch"></div>
+          <div class="bar"><span>Asistan</span><span>Hafıza · 14 not</span></div>
+          <div class="pin"><span>Ahmet sakal kısa</span><span>Kira ayın 3'ü</span><span>Emre pzt izinli</span></div>
+          <div class="slip you"><span class="who">Sen</span>Ahmet'e yarın 3'e her zamankini yaz</div>
+          <div class="slip"><span class="who">Asistan · taslak</span>AHMET YILMAZ · PAZAR 15:00<br />SAÇ + SAKAL $40 · HALİL USTA<br /><span class="carbon">Hatırlatma: sakalı kısa ister.</span></div>
+          <div class="slip you"><span class="who">Sen</span>saat 4 olsun</div>
+          <div class="slip"><span class="who">Asistan · düzeltildi</span>15:00 → <b>16:00</b>. Onaylarsan yazıyorum.</div>
+          <div class="slip you"><span class="who">Sen</span>unutma ki Burak ense de ister</div>
+          <div class="input"><span>Yaz ya da söyle…</span><span>● REC</span></div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Asistan:</span> cevaplar koçandan kopan fişler; hafıza notları üstte sarı kâğıt.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone"><div class="screen a"><div class="notch"></div>
+          <div class="bar"><span>Hakediş</span><span>Dükkân sahibi</span></div>
+          <div class="roll">
+            <div class="shop">HAKEDİŞ FİŞİ</div>
+            <div class="meta">EMRE · 11–17 EKİM · %40 YÜZDE</div>
+            <div class="ln"><span>KESİLEN İŞ</span><span class="dots"></span><span>34</span></div>
+            <div class="ln"><span>CİRO</span><span class="dots"></span><span>$1.240</span></div>
+            <div class="ln"><span>YÜZDE %40</span><span class="dots"></span><span>$496</span></div>
+            <div class="ln"><span>BAHŞİŞ</span><span class="dots"></span><span>+$85</span></div>
+            <div class="ln"><span>AVANS ÇRŞ</span><span class="dots"></span><span>−$100</span></div>
+            <div class="rule"></div>
+            <div class="big"><span>ÖDENECEK</span><strong>$481</strong></div>
+            <div class="rule"></div>
+            <div class="ln"><span>HALİL USTA (SAHİP)</span><span class="dots"></span><span>$1.630</span></div>
+            <div class="ln"><span>DÜKKÂNA KALAN</span><span class="dots"></span><span>$744</span></div>
+            <div style="height:40px"></div>
+            <div class="stamp" style="top:auto;bottom:14px;right:22px;transform:rotate(-6deg)">ÖDENDİ 17.10</div>
+          </div>
+          <div class="tear"><div class="btn">Ödendi işaretle</div><div class="btn ghost">Fişi paylaş</div></div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Hakediş:</span> cumartesi akşamı haftalık kapanış. Usta herkesi görür, Emre sadece kendi fişini.</figcaption>
+      </figure>
+    </div>
+    <div class="why"><div><b>Neden:</b> esnafın elinde zaten fiş ve adisyon var; öğrenme yükü sıfır.</div><div><b>İmza:</b> perforajlı fiş kenarı ve kauçuk damga.</div><div><b>Risk:</b> monospace yazı uzun metinde yorabilir; bu yüzden sadece rakamlarda ve başlıklarda.</div></div>
+  </section>
+
+  <!-- B · AYNA -->
+  <section class="dir">
+    <div class="dir-head">
+      <div>
+        <div class="tag">Yön B</div>
+        <h2>Ayna &amp; Koltuk</h2>
+        <p>Dükkânın içi: bordo deri koltuk, krom ayna, pirinç plaka. Bugün ekranı her berberin kendi şeridi; "şimdi" çizgisi bir berber direği. Asistan aynanın içinde konuşur, hafıza notları gerçek bir berber aynası gibi kenarlara sıkıştırılmış.</p>
+      </div>
+      <div class="swatches"><span style="background:#2a0f14"></span><span style="background:#3b151c"></span><span style="background:#cfd5da"></span><span style="background:#c69a4b"></span><span style="background:#eef1f3"></span></div>
+    </div>
+    <div class="phones">
+      <figure>
+        <div class="phone"><div class="screen b"><div class="notch"></div>
+          <div class="bar"><h3>Cumartesi</h3><small>Kasa $412</small></div>
+          <div class="lanes">
+            <div class="hours"><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span></div>
+            <div class="lane"><h4>Halil</h4>
+              <div class="appt done" style="top:36px;height:44px"><b>Can D.</b>Saç kesimi</div>
+              <div class="appt done" style="top:142px;height:70px"><b>Mehmet K.</b>Saç + sakal</div>
+              <div class="appt" style="top:262px;height:70px"><b>Ahmet Y.</b>Saç + sakal · kısa</div>
+              <div class="appt risk" style="top:388px;height:46px"><b>Burak Ş.</b>2 kez gelmedi</div>
+            </div>
+            <div class="lane"><h4>Emre</h4>
+              <div class="appt done" style="top:92px;height:44px"><b>John C.</b>Sakal</div>
+              <div class="appt" style="top:300px;height:46px"><b>Ali Ö.</b>Çocuk tıraşı</div>
+              <div class="appt" style="top:360px;height:46px;background:transparent;color:#c69a4b;box-shadow:inset 0 0 0 1px #c69a4b"><b>Boş</b>16:00–17:00</div>
+            </div>
+            <div class="now" style="top:258px"></div>
+          </div>
+          <div class="tabbar"><span class="on">BUGÜN</span><span>MÜŞTERİ</span><span>AYNA</span><span>DEFTER</span><span>EKİP</span></div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Bugün:</span> koltuk koltuk şeritler. Boş saat pirinçle çizili, kırmızı kenar riskli müşteri.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone"><div class="screen b"><div class="notch"></div>
+          <div class="bar"><h3>Ayna</h3><small>Asistan</small></div>
+          <div class="mirror"><div class="glass">
+            <div class="say">Emre bu hafta ne kadar yaptı?</div>
+            <div class="ans">Emre bu hafta 34 iş, <em>$1.240</em> ciro. Yüzdesi <em>$496</em>, Çarşamba $100 avans aldı.</div>
+            <div class="say">aklında tut, Emre pazartesi izinli</div>
+            <div class="ans">Aklımda. Pazartesi Emre'ye randevu gelirse seni uyarırım.</div>
+          </div>
+            <div class="tuck t1">Ahmet: sakal hep kısa</div>
+            <div class="tuck t2">Kira ayın 3'ü · $1.800</div>
+            <div class="tuck t3">Emre pazartesi izinli 📌</div>
+          </div>
+          <div class="tabbar"><span>BUGÜN</span><span>MÜŞTERİ</span><span class="on">AYNA</span><span>DEFTER</span><span>EKİP</span></div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Asistan:</span> sohbet aynanın içinde; hafıza, aynanın kenarına sıkıştırılmış notlar.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone"><div class="screen b"><div class="notch"></div>
+          <div class="bar"><h3>Benim haftam</h3><small>Emre · berber</small></div>
+          <div class="plate"><h5>Cumartesi alacağın</h5><div class="sum">$481</div><div style="font-size:.72rem">11–17 Ekim · %40 yüzde</div></div>
+          <div class="rows">
+            <div class="row"><span>Kestiğim iş</span><span>34</span></div>
+            <div class="row"><span>Benim cirom</span><span>$1.240</span></div>
+            <div class="row"><span>Yüzdem (%40)</span><span>$496</span></div>
+            <div class="row"><span>Bahşiş</span><span>+$85</span></div>
+            <div class="row minus"><span>Avans · Çarşamba</span><span>−$100</span></div>
+          </div>
+          <div class="note">Dükkânın toplam cirosunu ve Halil Usta'nın kazancını göremezsin. Sadece kendi hesabın.</div>
+          <div class="tabbar"><span>BUGÜN</span><span>MÜŞTERİ</span><span>AYNA</span><span>DEFTER</span><span class="on">HAFTAM</span></div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Berber hesabı:</span> Emre kendi telefonunda sadece kendi haftasını görür; pirinç plaka cumartesi alacağı.</figcaption>
+      </figure>
+    </div>
+    <div class="why"><div><b>Neden:</b> dükkânın gerçek malzemeleri: deri, krom, pirinç. Premium ama soğuk değil.</div><div><b>İmza:</b> kenarına not sıkıştırılmış berber aynası = asistanın hafızası.</div><div><b>Risk:</b> koyu tema gün ışığında okunurluk ister; kontrastı ayrıca test ederiz.</div></div>
+  </section>
+
+  <!-- C · TABELA -->
+  <section class="dir">
+    <div class="dir-head">
+      <div>
+        <div class="tag">Yön C</div>
+        <h2>Tabela</h2>
+        <p>Mahalle esnafının emaye tabelası: kobalt mavi, beyaz emaye, kırmızı, hardal. Kasa, eski tip döner levhalı bir sayaç; randevular kalın çerçeveli plakalar. Uzaktan, tezgâhın arkasından bile okunur.</p>
+      </div>
+      <div class="swatches"><span style="background:#f7f8fb"></span><span style="background:#1f3fbf"></span><span style="background:#e2342b"></span><span style="background:#f2b705"></span><span style="background:#111"></span></div>
+    </div>
+    <div class="phones">
+      <figure>
+        <div class="phone"><div class="screen c"><div class="notch"></div>
+          <div class="sign">
+            <div class="lbl">Berber Halil · kasa</div>
+            <div class="flaps"><span class="cur">$</span><span>4</span><span>1</span><span>2</span></div>
+            <div class="sub">Akşama +$90 bekleniyor · veresiye $55</div>
+          </div>
+          <h6>Sıradakiler</h6>
+          <div class="plate"><span class="time">14:30</span><span class="who"><b>Ahmet Yılmaz</b>Saç + sakal · Halil</span><span class="chip">Şimdi</span></div>
+          <div class="plate"><span class="time">16:00</span><span class="who"><b>Burak Şahin</b>Saç kesimi · Halil</span><span class="chip red">Teyit et</span></div>
+          <div class="plate"><span class="time">17:30</span><span class="who"><b>Ali Öztürk</b>Çocuk · Emre</span><span class="chip ok">Onaylı</span></div>
+          <div class="mic">KONUŞ</div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Bugün:</span> döner levhalı kasa sayacı ve emaye plakalar. Büyük kırmızı "Konuş" butonu.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone"><div class="screen c"><div class="notch"></div>
+          <div style="height:40px"></div>
+          <div class="md"><b>DÜKKÂN.md</b>Kira ayın 3'ü · $1.800<br />Ahmet sakalı kısa ister<br />Emre pazartesi izinli 📌<br /><span style="opacity:.7">14 not · en eskisi 82 gün</span></div>
+          <div class="bubble you">bu ay ne kadar kazandık</div>
+          <div class="bubble me">Bu ay <span class="num">$4.210</span> gelir, 96 iş. Geçen aydan %8 fazla.</div>
+          <div class="bubble you">peki giderler?</div>
+          <div class="bubble me">Bu ay <span class="num">$2.115</span> gider. En büyüğü kira; ayın 3'ünde ödendi.</div>
+          <div class="mic">KONUŞ</div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Asistan:</span> hafıza dosyası en üstte hardal levha; rakamlar kobalt ve kalın.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone"><div class="screen c"><div class="notch"></div>
+          <div style="height:30px"></div>
+          <div class="seg"><span class="on">Usta</span><span>Emre</span><span>Ekip</span></div>
+          <div class="split">
+            <div class="card blue"><div class="k">Bu hafta ciro</div><div class="v">$3.614</div></div>
+            <div class="card"><div class="k">Dükkâna kalan</div><div class="v">$744</div></div>
+            <div class="card"><div class="k">Emre · %40</div><div class="v">$481</div></div>
+            <div class="card"><div class="k">Koltuk · Serkan</div><div class="v" style="color:#e2342b">$220</div><div style="font-size:.62rem;font-weight:800">KİRA ÖDENMEDİ</div></div>
+          </div>
+          <h6>Cumartesi kapanışı</h6>
+          <div class="plate"><span class="time name">Emre</span><span class="who"><b>$481 ödenecek</b>34 iş · bahşiş $85 · avans −$100</span></div>
+          <div class="plate"><span class="time name">Serkan</span><span class="who"><b>$220 kira alınacak</b>Koltuk kiracısı · haftalık</span></div>
+          <div class="paybtn">Haftayı kapat</div>
+        </div></div>
+        <figcaption class="caption"><span class="cap-title">Ekip:</span> yüzdeye çalışan Emre ile koltuk kiracısı Serkan aynı ekranda; ikisinin hesabı farklı.</figcaption>
+      </figure>
+    </div>
+    <div class="why"><div><b>Neden:</b> TR esnafının görsel dili; ABD'de de "Main Street" tabelası gibi okunur.</div><div><b>İmza:</b> döner levhalı kasa sayacı (sayı değişirken levhalar döner).</div><div><b>Risk:</b> en "gürültülü" yön; disiplinli boşluk şart.</div></div>
+  </section>
+</div>
+</body>
+</html>

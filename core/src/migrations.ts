@@ -404,6 +404,34 @@ ${['assistant_turns', 'assistant_memory']
 ${toTenant('grant select, insert, update, delete on assistant_turns, assistant_memory to makas_tenant;')}
 `;
 
+// Long-term memory (core/agent/AGENT.md): short notes the assistant keeps about the shop, its clients
+// and its people. A note lives 90 days from when it was last confirmed; pinned notes stay.
+// user_id null = shared in the shop; set = personal to that user.
+const assistantNotes = `
+create table assistant_notes (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  user_id uuid,
+  kind text not null check (kind in ('client', 'money', 'team', 'shop', 'preference')),
+  subject text check (length(subject) <= 80),
+  text text not null check (length(text) between 1 and 280),
+  source text not null check (source in ('said', 'learned', 'data', 'owner')),
+  data_key text,
+  pinned boolean not null default false,
+  last_seen_at timestamptz not null default now(),
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  foreign key (shop_id, user_id) references users(shop_id, id) on delete cascade
+);
+create unique index assistant_notes_key on assistant_notes (shop_id, data_key) where data_key is not null;
+create index assistant_notes_live on assistant_notes (shop_id, expires_at);
+${rls('assistant_notes')}
+alter policy tenant_isolation on assistant_notes using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+${toTenant('grant select, insert, update, delete on assistant_notes to makas_tenant;')}
+alter table assistant_memory add column reflected_at timestamptz;
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -411,4 +439,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '004_billing_access', sql: billing },
   { id: '005_business_types', sql: businessTypes },
   { id: '006_assistant_memory', sql: assistantMemory },
+  { id: '007_assistant_notes', sql: assistantNotes },
 ];

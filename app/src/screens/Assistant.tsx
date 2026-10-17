@@ -3,6 +3,7 @@ import { useApp } from '../state';
 import { LOCALES } from '../i18n';
 import { Icon, useSpeech } from '../components/ui';
 import { DraftList, type Draft } from '../components/Drafts';
+import { MemorySheet } from '../components/MemorySheet';
 
 interface Msg {
   id: number;
@@ -33,6 +34,7 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [lists, setLists] = useState<{ services: any[]; barbers: any[] }>();
+  const [memoryOpen, setMemoryOpen] = useState(false);
   const end = useRef<HTMLDivElement>(null);
 
   const push = (m: Omit<Msg, 'id' | 'at'>) =>
@@ -117,12 +119,16 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
 
   return (
     <div className="screen assistant">
+      <MemorySheet open={memoryOpen} onClose={() => setMemoryOpen(false)} />
       <div className="assistant-hero">
         <span className={`orb ${busy || speech.listening ? 'busy' : ''}`} aria-hidden />
         <div className="grow">
           <h1>{t('assistant')}</h1>
           <p className="muted small">{t('assistantHint')}</p>
         </div>
+        <button className="memory-btn" onClick={() => setMemoryOpen(true)} aria-label={t('memoryTitle')}>
+          <Icon name="book" size={16} /> {t('memoryOpen')}
+        </button>
         {msgs.some((m) => m.role === 'user') && (
           <button className="icon-btn" onClick={clear} aria-label={t('clearChat')} title={t('clearChat')}>
             <Icon name="trash" size={18} />

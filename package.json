@@ -18,7 +18,8 @@
     "build": "npm run build -w app",
     "build:demo": "npm run build:demo -w app",
     "typecheck": "npm run typecheck -w core && npm run typecheck -w api && npm run typecheck -w app",
-    "ai:stress": "npm run ai:stress -w api"
+    "ai:stress": "npm run ai:stress -w api",
+    "agent:sync": "node scripts/agent-sync.mjs"
   },
   "engines": {
     "node": ">=20"

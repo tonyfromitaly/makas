@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { isoDate, lang, noContent, notFound, ok, pageQuery, paged, positiveCents, type Ctx, type Route } from '../http';
+import { badRequest, forbidden, isoDate, lang, noContent, notFound, ok, pageQuery, paged, positiveCents, type Ctx, type Route } from '../http';
 import { understandLocal } from '../assistant/local';
 import { planSchema, type Plan, type PlanItem } from '../assistant/plan';
 import { replier } from '../assistant/replies';
@@ -11,6 +11,7 @@ import { updateRow } from './shop';
 import { shopSnapshot } from '../assistant/snapshot';
 import { localAdvice } from '../assistant/advice';
 import { EARLIER_MAX, RECENT, earlierLine, nextFocus, sessionView, type Focus } from '../assistant/memory';
+import { NOTE_KINDS, addNote, isSensitive, liveNotes, memoryMarkdown, notesForPrompt, memoryUpkeepIn } from '../assistant/notes';
 
 type Lang = 'tr' | 'en' | 'es';
 
@@ -193,6 +194,15 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
   }
 }
 
+async function usualService(ctx: Ctx, clientId: string): Promise<string | null> {
+  const r = await ctx.db.query(
+    `select service_id from appointments where shop_id = $1 and client_id = $2 and status = 'done' and service_id is not null
+      group by service_id order by count(*) desc, max(starts_at) desc limit 1`,
+    [ctx.shopId, clientId],
+  );
+  return r.rows[0]?.service_id ?? null;
+}
+
 async function loadMemory(ctx: Ctx) {
   const { rows } = await ctx.db.query(
     `select role, text, summary, created_at from assistant_turns
@@ -225,6 +235,14 @@ async function saveTurn(ctx: Ctx, t: { text: string; reply: string; items: PlanI
   return { user: u.rows[0].id as string, assistant: a.rows[0].id as string };
 }
 
+/** A note this user may change: their own personal notes, or any shared note for the owner. */
+async function ownNote(ctx: Ctx, id: string) {
+  const n = (await ctx.db.query('select id, user_id, pinned from assistant_notes where id = $1 and shop_id = $2', [id, ctx.shopId])).rows[0];
+  if (!n || (n.user_id && n.user_id !== ctx.userId)) throw notFound('Note');
+  if (!n.user_id && ctx.role !== 'owner') throw forbidden('Only the shop owner can change shared notes');
+  return n as { id: string; user_id: string | null; pinned: boolean };
+}
+
 const taskSelect = `id, kind, title, to_char(due_date, 'YYYY-MM-DD') as due_date, to_char(due_time, 'HH24:MI') as due_time,
   amount_cents, status, done_at, source, raw_text, created_at`;
 
@@ -244,7 +262,9 @@ export const assistantRoutes: Route[] = [
 
       // The conversation so far (this user's, this session's): what "him" or "make it 4" refers to.
       const mem = await loadMemory(ctx);
-      const focus = mem.view.active ? mem.focus : {};
+      const focus: Focus = mem.view.active ? mem.focus : {};
+      // Long-term notes (DÜKKÂN.md): sent with every message, the most relevant first.
+      const memory = notesForPrompt(await liveNotes(ctx.db, ctx.shopId, ctx.userId, ctx.now), body.text);
       const local = () => understandLocal(body.text, { now, lang: l, ...L, focus });
 
       // The LLM (when configured) only understands; it never sees totals and never writes.
@@ -263,7 +283,10 @@ export const assistantRoutes: Route[] = [
               services: L.services.map((s) => s.name),
               barbers: L.barbers.map((b) => b.name),
               clients: L.clients.map((c) => c.name),
-              context: mem.view.active ? { focus, earlier: mem.view.earlier, recent: mem.view.recent } : undefined,
+              context:
+                mem.view.active || memory.length
+                  ? { focus, earlier: mem.view.active ? mem.view.earlier : [], recent: mem.view.active ? mem.view.recent : [], memory }
+                  : undefined,
             }),
           );
           if (out.success) (plan = out.data), (engine = 'ai');
@@ -283,6 +306,7 @@ export const assistantRoutes: Route[] = [
       const texts: string[] = [];
       const drafts: any[] = [];
       const seen: PlanItem[] = []; // the plan with names as resolved, for the next turn's focus
+      let noted: Focus['note'];
       for (const item of plan.items) {
         if (item.type === 'query') {
           const a = await answer(ctx, item, shop, l, L.clients);
@@ -295,7 +319,7 @@ export const assistantRoutes: Route[] = [
           let reply: string | null = null;
           if (ctx.deps.chat) {
             try {
-              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot, history: mem.view.recent })).trim() || null;
+              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot, history: mem.view.recent, memory })).trim() || null;
               if (reply) engine = 'ai';
             } catch {
               /* fall back to local advice */
@@ -306,9 +330,27 @@ export const assistantRoutes: Route[] = [
         } else if (item.type === 'cancel') {
           texts.push(r.say('cancelled'));
           seen.push(item);
+        } else if (item.type === 'remember') {
+          // A note for the long-term memory; never sensitive details (core/agent/SOUL.md).
+          const note = isSensitive(item.text)
+            ? null
+            : await addNote(ctx.db, { shopId: ctx.shopId, userId: item.kind === 'preference' ? ctx.userId : null, kind: item.kind, subject: item.subject, text: item.text, source: 'said', now: ctx.now });
+          if (note) {
+            texts.push(r.say('remembered', { text: note.text }));
+            noted = { id: note.id, text: note.text };
+            seen.push(item);
+          } else texts.push(r.say('remember_refused'));
+        } else if (item.type === 'forget') {
+          if (focus.note) {
+            await ctx.db.query(`delete from assistant_notes where id = $1 and shop_id = $2 and source = 'said' and not pinned`, [focus.note.id, ctx.shopId]);
+            texts.push(r.say('forgot', { text: focus.note.text }));
+            seen.push(item);
+          }
         } else if (item.type === 'appointment') {
           const client = match(item.client_name, L.clients);
-          const service = match(item.service, L.services) ?? L.services[0] ?? null;
+          // No service named: the client's usual one (memory from the records), else the first on the menu.
+          const usual = !item.service && client ? await usualService(ctx, client.id) : null;
+          const service = match(item.service, L.services) ?? (usual ? L.services.find((s) => s.id === usual) : null) ?? L.services[0] ?? null;
           const barber = match(item.barber, L.barbers) ?? L.barbers[0] ?? null;
           const phone = item.phone ? toE164(item.phone, shop.country) : null;
           drafts.push({
@@ -353,7 +395,9 @@ export const assistantRoutes: Route[] = [
       if (!texts.length) texts.push(r.say('unknown'));
       const reply = texts.join(' ');
 
-      const turns = await saveTurn(ctx, { text: body.text, reply, items: seen, drafts, engine, focus: nextFocus(focus, seen) });
+      const next = nextFocus(focus, seen);
+      if (noted) next.note = noted;
+      const turns = await saveTurn(ctx, { text: body.text, reply, items: seen, drafts, engine, focus: next });
       return { reply, drafts, engine, understood: seen, turn_id: turns.assistant };
     },
   },
@@ -383,6 +427,77 @@ export const assistantRoutes: Route[] = [
       await ctx.db.query('delete from assistant_turns where shop_id = $1 and user_id = $2', [ctx.shopId, ctx.userId]);
       await ctx.db.query('delete from assistant_memory where shop_id = $1 and user_id = $2', [ctx.shopId, ctx.userId]);
       return noContent();
+    },
+  },
+  // --- the assistant's long-term memory (DÜKKÂN.md): see, add, pin, correct, delete ---
+  {
+    method: 'GET',
+    path: '/assistant/notes',
+    auth: 'user',
+    gated: true,
+    query: z.object({ lang: lang.optional() }),
+    async handler(ctx, { query }) {
+      const shop = await shopInfo(ctx);
+      const notes = await liveNotes(ctx.db, ctx.shopId, ctx.userId, ctx.now);
+      return { data: notes, markdown: memoryMarkdown(notes, shop.name, query.lang ?? shop.language, ctx.now) };
+    },
+  },
+  {
+    method: 'POST',
+    path: '/assistant/notes',
+    auth: 'user',
+    gated: true,
+    body: z.object({
+      kind: z.enum(NOTE_KINDS),
+      subject: z.string().trim().max(80).nullable().optional(),
+      text: z.string().trim().min(1).max(280),
+      pinned: z.boolean().default(false),
+    }),
+    async handler(ctx, { body }) {
+      if (isSensitive(body.text)) throw badRequest('This looks like sensitive or contact information; the assistant does not keep it.');
+      const personal = body.kind === 'preference' || ctx.role !== 'owner';
+      const note = await addNote(ctx.db, { shopId: ctx.shopId, userId: personal ? ctx.userId : null, kind: body.kind, subject: body.subject, text: body.text, source: 'owner', now: ctx.now, pinned: body.pinned });
+      return ok(note, 201);
+    },
+  },
+  {
+    method: 'PATCH',
+    path: '/assistant/notes/:id',
+    auth: 'user',
+    gated: true,
+    body: z.object({ text: z.string().trim().min(1).max(280), pinned: z.boolean() }).partial(),
+    async handler(ctx, { params, body }) {
+      const note = await ownNote(ctx, params.id);
+      if (body.text && isSensitive(body.text)) throw badRequest('This looks like sensitive or contact information; the assistant does not keep it.');
+      const pinned = body.pinned ?? note.pinned;
+      const expires = pinned ? null : new Date(ctx.now.getTime() + 90 * 86_400_000);
+      const { rows } = await ctx.db.query(
+        `update assistant_notes set text = coalesce($3, text), pinned = $4, expires_at = $5, last_seen_at = $6,
+                source = case when $3::text is null then source else 'owner' end, data_key = case when $3::text is null then data_key else null end
+          where id = $1 and shop_id = $2 returning id, user_id, kind, subject, text, source, pinned, last_seen_at, expires_at, created_at`,
+        [params.id, ctx.shopId, body.text ?? null, pinned, expires, ctx.now],
+      );
+      return rows[0];
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/assistant/notes/:id',
+    auth: 'user',
+    gated: true,
+    async handler(ctx, { params }) {
+      await ownNote(ctx, params.id);
+      await ctx.db.query('delete from assistant_notes where id = $1 and shop_id = $2', [params.id, ctx.shopId]);
+      return noContent();
+    },
+  },
+  {
+    // Runs the memory upkeep now (it also runs every hour): data notes, conversation review, expiry.
+    method: 'POST',
+    path: '/admin/memory/run',
+    auth: 'admin',
+    async handler(ctx) {
+      return memoryUpkeepIn(ctx.db, ctx.deps, ctx.now);
     },
   },
   {

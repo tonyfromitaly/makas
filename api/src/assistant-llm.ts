@@ -1,4 +1,4 @@
-import { CHAT_SYSTEM, FEW_SHOT, FEW_SHOT_CONTEXT, UNDERSTAND_SYSTEM, type AssistantInput, type Deps } from '@makas/core';
+import { CHAT_SYSTEM, FEW_SHOT, FEW_SHOT_CONTEXT, REFLECT_RULES, SOUL, UNDERSTAND_SYSTEM, type AssistantInput, type Deps } from '@makas/core';
 
 // DeepSeek (or any OpenAI-compatible chat API). The model is grounded on every call with the training
 // in core/src/assistant/training.ts. It only understands sentences and words answers: it never sees
@@ -85,12 +85,32 @@ export function chatClient(env: Env): Deps['chat'] {
         temperature: 0.4,
         max_tokens: 400,
         messages: [
-          { role: 'system', content: CHAT_SYSTEM },
+          { role: 'system', content: `${SOUL}\n\n${CHAT_SYSTEM}` },
           // The conversation so far, so "peki bunu nasıl düzeltirim?" knows what "bunu" is.
           ...(input.history ?? []).map((t) => ({ role: t.role, content: t.text })),
-          { role: 'user', content: JSON.stringify({ language: input.lang, shop: input.shop, currency: input.currency, snapshot: input.snapshot, question: input.question }) },
+          { role: 'user', content: JSON.stringify({ language: input.lang, shop: input.shop, currency: input.currency, snapshot: input.snapshot, memory: input.memory ?? [], question: input.question }) },
         ],
       },
       15000,
     );
+}
+
+/** Reviews a quiet conversation and returns edits to the long-term notes (core/agent/AGENT.md). */
+export function reflectClient(env: Env): Deps['reflect'] {
+  if (!env.key) return undefined;
+  return async (input) => {
+    const content = await complete(
+      env,
+      {
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: `${SOUL}\n\n${REFLECT_RULES}` },
+          { role: 'user', content: JSON.stringify(input) },
+        ],
+      },
+      20000,
+    );
+    return JSON.parse(content || '{"ops":[]}');
+  };
 }

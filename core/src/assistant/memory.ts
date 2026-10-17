@@ -26,6 +26,8 @@ export interface Focus {
   period?: Period;
   appointment?: Extract<PlanItem, { type: 'appointment' }>;
   reminder?: Extract<PlanItem, { type: 'reminder' }>;
+  /** The note just written with "aklında tut", so "bunu unut" can take it back. */
+  note?: { id: string; text: string };
 }
 
 export interface Turn {
@@ -53,6 +55,7 @@ const PRONOUN = {
 const NOT_PRONOUN_AFTER_O = new Set(['zaman', 'kadar', 'gun', 'saat', 'hafta', 'ay', 'yuzden', 'da', 'de', 'an', 'is']);
 const ASKS = words(['ne', 'kac', 'nedir', 'var mi', 'how', 'what', 'which', 'when', 'cuanto', 'cuantos', 'que', 'cuando']);
 
+const FORGET = words(['unut', 'bunu unut', 'onu unut', 'unut bunu', 'notu sil', 'sil onu', 'forget that', 'forget it', 'delete that', 'olvidalo', 'olvida eso', 'borralo', 'borra eso']);
 const CANCEL = words(['vazgec', 'vazgectim', 'bosver', 'iptal', 'iptal et', 'gerek yok', 'sil onu', 'never mind', 'nevermind', 'cancel', 'forget it', 'scratch that', 'olvidalo', 'cancela', 'cancelar', 'dejalo']);
 const AMEND = words(['olsun', 'yap', 'al', 'cek', 'kaydir', 'degistir', 'degil', 'yerine', 'aslinda', 'ver', 'make it', 'change', 'instead', 'actually', 'move', 'switch', 'rather', 'mejor', 'cambia', 'cambialo', 'pasalo', 'en vez']);
 export const FOLLOW = words(['peki', 'ya', 'bir de', 'and', 'what about', 'how about', 'y', 'y el', 'y la', 'y que tal']);
@@ -103,6 +106,7 @@ export function followUp(text: string, focus: Focus, ctx: { now: DateTime; servi
   const f = fold(text).replace(/[?!.,]+/g, ' ').replace(/\s+/g, ' ').trim();
   const n = f.split(' ').length;
 
+  if (focus.note && n <= 5 && FORGET.test(f)) return { items: [{ type: 'forget' }] };
   if (CANCEL.test(f) && n <= 5 && (focus.appointment || focus.reminder)) return { items: [{ type: 'cancel' }] };
 
   // Changing the appointment we just drafted.
@@ -152,7 +156,8 @@ export function nextFocus(prev: Focus, items: PlanItem[]): Focus {
     } else if (it.type === 'cancel') {
       delete f.appointment;
       delete f.reminder;
-    }
+    } else if (it.type === 'forget') delete f.note;
+    else if (it.type === 'remember' && it.subject && it.kind === 'client') f.client = it.subject;
   }
   return f;
 }
@@ -174,6 +179,8 @@ export function earlierLine(user: string, items: PlanItem[] | null, reply: strin
           return `reminder "${i.title}" ${i.due_date}`;
         case 'query':
           return `asked ${i.metric} ${i.period}${i.client_name ? ` ${i.client_name}` : ''}`;
+        case 'remember':
+          return `noted "${i.text}"`;
         default:
           return i.type;
       }

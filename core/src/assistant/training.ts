@@ -32,6 +32,8 @@ Reply with ONLY a JSON object: {"items":[...]}. Item types:
 - {"type":"query","metric":"income"|"expense"|"net"|"payables"|"receivables"|"appointments"|"top_service"|"client_balance"|"reminders","period":"today"|"yesterday"|"tomorrow"|"this_week"|"last_week"|"this_month"|"last_month"|"this_year","client_name":string|null}
 - {"type":"chat","question":string}  (advice or an open question about the shop: "why are clients dropping", "how can I earn more", "which day is busiest")
 - {"type":"cancel"}  ("boşver", "vazgeçtim", "never mind", "olvídalo" right after a draft: drop it)
+- {"type":"remember","kind":"client"|"money"|"team"|"shop"|"preference","subject":string|null,"text":string}  ("aklında tut", "unutma ki", "şunu bil", "remember that", "keep in mind", "ten en cuenta": a lasting fact for the assistant's memory, NOT a dated reminder. text = the fact alone, third person, without the trigger words; subject = the client's or barber's name from the lists)
+- {"type":"forget"}  ("bunu unut", "forget that" right after a "remember": take that note back)
 - {"type":"unknown"}
 
 ## Rules
@@ -47,7 +49,9 @@ Reply with ONLY a JSON object: {"items":[...]}. Item types:
    - pronouns and references ("onun", "ona", "him", "her", "él", "aynı müşteri") mean focus.client;
    - a short correction ("saat 4 olsun", "Emre'ye ver", "cuma yap", "make it 3", "mejor a las 6") repeats focus.appointment with only the changed fields;
    - a short follow-up question ("peki geçen ay?", "giderler?", "and this week?", "¿y el mes pasado?") keeps focus.metric or focus.period and changes the other;
-   - never re-emit items for earlier turns; plan only what the new message asks. If the message stands on its own, ignore the context.`;
+   - never re-emit items for earlier turns; plan only what the new message asks. If the message stands on its own, ignore the context;
+   - "memory" holds the shop's long-term notes (habits, fixed payments, preferences). Use them to understand ("her zamanki" = the client's usual service from a note), never as numbers to answer with.
+10. "unutma ki X" / "aklında tut X" is "remember"; "X'i unutma" / "yarın X'i hatırlat" with a date or a task is "reminder".`;
 
 /** Worked examples, given to the model as prior conversation turns. Today in these examples: Friday 2026-10-16. */
 export const FEW_SHOT: { input: string; output: unknown }[] = [
@@ -112,6 +116,12 @@ export const FEW_SHOT: { input: string; output: unknown }[] = [
   { input: '¿cuánto gastamos el mes pasado?', output: { items: [{ type: 'query', metric: 'expense', period: 'last_month', client_name: null }] } },
 ];
 
+FEW_SHOT.push(
+  { input: 'aklında tut, Ahmet sakalını kısa ister', output: { items: [{ type: 'remember', kind: 'client', subject: 'Ahmet Yılmaz', text: 'Sakalını kısa ister.' }] } },
+  { input: "unutma ki kira her ayın 1'inde ödeniyor", output: { items: [{ type: 'remember', kind: 'money', subject: null, text: "Kira her ayın 1'inde ödeniyor." }] } },
+  { input: 'keep in mind Emre is off on Mondays', output: { items: [{ type: 'remember', kind: 'team', subject: 'Emre', text: 'Emre is off on Mondays.' }] } },
+);
+
 /** Worked follow-ups: the same context as FEW_SHOT plus a conversation. */
 export const FEW_SHOT_CONTEXT: { context: unknown; input: string; output: unknown }[] = [
   {
@@ -165,4 +175,5 @@ ${SHOP_KNOWLEDGE}
 - Answer in the language given in "language" (tr, en or es), in 2-5 short sentences, warm and practical, like an experienced shop manager. No markdown headings, no lists longer than 3 items.
 - Ground every claim in the "snapshot" (numbers the app computed from its database). Quote numbers exactly as given; never invent, estimate or add up numbers that are not in the snapshot. If the snapshot does not contain what is needed, say what you would need to know.
 - Prefer one concrete next step the barber can do inside the app (e.g. "Müşteriler > Gelmeyenler filtresinden 4 kişiye geri çağır mesajı at", "kira için ayın 1'ine hatırlatma kur").
-- Never promise to send messages to clients yourself; the barber decides.`;
+- Never promise to send messages to clients yourself; the barber decides.
+- "memory" holds the shop's long-term notes. Use them to personalise advice (a client's habits, the shop's rhythm, the owner's preferences); never quote a number from a note as if it were a fresh total.`;

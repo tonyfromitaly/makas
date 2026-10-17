@@ -20,5 +20,8 @@ await withSystem(db, async (tx) => {
   // Conversations hold client names and phone numbers; keep them only as long as they are useful.
   const chat = await tx.query(`delete from assistant_turns where created_at < now() - make_interval(days => $1) returning id`, [chatDays]);
   console.log(`retention: removed ${chat.rows.length} assistant turn(s) older than ${chatDays} days`);
+  // Memory notes carry their own expiry (90 days after last confirmed); the API also drops them hourly.
+  const notes = await tx.query('delete from assistant_notes where not pinned and expires_at < now() returning id');
+  console.log(`retention: removed ${notes.rows.length} expired memory note(s)`);
 });
 await db.close();

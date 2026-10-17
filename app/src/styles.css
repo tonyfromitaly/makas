@@ -1843,3 +1843,78 @@ input.narrow {
 .row.wrap {
   flex-wrap: wrap;
 }
+
+/* --- the assistant's memory --- */
+.memory-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.memory-group h3 {
+  margin: 14px 0 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.memory-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.memory-note p {
+  margin: 0;
+}
+.memory-note .grow {
+  flex: 1;
+  min-width: 0;
+}
+.memory-note.pinned p:first-child::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--pole-red);
+  vertical-align: middle;
+}
+.memory-note .tiny {
+  font-size: 0.72rem;
+  margin-top: 3px;
+}
+.icon-btn.small {
+  width: 32px;
+  height: 32px;
+}
+.icon-btn.on {
+  color: var(--pole-red);
+}
+.memory-md {
+  white-space: pre-wrap;
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(127, 127, 127, 0.08);
+  max-height: 60vh;
+  overflow: auto;
+}
+.memory-add .row {
+  display: flex;
+  gap: 8px;
+}
+.memory-add select {
+  flex: 1;
+}

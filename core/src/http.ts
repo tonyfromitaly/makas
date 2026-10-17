@@ -24,7 +24,9 @@ export interface Deps {
   /** LLM that turns a sentence into a Plan (see assistant/plan.ts). Optional: the local engine is the fallback. */
   assistant?(input: AssistantInput): Promise<unknown>;
   /** LLM that answers an open question in words, grounded on a SQL snapshot. Optional: local advice is the fallback. */
-  chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown; history?: Turn[] }): Promise<string>;
+  chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown; history?: Turn[]; memory?: string[] }): Promise<string>;
+  /** LLM that reviews a quiet conversation and edits the long-term notes (core/agent/AGENT.md). Optional. */
+  reflect?(input: { lang: string; shop: string; today: string; notes: { id: string; kind: string; subject: string | null; text: string; source: string }[]; turns: Turn[] }): Promise<unknown>;
 }
 
 export interface AssistantInput {
@@ -38,7 +40,7 @@ export interface AssistantInput {
   barbers: string[];
   clients: string[];
   /** The conversation so far (assistant/memory.ts), when there is one. */
-  context?: { focus: Focus; earlier: string[]; recent: Turn[] };
+  context?: { focus: Focus; earlier: string[]; recent: Turn[]; memory?: string[] };
 }
 
 export interface Config {
