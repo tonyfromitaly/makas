@@ -18,9 +18,12 @@ export function Today() {
   const rel = isToday ? t('today') : date === addDays(todayIn(tz), 1) ? t('tomorrow') : date === addDays(todayIn(tz), -1) ? t('yesterday') : null;
   const s = data?.summary;
   const pct = s && s.expected_cents ? Math.round((s.done_cents / s.expected_cents) * 100) : 0;
+  // The line printed in carbon blue: the next appointment still to come today.
+  const nextId = isToday ? data?.data.find((a: any) => a.status === 'booked')?.id : null;
+  const settled = !!s && s.done > 0 && s.booked === 0;
 
   return (
-    <div className="screen">
+    <div className="screen today">
       <div className="date-nav">
         <button className="icon-btn" onClick={() => setDate(addDays(date, -1))} aria-label="previous day">
           <Icon name="chevL" />
@@ -34,71 +37,85 @@ export function Today() {
         </button>
       </div>
 
-      <section className="till card">
-        <div className="till-main">
+      {/* The day as a till receipt: the takings on top, every appointment a line, a stamp once the day is settled. */}
+      <section className="receipt">
+        <header className="receipt-head">
+          <strong>{t('dayReceipt')}</strong>
+          <span>
+            {me.shop.name} · {DateTime.fromISO(date).setLocale(lang).toFormat('ccc dd.LL.yyyy')} · {data?.data.length ?? 0} {t('receiptAppts')}
+          </span>
+        </header>
+        <hr className="rule" />
+        <div className="till-line">
           <span className="eyebrow">{t('inTheTill')}</span>
           <strong className="numeral big">{fmt(s?.done_cents ?? 0)}</strong>
-        </div>
-        <div className="till-side">
-          <span className="eyebrow">{t('expected')}</span>
-          <span className="numeral">{fmt(s?.expected_cents ?? 0)}</span>
         </div>
         <div className="meter" aria-hidden>
           <span style={{ width: `${pct}%` }} />
         </div>
-        <div className="till-foot">
+        <div className="ledger-line">
+          <span>{t('expected')}</span>
+          <span className="leader" />
+          <span className="numeral">{fmt(s?.expected_cents ?? 0)}</span>
+        </div>
+        <div className="ledger-line">
           <span>
-            {s?.done ?? 0} {t('done').toLocaleLowerCase()} · {s?.booked ?? 0} {t('booked').toLocaleLowerCase()}
-            {s?.missed ? ` · ${s.missed} ${t('missed').toLocaleLowerCase()}` : ''}
+            {s?.done ?? 0} {t('done').toLocaleLowerCase(lang)} · {s?.booked ?? 0} {t('booked').toLocaleLowerCase(lang)}
+            {s?.missed ? ` · ${s.missed} ${t('missed').toLocaleLowerCase(lang)}` : ''}
           </span>
+        </div>
+        <hr className="rule" />
+        <ol className="agenda">
+          {data?.data.map((a: any) => (
+            <li key={a.id} className={`appt status-${a.status} ${a.id === nextId ? 'now' : ''}`}>
+              <button className="appt-btn" onClick={() => setActing(a)}>
+                <time className="appt-time numeral">{timeIn(a.starts_at, tz)}</time>
+                <span className="appt-main">
+                  <span className="appt-client">
+                    {a.client_name}
+                    {a.client_missed > 0 && a.status === 'booked' && (
+                      <span className={`chip risk ${a.client_missed > 1 ? 'high' : ''}`} title={t('risk')}>
+                        <Icon name="flame" size={11} /> {a.client_missed}
+                      </span>
+                    )}
+                    {(a.status === 'missed' || a.status === 'cancelled') && <span className="appt-tag">{t(a.status)}</span>}
+                  </span>
+                  <span className="appt-meta">
+                    {a.service_name} · {a.barber_name}
+                  </span>
+                </span>
+                <span className="appt-end">
+                  <span className="numeral">{fmt(a.price_cents_snapshot)}</span>
+                  <ReminderDots reminders={a.reminders} />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        {data && !data.data.length && (
+          <Empty icon="calendar" text={t('noAppointments')}>
+            <button className="btn" onClick={() => setCreating({})}>
+              {t('addFirst')}
+            </button>
+          </Empty>
+        )}
+        <hr className="rule" />
+        <div className="receipt-foot">
+          {settled ? <span className="stamp inline">{t('dayClosedStamp')}</span> : <span>{t('receiptThanks')}</span>}
           <button className="link-btn" onClick={() => setReport(true)}>
-            <Icon name="check" size={16} /> {t('closeTill')}
+            {t('closeTill')} →
           </button>
         </div>
       </section>
 
       <TasksCard />
 
-      <ol className="agenda">
-        {data?.data.map((a: any) => (
-          <li key={a.id} className={`appt status-${a.status}`}>
-            <button className="appt-btn" onClick={() => setActing(a)}>
-              <time className="appt-time numeral">{timeIn(a.starts_at, tz)}</time>
-              <span className="appt-main">
-                <span className="appt-client">
-                  {a.client_name}
-                  {a.client_missed > 0 && a.status === 'booked' && (
-                    <span className={`chip risk ${a.client_missed > 1 ? 'high' : ''}`} title={t('risk')}>
-                      <Icon name="flame" size={12} /> {a.client_missed}
-                    </span>
-                  )}
-                </span>
-                <span className="appt-meta">
-                  {a.service_name} · {a.barber_name}
-                </span>
-              </span>
-              <span className="appt-end">
-                <span className="numeral">{fmt(a.price_cents_snapshot)}</span>
-                <ReminderDots reminders={a.reminders} />
-              </span>
-            </button>
-          </li>
-        ))}
-      </ol>
-      {data && !data.data.length && (
-        <Empty icon="calendar" text={t('noAppointments')}>
-          <button className="btn" onClick={() => setCreating({})}>
-            {t('addFirst')}
-          </button>
-        </Empty>
-      )}
-
       <div className="fab-row">
         <button className="fab ghost" onClick={() => openAssistant(true)} aria-label={t('speak')}>
-          <Icon name="mic" size={22} />
+          <Icon name="mic" size={20} />
         </button>
         <button className="fab" onClick={() => setCreating({})} aria-label={t('newAppointment')}>
-          <Icon name="plus" size={24} />
+          <Icon name="plus" size={20} /> {t('appointmentShort')}
         </button>
       </div>
 

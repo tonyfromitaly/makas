@@ -35,6 +35,13 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
   const [busy, setBusy] = useState(false);
   const [lists, setLists] = useState<{ services: any[]; barbers: any[] }>();
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [pins, setPins] = useState<{ id: string; text: string; subject: string | null }[]>([]);
+  // A few notes from the memory, stuck above the conversation like papers on the mirror.
+  const loadPins = () =>
+    api
+      .get(`/assistant/notes?lang=${lang}`)
+      .then((r) => setPins(r.data.filter((n: any) => n.source !== 'data').slice(0, 3)))
+      .catch(() => {});
   const end = useRef<HTMLDivElement>(null);
 
   const push = (m: Omit<Msg, 'id' | 'at'>) =>
@@ -57,6 +64,7 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
     Promise.all([api.get('/services?page_size=200'), api.get('/barbers?page_size=200')])
       .then(([s, b]) => setLists({ services: s.data, barbers: b.data }))
       .catch(fail);
+    loadPins();
     if (loaded) return;
     loaded = true;
     api
@@ -101,6 +109,7 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
     try {
       const r = await api.post('/assistant', { text: s, lang });
       push({ role: 'assistant', text: r.reply, drafts: r.drafts, engine: r.engine });
+      if (r.understood?.some((i: any) => i.type === 'remember' || i.type === 'forget')) loadPins();
     } catch (e) {
       fail(e);
     } finally {
@@ -119,7 +128,7 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
 
   return (
     <div className="screen assistant">
-      <MemorySheet open={memoryOpen} onClose={() => setMemoryOpen(false)} />
+      <MemorySheet open={memoryOpen} onClose={() => (setMemoryOpen(false), loadPins())} />
       <div className="assistant-hero">
         <span className={`orb ${busy || speech.listening ? 'busy' : ''}`} aria-hidden />
         <div className="grow">
@@ -135,6 +144,14 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
           </button>
         )}
       </div>
+
+      {!!pins.length && (
+        <button className="pin-notes" onClick={() => setMemoryOpen(true)} aria-label={t('memoryTitle')}>
+          {pins.map((n) => (
+            <span key={n.id}>{n.text}</span>
+          ))}
+        </button>
+      )}
 
       <div className="chat">
         {msgs.map((m, i) => (
