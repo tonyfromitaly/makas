@@ -14,7 +14,8 @@
     "mail:check": "tsx src/scripts/mail-check.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "ai:stress": "tsx src/scripts/ai-stress.ts"
+    "ai:stress": "tsx src/scripts/ai-stress.ts",
+    "rontgen": "tsx src/scripts/rontgen.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.15",
