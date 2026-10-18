@@ -2,24 +2,37 @@
 // "1.250,50" or "1250.50", "15.10.2023" or "2023-10-15", one amount column or borç/alacak pairs.
 // Anything it cannot read is reported, never guessed.
 import { fold } from '../parse/text';
-import type { Kayit, Tur } from './kayit';
+import { kategoriAnahtari, type Kayit, type Tur } from './kayit';
 
 export interface IceAktarim {
   kayitlar: Kayit[];
-  rapor: { satir: number; okunan: number; atlanan: { satir: number; sebep: string }[]; eslesen: Record<string, string>; donem: [string, string] | null; eksikAylar: string[] };
+  rapor: {
+    satir: number;
+    okunan: number;
+    atlanan: { satir: number; sebep: string }[];
+    eslesen: Record<string, string>;
+    donem: [string, string] | null;
+    eksikAylar: string[];
+    paraBirimleri: string[];
+    iade: number;
+    atlananSayi: number;
+  };
 }
 
 const ALAN: Record<string, string[]> = {
   tarih: ['tarih', 'date', 'islem tarihi', 'fatura tarihi', 'fecha'],
   tur: ['tur', 'tip', 'type', 'islem turu', 'gelir gider'],
   kategori: ['kategori', 'category', 'hesap', 'gider turu', 'gelir turu'],
-  kalem: ['kalem', 'hizmet', 'urun', 'item', 'service', 'product'],
+  kalem: ['kalem', 'hizmet', 'urun', 'urun adi', 'item', 'service', 'product', 'description'],
   adet: ['adet', 'miktar', 'qty', 'quantity'],
+  birim: ['birimfiyat', 'birim fiyat', 'fiyat', 'unit price', 'unitprice', 'price'],
+  karsi: ['tedarikci', 'musteri', 'cari', 'firma', 'vendor', 'vendor name', 'supplier', 'customer', 'customer id', 'karsi taraf'],
+  para: ['parabirimi', 'para birimi', 'doviz', 'currency'],
   tutar: ['tutar', 'amount', 'toplam', 'tutar tl', 'tutar (tl)', 'total', 'importe'],
   borc: ['borc', 'cikan', 'debit', 'gider tutari'],
   alacak: ['alacak', 'giren', 'credit', 'gelir tutari'],
   odeme: ['odeme', 'odeme sekli', 'payment', 'odeme turu'],
-  aciklama: ['aciklama', 'description', 'not', 'note', 'detay'],
+  aciklama: ['aciklama', 'not', 'note', 'detay', 'memo'],
 };
 
 function splitLine(line: string, sep: string) {
@@ -63,8 +76,10 @@ export function tarih(s: string): string | null {
   return null;
 }
 
+const IADE = /iade|return|refund|devolucion/;
 const turOku = (s: string): Tur | null => {
   const f = fold(s);
+  if (IADE.test(f)) return 'gelir';
   if (/gelir|giris|income|alacak|satis|tahsilat|ingreso/.test(f)) return 'gelir';
   if (/cekis|sahip|ozel|withdraw|draw/.test(f)) return 'cekis';
   if (/gider|cikis|expense|borc|odeme|gasto/.test(f)) return 'gider';
@@ -84,6 +99,7 @@ export function csvOku(text: string): IceAktarim {
   }
   const atlanan: { satir: number; sebep: string }[] = [];
   const kayitlar: Kayit[] = [];
+  let iade = 0;
   if (idx.tarih === undefined) atlanan.push({ satir: 1, sebep: 'Tarih sütunu bulunamadı' });
   if (idx.tutar === undefined && idx.borc === undefined && idx.alacak === undefined) atlanan.push({ satir: 1, sebep: 'Tutar sütunu bulunamadı' });
 
@@ -102,21 +118,35 @@ export function csvOku(text: string): IceAktarim {
       if (a) (tutar = a), (tur ??= 'gelir');
       else if (b) (tutar = b), (tur ??= 'gider');
     }
+    if ((tutar === null || tutar === 0) && idx.birim !== undefined && idx.adet !== undefined) {
+      const b = sayi(c[idx.birim] ?? '');
+      const a = sayi(c[idx.adet] ?? '');
+      if (b !== null && a !== null) tutar = Math.round(a * b * 100) / 100;
+    }
     if (tutar === null || tutar === 0) {
       atlanan.push({ satir: li + 1, sebep: 'Tutar okunamadı' });
       continue;
     }
     if (!tur) tur = tutar < 0 ? 'gider' : 'gelir';
-    const kat = idx.kategori !== undefined ? fold(c[idx.kategori] ?? '').replace(/[^a-z_]/g, '') : '';
+    // A return (iade) is income going back: it lowers the takings.
+    if (idx.tur !== undefined && IADE.test(fold(c[idx.tur] ?? ''))) tutar = -Math.abs(tutar);
+    // Negative amounts on an income line are returns; they lower the takings of that month.
+    if (tur === 'gelir' && tutar < 0) iade++;
+    const katHam = idx.kategori !== undefined ? (c[idx.kategori] ?? '').trim() : '';
     const odeme = idx.odeme !== undefined ? fold(c[idx.odeme] ?? '') : '';
+    const para = idx.para !== undefined ? (c[idx.para] ?? '').trim().toUpperCase() : '';
     kayitlar.push({
       tarih: t,
       tur,
-      tutar: Math.abs(tutar),
-      kategori: kat || (tur === 'gelir' ? 'hizmet' : 'diger'),
+      tutar: tur === 'gelir' ? tutar : Math.abs(tutar),
+      kategori: kategoriAnahtari(katHam, tur),
+      kategoriAdi: katHam || undefined,
+      karsiTaraf: idx.karsi !== undefined ? (c[idx.karsi] ?? '').trim() || undefined : undefined,
+      para: para || undefined,
       kalem: idx.kalem !== undefined ? c[idx.kalem] || undefined : undefined,
       adet: idx.adet !== undefined ? sayi(c[idx.adet] ?? '') ?? undefined : undefined,
-      odeme: /kart|card|pos|kredi/.test(odeme) ? 'kart' : odeme ? 'nakit' : undefined,
+      // "Bilinmiyor", "unknown" or empty: not known, and not assumed to be cash.
+      odeme: /kart|card|pos|kredi/.test(odeme) ? 'kart' : /nakit|cash|efectivo/.test(odeme) ? 'nakit' : undefined,
       aciklama: idx.aciklama !== undefined ? c[idx.aciklama] || undefined : undefined,
     });
   }
@@ -134,7 +164,18 @@ export function csvOku(text: string): IceAktarim {
   }
   return {
     kayitlar,
-    rapor: { satir: lines.length - 1, okunan: kayitlar.length, atlanan, eslesen, donem: months.length ? [months[0], months[months.length - 1]] : null, eksikAylar },
+    rapor: {
+      satir: lines.length - 1,
+      okunan: kayitlar.length,
+      // Long lists of unreadable lines are summarised to their first 50.
+      atlanan: atlanan.slice(0, 50),
+      eslesen,
+      donem: months.length ? [months[0], months[months.length - 1]] : null,
+      eksikAylar,
+      paraBirimleri: [...new Set(kayitlar.map((k) => k.para ?? 'TRY'))],
+      iade,
+      atlananSayi: atlanan.length,
+    },
   };
 }
 
