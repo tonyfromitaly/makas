@@ -32,3 +32,4 @@ export { SABLONLAR, SISTEMLER, DERTLER, MODULLER, CALISMA, GIZLILIK, type Sablon
 export { squareBaglanti, squareEsitle, rontgenVerisi, sifrele, coz, type SquareAyar, type EsitlemeOzeti } from './baglanti/esitle';
 export { squareDefter, squareAuthorizeUrl, SQUARE_SCOPES, type SquareHam } from './baglanti/square';
 export { musteriBulgulari, type RandevuKaydi } from './rontgen/musteri';
+export { squareSimulasyon } from './baglanti/square-simulasyon';

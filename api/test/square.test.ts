@@ -124,6 +124,16 @@ describe('square → ledger', () => {
   });
 });
 
+describe('square → ledger, people', () => {
+  it('keeps two customers with the same name apart', () => {
+    const h = salon();
+    h.customers[1].family_name = h.customers[0].family_name; // two "Müşteri 1"
+    const { kayitlar } = squareDefter(h, new Date('2026-10-15T12:00:00Z'));
+    const who = new Set(kayitlar.filter((k) => k.karsiTaraf?.startsWith('Müşteri 1 ')).map((k) => k.karsiTaraf));
+    expect([...who].sort()).toEqual(['Müşteri 1 (c1)', 'Müşteri 1 (c2)']);
+  });
+});
+
 describe('square connection', () => {
   async function connected() {
     const baglanti: any = {};

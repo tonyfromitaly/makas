@@ -77,3 +77,21 @@ okunur ve bizim tek defterimize çevrilir.
 - **Randevu izni:** Randevuları okumak için satıcı tarafında randevu verisine erişim gerekiyor. İzin
   yoksa satışlar ve müşteriler yine okunur, randevular boş kalır ve Röntgen bunu "yapılamayanlar"
   listesine yazar.
+
+## Sandbox verisi
+
+Square sipariş ve ödemelerin tarihini kendisi atıyor; geçmişe tarih yazılamıyor. Bu yüzden iki araç var:
+
+- `npm run square:seed -w api`: Test satıcısına bugünlük dolu bir gün yazar:
+  - katalog: 5 hizmet, 2 ürün
+  - 24 müşteri
+  - 26 satış (kartla ve nakit, kartlılarda bahşiş)
+  - 1 iade
+
+  Yazma izinli bir sandbox anahtarı gerekir: Developer Console → uygulama → **OAuth** → **Authorize
+  test account** → bağlanan test satıcısını seç → `CUSTOMERS_WRITE`, `ORDERS_WRITE`, `PAYMENTS_WRITE`,
+  `ITEMS_WRITE` (ve okuma) izinlerini işaretle → çıkan erişim anahtarını `.env` içindeki
+  `SQUARE_SEED_TOKEN` satırına yaz. Betik canlı ortamda çalışmayı reddeder.
+- `npm run square:sim -w api`: Square biçiminde 3 aylık simüle bir dükkânı gerçek bağlantıyla aynı
+  yoldan (squareDefter → Röntgen) geçirir ve `rontgen/square-simulasyon.html` raporunu yazar. Raporun
+  üstünde simülasyon olduğu yazar.

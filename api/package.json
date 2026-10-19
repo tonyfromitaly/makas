@@ -15,7 +15,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "ai:stress": "tsx src/scripts/ai-stress.ts",
-    "rontgen": "tsx src/scripts/rontgen.ts"
+    "rontgen": "tsx src/scripts/rontgen.ts",
+    "square:sim": "tsx src/scripts/square-simulasyon.ts",
+    "square:seed": "tsx src/scripts/square-seed.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.15",

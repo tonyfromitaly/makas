@@ -189,9 +189,11 @@ const DURUM: Record<string, SquareRandevu['durum']> = {
 export function squareDefter(h: SquareHam, now: Date): { kayitlar: SquareKayit[]; musteriler: SquareMusteri[]; randevular: SquareRandevu[] } {
   const tz = new Map<string, string>(h.locations.map((l) => [l.id, l.timezone || 'UTC']));
   const day = (iso: string, loc?: string) => DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz.get(loc ?? '') ?? 'UTC').toISODate()!;
-  const names = new Map<string, string>(
-    h.customers.map((c) => [c.id, [c.given_name, c.family_name].filter(Boolean).join(' ') || c.company_name || c.email_address || c.id]),
-  );
+  // Two different "Mike Johnson"s must stay two people: namesakes get the end of their Square id.
+  const base = new Map<string, string>(h.customers.map((c) => [c.id, [c.given_name, c.family_name].filter(Boolean).join(' ') || c.company_name || c.id]));
+  const seen = new Map<string, number>();
+  for (const n of base.values()) seen.set(n, (seen.get(n) ?? 0) + 1);
+  const names = new Map<string, string>([...base].map(([id, n]) => [id, seen.get(n)! > 1 ? `${n} (${id.slice(-4)})` : n]));
   const service = new Set<string>();
   for (const it of h.items) {
     const d = it.item_data ?? {};

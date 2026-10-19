@@ -42,7 +42,7 @@ export interface Rontgen {
     toplamGelir: number;
     toplamGider: number;
   };
-  aylik: { ay: string; gelir: number; gider: number; cekis: number; gelirReel: number; giderReel: number; kasa: number | null }[];
+  aylik: { ay: string; gelir: number; gider: number; cekis: number; gelirReel: number; giderReel: number; kasa: number | null; eksik?: boolean }[];
   bulgular: Bulgu[];
   /** Analyses this data could not support, and why. */
   yapilamayan: string[];
@@ -56,6 +56,7 @@ type MonthAgg = {
   kart: number;
   adet: number;
   pos: number;
+  ilkGun: number;
   sonGun: number;
   kat: Map<string, number>;
   katAdi: Map<string, number>;
@@ -108,8 +109,9 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   for (const k of kayitlar) {
     const m = k.tarih.slice(0, 7);
     let a = M.get(m);
-    if (!a) M.set(m, (a = { gelir: 0, gider: 0, cekis: 0, kart: 0, adet: 0, pos: 0, sonGun: 0, kat: new Map(), katAdi: new Map() }));
+    if (!a) M.set(m, (a = { gelir: 0, gider: 0, cekis: 0, kart: 0, adet: 0, pos: 0, ilkGun: 31, sonGun: 0, kat: new Map(), katAdi: new Map() }));
     a.sonGun = Math.max(a.sonGun, Number(k.tarih.slice(8, 10)));
+    a.ilkGun = Math.min(a.ilkGun, Number(k.tarih.slice(8, 10)));
     if (k.tur === 'gelir') {
       a.gelir += k.tutar;
       if (k.odeme === 'kart') a.kart += k.tutar;
@@ -173,7 +175,9 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   const aylik = months.map((m) => {
     const a = g(m);
     kasa += a.gelir - a.gider - a.cekis;
-    return { ay: m, gelir: a.gelir, gider: a.gider, cekis: a.cekis, gelirReel: real(a.gelir, m), giderReel: real(a.gider, m), kasa: kasaBilinir ? kasa : null };
+    // A first month that starts late or a last month that ends early is a part month: drawn apart, never read as a dip.
+    const eksik = months.length > 1 && ((m === months[0] && a.ilkGun > 5) || (m === months[months.length - 1] && a.sonGun < 25));
+    return { ay: m, gelir: a.gelir, gider: a.gider, cekis: a.cekis, gelirReel: real(a.gelir, m), giderReel: real(a.gider, m), kasa: kasaBilinir ? kasa : null, eksik };
   });
 
   const toplamGelir = sum(months.map((m) => g(m).gelir));
@@ -186,6 +190,8 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
 
   if (!gelirVar) yapilamayan.push('Gelir kaydı yok: ciro, fiyat, başabaş ve kâr bulguları çalışmadı.');
   if (!giderVar) yapilamayan.push('Gider kaydı yok: gider, başabaş ve nakit takvimi bulguları çalışmadı.');
+  else if (kayitlar.every((k) => k.tur !== 'gider' || k.kategori === 'pos'))
+    yapilamayan.push('Giderlerin tamamı kart işlem ücretleri: kira, maaş, malzeme gibi giderler için banka hesabını ya da muhasebe programını bağla; başabaş ve nakit takvimi ancak o zaman çalışır.');
   if (!kasaBilinir && donemTipi === 'ay') yapilamayan.push('Kasa ve banka bakiyesi verilmedi: nakit ömrü hesaplanmadı.');
   if (!cekisVar && gelirVar && giderVar && donemTipi === 'ay') yapilamayan.push('Sahibin çektiği para ayrı kayıtlı değil: "kazandığından fazla çekiyorsun" bulgusu test edilemedi.');
 
@@ -483,7 +489,8 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       .sort((a, b) => b.t - a.t);
     const top = sum(v12.slice(0, 5).map((x) => x.t));
     const tum12 = sum(v12.map((x) => x.t));
-    if (tum12 > 0 && (v12[0].t / tum12 > 0.2 || top / tum12 > 0.5)) {
+    // Concentration only means something with several suppliers (a card processor alone is not one).
+    if (tum12 > 0 && v12.length >= 5 && (v12[0].t / tum12 > 0.2 || top / tum12 > 0.5)) {
       bulgular.push({
         id: 'tedarikci',
         baslik: 'Giderler birkaç tedarikçide toplanıyor',
@@ -538,7 +545,8 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   const gelir3 = avg3((a) => a.gelir);
   const cekis3 = avg3((a) => a.cekis);
   const sabitBilinir = sabit > 0;
-  if (gelirVar && giderVar && !sabitBilinir) yapilamayan.push('Giderler sabit ve değişken diye ayrılamadı (kategori eşleştirmesi gerekiyor): başabaş hesaplanmadı.');
+  const yalnizPos = kayitlar.every((k) => k.tur !== 'gider' || k.kategori === 'pos');
+  if (gelirVar && giderVar && !sabitBilinir && !yalnizPos) yapilamayan.push('Giderler sabit ve değişken diye ayrılamadı (kategori eşleştirmesi gerekiyor): başabaş hesaplanmadı.');
   const basabasCiro = gelirVar && sabitBilinir ? sabit / Math.max(0.05, 1 - degisken / Math.max(1, gelir3)) : null;
   const basabasGunu = basabasCiro !== null ? Math.min(31, Math.ceil((basabasCiro / Math.max(1, gelir3)) * 30)) : null;
   const kasaSon = kasaBilinir ? aylik[aylik.length - 1].kasa! : null;

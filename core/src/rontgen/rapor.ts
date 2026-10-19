@@ -18,7 +18,21 @@ function grafik(r: Rontgen) {
   const kisa = (v: number) => (v >= 1e9 ? `${Math.round(v / 1e9)}mr` : v >= 1e6 ? `${Math.round(v / 1e6)}m` : `${Math.round(v / 1000)}b`);
   const x = (i: number) => P.l + (i * (W - P.l - P.r)) / Math.max(1, xs.length - 1);
   const y = (v: number) => H - P.b - (v / max) * (H - P.t - P.b);
-  const path = (f: (a: (typeof xs)[number]) => number) => xs.map((a, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(f(a)).toFixed(1)}`).join(' ');
+  // Whole months are one line; a part month at either end joins it with a dotted stub, labelled.
+  const tam = xs.map((a, i) => ({ a, i })).filter(({ a }) => !a.eksik);
+  const path = (f: (a: (typeof xs)[number]) => number) => tam.map(({ a, i }, j) => `${j ? 'L' : 'M'}${x(i).toFixed(1)},${y(f(a)).toFixed(1)}`).join(' ');
+  const stub = (f: (a: (typeof xs)[number]) => number) =>
+    xs
+      .map((a, i) => ({ a, i }))
+      .filter(({ a }) => a.eksik)
+      .map(({ a, i }) => {
+        const k = i === 0 ? 1 : i - 1;
+        if (!xs[k] || xs[k].eksik) return '';
+        return `<path d="M${x(k).toFixed(1)},${y(f(xs[k])).toFixed(1)} L${x(i).toFixed(1)},${y(f(a)).toFixed(1)}" class="eksik"/><text x="${x(i)}" y="${y(f(a)) - 8}" class="ax" text-anchor="${i === 0 ? 'start' : 'end'}">eksik ay</text>`;
+      })
+      .join('');
+  const AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+  const kisaDonem = xs.length <= 12 && r.donemTipi === 'ay';
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => max * t);
   const yillik = r.donemTipi === 'yil';
   const yearMarks = xs
@@ -26,9 +40,14 @@ function grafik(r: Rontgen) {
     .filter(({ a, i }) => (yillik ? true : a.ay.endsWith('-01') || (i === 0 && !xs.slice(1, 4).some((x) => x.ay.endsWith('-01')))));
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Aylık ciro: o günkü fiyatlarla ve bugünün parasıyla">
     ${ticks.map((v) => `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" class="g"/><text x="${P.l - 8}" y="${y(v) + 4}" class="ax" text-anchor="end">${kisa(v)}</text>`).join('')}
-    ${yearMarks.map(({ a, i }) => `<line x1="${x(i)}" x2="${x(i)}" y1="${P.t}" y2="${H - P.b}" class="g y"/><text x="${x(i)}" y="${H - 12}" class="ax" text-anchor="middle">${a.ay.slice(0, 4)}</text>`).join('')}
+    ${
+      kisaDonem
+        ? xs.map((a, i) => `<text x="${x(i)}" y="${H - 12}" class="ax" text-anchor="middle">${AY[Number(a.ay.slice(5)) - 1]}</text>`).join('')
+        : yearMarks.map(({ a, i }) => `<line x1="${x(i)}" x2="${x(i)}" y1="${P.t}" y2="${H - P.b}" class="g y"/><text x="${x(i)}" y="${H - 12}" class="ax" text-anchor="middle">${a.ay.slice(0, 4)}</text>`).join('')
+    }
     ${r.kaynak ? `<path d="${path((a) => a.gelirReel)}" class="real"/>` : ''}
     <path d="${path((a) => a.gelir)}" class="${r.kaynak ? 'nom' : 'real'}"/>
+    ${stub((a) => a.gelir)}
   </svg>`;
 }
 
@@ -43,7 +62,10 @@ export function raporHtml(r: Rontgen, ice?: IceAktarim['rapor']) {
     ? { lbl: `${birim === 'ay' ? 'Ayda' : 'Yılda'} geri kazanılabilecek para`, big: `~${tl(r.geriKazanilabilir)}`, alt: `Aşağıdaki ${dahil.length} düzeltmenin toplamı.${r.kaynak ? ` Tutarlar ${ayAdi(r.donem.fiyatAyi)} parasıyla.` : ''}` }
     : { lbl: 'En önemli bulgu', big: r.bulgular[0] ? esc(r.bulgular[0].baslik) : 'Belirgin bir sorun bulunmadı', alt: r.bulgular[0] ? esc(r.bulgular[0].ozet) : '' };
   const tiles: string[] = [];
-  if (gelirli) tiles.push(`<div class="tile"><span class="lbl">${r.kaynak ? 'Gerçek büyüme' : 'Büyüme'}</span><b class="${(o.reelBuyume ?? o.nominalBuyume ?? 0) < 0 ? 'neg' : 'pos'}">${yuzde(o.reelBuyume ?? o.nominalBuyume)}</b><small>${r.kaynak && o.nominalBuyume !== null ? `görünen ${yuzde(o.nominalBuyume)}` : r.donemTipi === 'yil' ? `${r.donem.bas.slice(0, 4)} → ${r.donem.son.slice(0, 4)}` : 'son 12 ay'}</small></div>`);
+  const tamAylar = r.aylik.filter((a) => !a.eksik);
+  if (gelirli && o.reelBuyume === null && o.nominalBuyume === null && tamAylar.length)
+    tiles.push(`<div class="tile"><span class="lbl">Aylık gelir</span><b>${tl(tamAylar.reduce((s, a) => s + a.gelir, 0) / tamAylar.length)}</b><small>tam ${tamAylar.length} ayın ortalaması</small></div>`);
+  else if (gelirli) tiles.push(`<div class="tile"><span class="lbl">${r.kaynak ? 'Gerçek büyüme' : 'Büyüme'}</span><b class="${(o.reelBuyume ?? o.nominalBuyume ?? 0) < 0 ? 'neg' : 'pos'}">${yuzde(o.reelBuyume ?? o.nominalBuyume)}</b><small>${r.kaynak && o.nominalBuyume !== null ? `görünen ${yuzde(o.nominalBuyume)}` : r.donemTipi === 'yil' ? `${r.donem.bas.slice(0, 4)} → ${r.donem.son.slice(0, 4)}` : 'son 12 ay'}</small></div>`);
   tiles.push(`<div class="tile"><span class="lbl">${gelirli ? 'Toplam gelir' : 'Toplam gider'}</span><b>${tl(gelirli ? o.toplamGelir : o.toplamGider)}</b><small>${r.donem.ay} ${birim === 'ay' ? 'ay' : 'kayıt ayı'}</small></div>`);
   if (o.kasa !== null) tiles.push(`<div class="tile"><span class="lbl">Kasa</span><b>${tl(o.kasa)}</b><small>${o.nakitOmruGun !== null ? `${o.nakitOmruGun} gün dayanır` : ''}</small></div>`);
   if (o.basabasCiro !== null) tiles.push(`<div class="tile"><span class="lbl">Başabaş</span><b>${tl(o.basabasCiro)}</b><small>ayın ${o.basabasGunu}. gününde</small></div>`);
@@ -74,7 +96,7 @@ hr{border:0;border-top:2px dashed rgba(29,36,51,.35);margin:26px 0}
 .tile b{display:block;font:800 1.45rem 'JetBrains Mono',monospace;margin-top:4px;letter-spacing:-.02em}
 .tile small{color:var(--ink3);font-size:.78rem}
 .neg{color:var(--stamp)}.pos{color:var(--pos)}
-svg{width:100%;height:auto;margin-top:10px}.g{stroke:rgba(29,36,51,.12)}.g.y{stroke-dasharray:3 4}.ax{font:400 11px 'JetBrains Mono',monospace;fill:#636b7b}
+svg{width:100%;height:auto;margin-top:10px}.eksik{fill:none;stroke:#636b7b;stroke-width:2;stroke-dasharray:2 5}.g{stroke:rgba(29,36,51,.12)}.g.y{stroke-dasharray:3 4}.ax{font:400 11px 'JetBrains Mono',monospace;fill:#636b7b}
 .nom{fill:none;stroke:#9aa1ad;stroke-width:2.2;stroke-dasharray:6 5}.real{fill:none;stroke:var(--ink);stroke-width:3}
 .legend{display:flex;gap:18px;font:400 .76rem 'JetBrains Mono',monospace;color:var(--ink3);text-transform:uppercase;margin-top:4px}
 .legend i{display:inline-block;width:22px;border-top:3px solid var(--ink);vertical-align:middle;margin-right:6px}.legend i.n{border-top:2px dashed #9aa1ad}
