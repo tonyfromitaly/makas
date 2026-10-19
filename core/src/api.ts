@@ -9,6 +9,7 @@ import { appointmentRoutes } from './routes/appointments';
 import { moneyRoutes } from './routes/money';
 import { adminRoutes, workerRoutes } from './routes/worker';
 import { assistantRoutes } from './routes/assistant';
+import { connectionRoutes } from './routes/connections';
 
 export interface ApiRequest {
   method: string;
@@ -26,6 +27,7 @@ export interface ApiResponse {
 
 export const routes: Route[] = [
   ...authRoutes,
+  ...connectionRoutes,
   ...shopRoutes,
   ...clientRoutes,
   ...appointmentRoutes,
@@ -105,7 +107,21 @@ export function createApi(opts: { db: Database; config: Config; deps: Deps; log?
             throw new ApiError(402, 'SUBSCRIPTION_INACTIVE', 'Subscription is not active');
           return route.handler({ ...base, db, shopId: claims.shop, userId: user.id, role: user.role }, input);
         };
-        result = route.system ? await withSystem(opts.db, run) : await withTenant(opts.db, claims.shop, run);
+        if (route.outside) {
+          // Checks in a short transaction, then the handler runs free of it.
+          const shop = claims.shop;
+          const tenantDb = { query: (sql: string, params?: unknown[]) => withTenant(opts.db, shop, (tx) => tx.query(sql, params)) } as Ctx['db'];
+          let checked: { id: string; role: Ctx['role'] } | null = null;
+          await withTenant(opts.db, shop, async (db) => {
+            const user = (await db.query('select id, role from users where id = $1 and shop_id = $2', [claims.sub, shop])).rows[0];
+            if (!user) throw unauthorized('Account no longer exists');
+            if (route.ownerOnly && user.role !== 'owner') throw forbidden('Only the shop owner can do this');
+            if (route.gated && isLocked(await loadSubscription(db, shop), now)) throw new ApiError(402, 'SUBSCRIPTION_INACTIVE', 'Subscription is not active');
+            checked = user;
+          });
+          const u = checked as unknown as { id: string; role: Ctx['role'] };
+          result = await route.handler({ ...base, db: tenantDb, shopId: shop, userId: u.id, role: u.role }, input);
+        } else result = route.system ? await withSystem(opts.db, run) : await withTenant(opts.db, claims.shop, run);
       }
 
       if (result instanceof Res) return { status: result.status, body: result.body };

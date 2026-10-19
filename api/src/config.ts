@@ -60,6 +60,12 @@ export const env = {
   twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? '',
   twilioFrom: process.env.TWILIO_FROM ?? '',
+  // Square connection (docs/square-baglantisi.md): the app's id and secret from developer.squareup.com.
+  squareAppId: process.env.SQUARE_APP_ID ?? '',
+  squareAppSecret: process.env.SQUARE_APP_SECRET ?? '',
+  squareEnv: (process.env.SQUARE_ENV === 'production' ? 'production' : 'sandbox') as 'production' | 'sandbox',
+  /** Encrypts stored connection tokens. Required in production once a connection is configured. */
+  connectionSecret: process.env.CONNECTION_SECRET ?? '',
   /** "true": reminders are printed and marked sent, nothing leaves the machine. Never in production. */
   senderDryRun: process.env.SENDER_DRY_RUN === 'true',
 };

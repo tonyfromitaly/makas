@@ -27,6 +27,15 @@ export interface Deps {
   chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown; history?: Turn[]; memory?: string[] }): Promise<string>;
   /** LLM that reviews a quiet conversation and edits the long-term notes (core/agent/AGENT.md). Optional. */
   reflect?(input: { lang: string; shop: string; today: string; notes: { id: string; kind: string; subject: string | null; text: string; source: string }[]; turns: Turn[] }): Promise<unknown>;
+  /** Connections to the systems a business already uses. Set by the server when configured. */
+  baglanti?: {
+    square?: {
+      yetkiUrl(state: string): string;
+      bagla(shopId: string, code: string): Promise<{ merchant: string }>;
+      esitle(shopId: string): Promise<{ kayit: number; musteri: number; randevu: number; gun: number; bas: string; son: string }>;
+      kopar(shopId: string): Promise<void>;
+    };
+  };
 }
 
 export interface AssistantInput {
@@ -90,6 +99,11 @@ export interface Route {
   ownerOnly?: boolean;
   /** Handler gets a system transaction (still authenticated, must filter by ctx.shopId itself). */
   system?: boolean;
+  /**
+   * No transaction around the handler: for routes that wait on the network (connections). Each ctx.db
+   * query runs in its own short tenant transaction, so row-level security still applies.
+   */
+  outside?: boolean;
   body?: z.ZodTypeAny;
   query?: z.ZodTypeAny;
   handler(ctx: Ctx, input: Input): Promise<unknown | Result>;

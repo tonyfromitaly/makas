@@ -5,6 +5,7 @@
 import { DEGISKEN, KATEGORI_ADI, SABIT, type Kayit } from './kayit';
 import { enflasyon } from './enflasyon';
 import { ek, yuzdeEk } from './ek';
+import { musteriBulgulari, type RandevuKaydi } from './musteri';
 
 export interface Bulgu {
   id: string;
@@ -88,7 +89,7 @@ export function paraBicim(para: string) {
 const pct = (n: number) => `%${Math.round(n * 100).toLocaleString('tr-TR')}`;
 const pct1 = (n: number) => `%${(n * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`;
 
-export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; para?: string }): Rontgen {
+export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; para?: string; randevular?: RandevuKaydi[] }): Rontgen {
   // One currency per X-ray: the most common one unless told.
   const sayim = new Map<string, number>();
   for (const k of tum) sayim.set(k.para ?? 'TRY', (sayim.get(k.para ?? 'TRY') ?? 0) + 1);
@@ -581,6 +582,9 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     });
   }
 
+  const insan = musteriBulgulari(kayitlar, opts.randevular, tl);
+  bulgular.push(...insan.bulgular);
+  yapilamayan.push(...insan.yapilamayan);
   bulgular.sort((a, b) => ciddiyetSira[a.ciddiyet] - ciddiyetSira[b.ciddiyet] || b.aylikEtki - a.aylikEtki);
   const t12 = new Map<string, number>();
   for (const m of last12) for (const [k, v] of g(m).katAdi) t12.set(k, (t12.get(k) ?? 0) + v);

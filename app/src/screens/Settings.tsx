@@ -4,6 +4,7 @@ import { Field, Icon } from '../components/ui';
 import { dateLabel, toCents } from '../format';
 import { SupportChat } from '../components/SupportChat';
 import { ManagePlan } from '../components/ManagePlan';
+import { Connections } from '../components/Connections';
 import type { Lang } from '../i18n';
 import { ACCENTS, SKINS, applyLook, isDark, loadLook, saveLook, type Look as LookT } from '../theme';
 
@@ -93,6 +94,7 @@ export function Settings() {
         </section>
       )}
 
+      {isOwner && <Connections />}
       <Catalog kind="services" />
       <Catalog kind="barbers" />
       <SupportChat />

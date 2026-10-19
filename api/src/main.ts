@@ -1,4 +1,4 @@
-import { migrate, runMemoryUpkeep, seedDemo } from '@makas/core';
+import { migrate, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
 import { env, loadConfig } from './config';
 import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
@@ -24,12 +24,20 @@ if (!env.isProd) {
 }
 console.log(env.aiApiKey ? `assistant: ${env.aiModel} via ${env.aiBaseUrl}` : 'assistant: built-in rule engine (set AI_API_KEY in .env for DeepSeek)');
 const llm = { url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel };
+// Square: on when the app id and secret are set. Stored tokens are encrypted with CONNECTION_SECRET.
+const squareOn = !!(env.squareAppId && env.squareAppSecret);
+if (squareOn && env.isProd && env.connectionSecret.length < 32) throw new Error('CONNECTION_SECRET (32+ characters) is required when Square is configured');
+const square = squareOn
+  ? squareBaglanti(db, { env: env.squareEnv, clientId: env.squareAppId, clientSecret: env.squareAppSecret, secret: env.connectionSecret || config.jwtSecret }, () => new Date())
+  : undefined;
+console.log(`connections: ${squareOn ? `square (${env.squareEnv})` : 'off (set SQUARE_APP_ID and SQUARE_APP_SECRET)'}`);
 const deps = {
   ...argon2Deps,
   parseNote: parseServiceClient(env.parseServiceUrl, env.parseServiceKey),
   assistant: assistantClient(llm),
   chat: chatClient(llm),
   reflect: reflectClient(llm),
+  baglanti: square ? { square } : undefined,
 };
 const app = await buildServer({
   db,
@@ -88,12 +96,32 @@ const upkeep = async () => {
     app.log.error(e, 'memory upkeep failed');
   }
 };
+// Connected shops with a live subscription are synced every hour, one after the other.
+const syncAll = async () => {
+  if (!square) return;
+  const shops = await withSystem(db, async (tx) => (
+      await tx.query(
+        `select c.shop_id from connections c join subscriptions s on s.shop_id = c.shop_id
+          where c.provider = 'square' and c.status in ('connected', 'error')
+            and s.status in ('trial', 'active') and (s.current_period_end is null or s.current_period_end > now())`,
+      )
+    ).rows);
+  for (const { shop_id } of shops) {
+    try {
+      app.log.info({ shop: shop_id, square: await square.esitle(shop_id) }, 'square sync');
+    } catch (e) {
+      app.log.warn({ shop: shop_id, error: String((e as Error).message) }, 'square sync failed');
+    }
+  }
+};
 const firstUpkeep = setTimeout(upkeep, 60_000);
+const hourlySync = setInterval(syncAll, 3600_000);
 const hourly = setInterval(upkeep, 3600_000);
 
 const shutdown = async () => {
   clearTimeout(firstUpkeep);
   clearInterval(hourly);
+  clearInterval(hourlySync);
   stopSender();
   await app.close();
   await db.close();

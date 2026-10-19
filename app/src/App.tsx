@@ -52,7 +52,8 @@ export function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [phase, setPhase] = useState<'boot' | 'out' | 'in'>('boot');
   const [lang, setLangState] = useState<Lang>(savedLang() ?? detectLang());
-  const [tab, setTab] = useState<Tab>('today');
+  // Back from a connection sign-in (Square adds ?code&state): open Settings, where it is finished.
+  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search).has('state') ? 'settings' : 'today'));
   const [autoMic, setAutoMic] = useState(false);
   const [welcome, setWelcome] = useState(() => {
     if (!DEMO || new URLSearchParams(location.search).has('ornek')) return false;

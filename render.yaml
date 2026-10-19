@@ -72,6 +72,15 @@ services:
         sync: false
       - key: TWILIO_FROM
         sync: false
+      # Square connection (docs/square-baglantisi.md). Empty app id/secret = connections off.
+      - key: SQUARE_APP_ID
+        sync: false
+      - key: SQUARE_APP_SECRET
+        sync: false
+      - key: SQUARE_ENV
+        value: sandbox
+      - key: CONNECTION_SECRET
+        generateValue: true
 
 databases:
   - name: fade-db

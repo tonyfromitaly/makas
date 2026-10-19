@@ -432,6 +432,50 @@ ${toTenant('grant select, insert, update, delete on assistant_notes to makas_ten
 alter table assistant_memory add column reflected_at timestamptz;
 `;
 
+
+// Connections to the systems a business already uses (Square first) and what we read from them.
+// Tokens are stored encrypted by the API; import_rows keep each source's own id so a re-sync replaces.
+const connections = `
+create table connections (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  provider text not null check (provider in ('square')),
+  status text not null check (status in ('connected', 'error', 'needs_reconnect', 'disconnected')),
+  external_account text,
+  access_token_enc text,
+  refresh_token_enc text,
+  token_expires_at timestamptz,
+  last_sync_at timestamptz,
+  last_error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (shop_id, provider)
+);
+${rls('connections')}
+create table import_rows (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  provider text not null,
+  kind text not null check (kind in ('kayit', 'musteri', 'randevu')),
+  external_id text not null,
+  happened_on date,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (shop_id, provider, kind, external_id)
+);
+create index import_rows_day on import_rows (shop_id, kind, happened_on);
+${rls('import_rows')}
+${['connections', 'import_rows']
+  .map((t) => `alter policy tenant_isolation on ${t} using ${POLICY('shop_id')} with check ${POLICY('shop_id')};`)
+  .join('\n')}
+${toTenant('grant select, insert, update, delete on connections, import_rows to makas_tenant;')}
+alter table book_entries drop constraint if exists book_entries_source_check;
+alter table book_entries add constraint book_entries_source_check check (source in ('manual', 'ai_note', 'appointment', 'import'));
+alter table book_entries add column external_ref text;
+create unique index book_entries_external on book_entries (shop_id, external_ref) where external_ref is not null;
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -440,4 +484,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '005_business_types', sql: businessTypes },
   { id: '006_assistant_memory', sql: assistantMemory },
   { id: '007_assistant_notes', sql: assistantNotes },
+  { id: '008_connections', sql: connections },
 ];
