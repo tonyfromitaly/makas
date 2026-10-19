@@ -5,6 +5,8 @@ services:
   - type: web
     name: fade
     runtime: node
+    # Free instances sleep when idle, and a sleeping server sends no reminders. Use an always-on plan
+    # (starter or above) before real shops rely on reminders.
     plan: free
     region: frankfurt
     buildCommand: npm ci --include=dev
@@ -55,6 +57,21 @@ services:
         value: https://api.deepseek.com
       - key: AI_MODEL
         value: deepseek-chat
+      # Reminder sending (docs/hatirlatma-gonderimi.md). Any pair left empty = that channel is off.
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM
+        sync: false
 
 databases:
   - name: fade-db

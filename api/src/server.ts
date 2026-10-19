@@ -8,6 +8,7 @@ import { billingRoutes, type PaymentProvider } from './billing';
 import { consoleMailer, type Mailer } from './email';
 import { hash, verify } from '@node-rs/argon2';
 import { createApi, errorBody, type Config, type Database, type Deps } from '@makas/core';
+import { messagingRoutes, type MessagingOptions } from './messaging-routes';
 
 export const argon2Deps: Pick<Deps, 'hashPassword' | 'verifyPassword'> = {
   // argon2id, OWASP-recommended parameters.
@@ -35,6 +36,8 @@ export interface ServerOptions {
   payments?: PaymentProvider | null;
   mailer?: Mailer;
   publicUrl?: string;
+  /** Provider callbacks for STOP replies (WhatsApp, Twilio). The routes exist either way; unset = 404. */
+  messaging?: Pick<MessagingOptions, 'whatsapp' | 'twilio'>;
 }
 
 export async function buildServer(o: ServerOptions) {
@@ -99,6 +102,8 @@ export async function buildServer(o: ServerOptions) {
     publicUrl: o.publicUrl ?? o.config.publicUrl ?? 'http://localhost:5173',
     prefix,
   });
+
+  await messagingRoutes(app, { prefix, serviceKey: o.config.serviceApiKey, ...o.messaging });
 
   app.route({
     method: ['GET', 'POST', 'PATCH', 'DELETE'],

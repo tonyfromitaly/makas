@@ -50,6 +50,18 @@ export const env = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
   resendApiKey: process.env.RESEND_API_KEY ?? '',
   mailFrom: process.env.MAIL_FROM || 'Fade <onboarding@resend.dev>',
+  // Reminder sending (docs/hatirlatma-gonderimi.md). WhatsApp: Meta Cloud API; SMS: Twilio.
+  whatsappToken: process.env.WHATSAPP_TOKEN ?? '',
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? '',
+  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET ?? '',
+  whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? '',
+  whatsappTemplateDayBefore: process.env.WHATSAPP_TEMPLATE_DAY_BEFORE || 'randevu_hatirlatma_onceki_gun',
+  whatsappTemplateDayOf: process.env.WHATSAPP_TEMPLATE_DAY_OF || 'randevu_hatirlatma_bugun',
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? '',
+  twilioFrom: process.env.TWILIO_FROM ?? '',
+  /** "true": reminders are printed and marked sent, nothing leaves the machine. Never in production. */
+  senderDryRun: process.env.SENDER_DRY_RUN === 'true',
 };
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
