@@ -37,7 +37,7 @@ const W = {
     download: 'İndir',
     notes: 'Dikkat',
     localNote: 'Bu sayfa hiçbir şeyi bir yere göndermez; kurulum bu bilgisayarda hazırlanır.',
-    verify: 'Bağlantı türleri, firmaların açıkladıklarına göre beklentimizdir; her biri müşteriye söz vermeden önce doğrulanacak.',
+    verify: 'Bağlantı türleri ve şartlar Ekim 2026 araştırmasına dayanır; firmalar şartlarını değiştirebilir.',
   },
   en: {
     title: 'Setup',
@@ -71,7 +71,7 @@ const W = {
     download: 'Download',
     notes: 'Heads-up',
     localNote: 'This page sends nothing anywhere; the setup is prepared on this computer.',
-    verify: 'Connection types are what we expect from each vendor’s public material; each is confirmed before we promise it to a customer.',
+    verify: 'Connection types and conditions follow our October 2026 research; vendors may change their terms.',
   },
 } as const;
 
@@ -327,6 +327,7 @@ export function Setup() {
                         <span className={`chip method-${b.yontem}`}>{w.method[b.yontem]}</span>
                       </div>
                       <span className="muted small">{b.veri}</span>
+                      {b.kosul && <p className="small setup-kosul">{b.kosul}</p>}
                       <ol className="small" style={{ margin: 0, paddingLeft: 18 }}>
                         {b.adimlar.map((x) => (
                           <li key={x}>{x}</li>

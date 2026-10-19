@@ -1,8 +1,8 @@
 // What the setup wizard knows: kinds of business, the systems they already use, the problems they name,
 // and the modules we can switch on. Plain data, so a new business type or a new connector is one entry.
 //
-// Connector access (api / file / photo) is what we expect from each vendor's public material and still
-// has to be confirmed vendor by vendor before we promise it to a customer (docs/kurulum-sihirbazi.md).
+// Connector access (api / file / photo) follows the connector research of October 2026
+// (docs/baglanti-arastirmasi.md); systems without a "kosul" are not researched yet.
 
 export type Dil = 'tr' | 'en';
 export type Metin = Record<Dil, string>;
@@ -156,24 +156,26 @@ export interface Sistem {
   yontem: Yontem;
   /** What we read from it. */
   veri: Metin;
+  /** Conditions found in the connector research (docs/baglanti-arastirmasi.md). */
+  kosul?: Metin;
 }
 
 export const SISTEMLER: Sistem[] = [
-  { id: 'square', ad: 'Square', tur: { tr: 'Ödeme ve randevu', en: 'Payments and booking' }, yontem: 'api', veri: { tr: 'Satışlar, randevular, müşteriler, ödemeler', en: 'Sales, appointments, customers, payouts' } },
-  { id: 'booksy', ad: 'Booksy', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'dosya', veri: { tr: 'Randevular ve müşteri listesi', en: 'Appointments and client list' } },
-  { id: 'fresha', ad: 'Fresha', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'dosya', veri: { tr: 'Randevular, satışlar, müşteriler', en: 'Appointments, sales, clients' } },
-  { id: 'vagaro', ad: 'Vagaro', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'dosya', veri: { tr: 'Randevular, satışlar, müşteriler', en: 'Appointments, sales, customers' } },
+  { id: 'square', ad: 'Square', tur: { tr: 'Ödeme ve randevu', en: 'Payments and booking' }, yontem: 'api', veri: { tr: 'Satışlar, randevular, müşteriler, ödemeler', en: 'Sales, appointments, customers, payouts' }, kosul: { tr: 'Ücretsiz. İşletme Square hesabıyla izin verir (OAuth). Mağazada listelenmek isteğe bağlı; listelenmek için ortaklık başvurusu (yanıt 14 iş günü).', en: 'Free. The business grants access with its Square login (OAuth). A marketplace listing is optional and needs a partner application (reply within 14 business days).' } },
+  { id: 'booksy', ad: 'Booksy', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'dosya', veri: { tr: 'Randevular ve müşteri listesi', en: 'Appointments and client list' }, kosul: { tr: 'Herkese açık API yok; ortaklara özel ve davetle. Müşteri listesi CSV olarak indirilir; randevu geçmişi için işletmenin Booksy desteğinden dosya istemesi gerekir.', en: 'No public API; partner-only, by invitation. The client list exports as CSV; for appointment history the business asks Booksy support for a file.' } },
+  { id: 'fresha', ad: 'Fresha', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'dosya', veri: { tr: 'Randevular, satışlar, müşteriler', en: 'Appointments, sales, clients' }, kosul: { tr: 'API ortaklara özel. Müşteri listesi, randevular ve raporlar işletme panelinden CSV/Excel indirilebilir.', en: 'API is partner-only. Clients, appointments and reports download as CSV/Excel from the business dashboard.' } },
+  { id: 'vagaro', ad: 'Vagaro', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'api', veri: { tr: 'Randevular, satışlar, müşteriler', en: 'Appointments, sales, customers' }, kosul: { tr: 'API var ama işletme açar: kart ödemesi Vagaro\'dan, ücretli plan, deneme sürümünde değil; başvuru formu, 7 iş gününe kadar. Webhook eklentisi ayda 10 $.', en: 'There is an API, switched on by the business: Vagaro card processing, a paid plan, not on trial; request form, up to 7 business days. Webhook add-on $10/month.' } },
   { id: 'squire', ad: 'Squire', tur: { tr: 'Randevu (berber)', en: 'Booking (barbers)' }, yontem: 'dosya', veri: { tr: 'Randevular ve ödemeler', en: 'Appointments and payments' } },
   { id: 'acuity', ad: 'Acuity Scheduling', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'api', veri: { tr: 'Randevular ve müşteriler', en: 'Appointments and clients' } },
   { id: 'calendly', ad: 'Calendly', tur: { tr: 'Randevu', en: 'Booking' }, yontem: 'api', veri: { tr: 'Randevular', en: 'Bookings' } },
   { id: 'mindbody', ad: 'Mindbody', tur: { tr: 'Stüdyo yönetimi', en: 'Studio management' }, yontem: 'api', veri: { tr: 'Dersler, üyelikler, satışlar', en: 'Classes, memberships, sales' } },
-  { id: 'toast', ad: 'Toast', tur: { tr: 'Restoran POS', en: 'Restaurant POS' }, yontem: 'dosya', veri: { tr: 'Satışlar ürün ürün, saat saat', en: 'Sales by item and by hour' } },
+  { id: 'toast', ad: 'Toast', tur: { tr: 'Restoran POS', en: 'Restaurant POS' }, yontem: 'dosya', veri: { tr: 'Satışlar ürün ürün, saat saat', en: 'Sales by item and by hour' }, kosul: { tr: 'Ortak programı başvuru ve sertifikasyonla, ücretleri açıklanmıyor; restoran tarafında entegrasyon başına ayda 25 $/şube. Başlangıçta raporlardan dosya.', en: 'Partner program needs an application and certification, fees not published; restaurants pay $25/month per location per integration. Start with report files.' } },
   { id: 'clover', ad: 'Clover', tur: { tr: 'POS', en: 'POS' }, yontem: 'api', veri: { tr: 'Satışlar ve stok', en: 'Sales and inventory' } },
   { id: 'shopify', ad: 'Shopify', tur: { tr: 'Online ve mağaza satışı', en: 'Online and in-store sales' }, yontem: 'api', veri: { tr: 'Siparişler, ürünler, stok, müşteriler', en: 'Orders, products, inventory, customers' } },
-  { id: 'jobber', ad: 'Jobber', tur: { tr: 'Saha işleri', en: 'Field service' }, yontem: 'api', veri: { tr: 'Teklifler, işler, faturalar', en: 'Quotes, jobs, invoices' } },
+  { id: 'jobber', ad: 'Jobber', tur: { tr: 'Saha işleri', en: 'Field service' }, yontem: 'api', veri: { tr: 'Teklifler, işler, faturalar', en: 'Quotes, jobs, invoices' }, kosul: { tr: 'Ücretsiz geliştirici hesabı, OAuth ve GraphQL. Taslak uygulama en fazla 5 ücretli Jobber hesabına bağlanır; fazlası için Jobber incelemesi.', en: 'Free developer account, OAuth and GraphQL. A draft app may connect to at most 5 paying Jobber accounts; beyond that, Jobber reviews the app.' } },
   { id: 'housecall-pro', ad: 'Housecall Pro', tur: { tr: 'Saha işleri', en: 'Field service' }, yontem: 'dosya', veri: { tr: 'İşler ve faturalar', en: 'Jobs and invoices' } },
-  { id: 'quickbooks', ad: 'QuickBooks', tur: { tr: 'Muhasebe', en: 'Accounting' }, yontem: 'api', veri: { tr: 'Gelir, gider, faturalar', en: 'Income, expenses, invoices' } },
-  { id: 'banka', ad: { tr: 'Banka hesabı', en: 'Bank account' }, tur: { tr: 'Banka', en: 'Bank' }, yontem: 'api', veri: { tr: 'Hesap hareketleri (yalnızca okuma)', en: 'Transactions (read only)' } },
+  { id: 'quickbooks', ad: 'QuickBooks', tur: { tr: 'Muhasebe', en: 'Accounting' }, yontem: 'api', veri: { tr: 'Gelir, gider, faturalar', en: 'Income, expenses, invoices' }, kosul: { tr: 'Intuit App Partner Program \'Builder\' katmanı ücretsiz: veri okuma (CorePlus) çağrıları işletme başına ayda 500.000\'e kadar, üstü engellenir. Ücretli katmanlar ayda 300 $\'dan başlıyor.', en: 'Intuit App Partner Program Builder tier is free: up to 500,000 data-read (CorePlus) calls per company per month, then blocked. Paid tiers start at $300/month.' } },
+  { id: 'banka', ad: { tr: 'Banka hesabı', en: 'Bank account' }, tur: { tr: 'Banka', en: 'Bank' }, yontem: 'api', veri: { tr: 'Hesap hareketleri (yalnızca okuma)', en: 'Transactions (read only)' }, kosul: { tr: 'Plaid ile. Deneme ücretsiz, 10 bağlantıya kadar; sonra kullandıkça öde, hesap hareketleri bağlantı başına aylık abonelik. Fiyat üretim başvurusunda görünüyor. ABD ve Kanada.', en: 'Via Plaid. Free trial up to 10 connections; then pay-as-you-go, Transactions billed monthly per connection. Prices shown in the production request. US and Canada.' } },
   { id: 'tablo', ad: 'Excel / Google Sheets', tur: { tr: 'Tablo', en: 'Spreadsheet' }, yontem: 'dosya', veri: { tr: 'Ne tutuyorsan: defter, liste, stok', en: 'Whatever you keep: books, lists, stock' } },
   { id: 'defter-foto', ad: { tr: 'Kâğıt defter', en: 'Paper ledger' }, tur: { tr: 'Kâğıt', en: 'Paper' }, yontem: 'foto', veri: { tr: 'Defter sayfaları, fişler, faturalar', en: 'Ledger pages, receipts, invoices' } },
 ];

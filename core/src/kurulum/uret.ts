@@ -23,7 +23,7 @@ export interface Kurulum {
   soulMd: string;
   agentMd: string;
   moduller: { id: ModulId; ad: string; acik: boolean; neden: string }[];
-  baglantilar: { id: string; ad: string; yontem: Yontem; veri: string; adimlar: string[] }[];
+  baglantilar: { id: string; ad: string; yontem: Yontem; veri: string; adimlar: string[]; kosul?: string }[];
   gorevler: { id: string; ad: string; siklik: string; nasil: string }[];
   tema: { skin: string; accent: string | null };
   adimlar: { baslik: string; detay: string }[];
@@ -211,7 +211,7 @@ export function kurulumUret(c: Cevaplar): Kurulum {
     .filter((g) => !g.gerek || g.gerek.every((m) => acik.has(m)))
     .map((g) => ({ id: g.id, ad: g.ad[d], siklik: SIKLIK[g.siklik][d], nasil: g.nasil[d] }));
 
-  const baglantilar = sistemler.map((s) => ({ id: s.id, ad: sistemAdi(s, d), yontem: s.yontem, veri: s.veri[d], adimlar: YONTEM_ADIM[s.yontem][d](sistemAdi(s, d)) }));
+  const baglantilar = sistemler.map((s) => ({ id: s.id, ad: sistemAdi(s, d), yontem: s.yontem, veri: s.veri[d], adimlar: YONTEM_ADIM[s.yontem][d](sistemAdi(s, d)), kosul: s.kosul?.[d] }));
 
   const uyarilar: string[] = [];
   for (const s of sistemler) if (s.yontem === 'dosya' && s.id !== 'tablo') uyarilar.push(t.warnFile(sistemAdi(s, d)));

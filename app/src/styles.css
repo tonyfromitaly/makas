@@ -2440,3 +2440,9 @@ input.narrow {
   text-transform: uppercase;
   color: var(--ink-3);
 }
+.setup-kosul {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--carbon-soft);
+  border-radius: var(--r, 2px);
+}
