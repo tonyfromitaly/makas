@@ -51,6 +51,13 @@ const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)];
 const merchant = (await sq('GET', '/merchants/me')).merchant;
 const sube = (await sq('GET', '/locations')).locations.find((l: any) => l.status === 'ACTIVE');
 console.log(`seller: ${merchant.business_name ?? merchant.id} (${merchant.id}) · location ${sube.name} · ${sube.currency}`);
+// The token decides which test seller gets the data; it must be the one the app is connected to.
+const expected = process.env.SQUARE_SEED_MERCHANT;
+if (expected && expected !== merchant.id) {
+  console.error(`This token belongs to ${merchant.id}, but the app is connected to ${expected}. Nothing written.`);
+  process.exit(1);
+}
+if (!expected) console.log('  (set SQUARE_SEED_MERCHANT to the connected seller id, shown in Settings › Connections, to guard against the wrong seller)');
 
 // Catalog: services as "appointment services" when the seller allows it, otherwise plain items.
 const HIZMET = [

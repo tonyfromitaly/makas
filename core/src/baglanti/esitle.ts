@@ -151,18 +151,21 @@ async function gunlukDefter(tx: Queryable, shopId: string, days: string[]) {
   if (!days.length) return;
   await tx.query(`delete from book_entries where shop_id = $1 and source = 'import' and external_ref like 'square:%' and entry_date = any($2::date[])`, [shopId, days]);
   const { rows } = await tx.query(
-    `select happened_on::text as day, data->>'kategori' as kat, sum((data->>'tutar')::numeric) as total, count(*)::int as n
+    `select happened_on::text as day, data->>'kategori' as kat, (data->>'tutar')::numeric < 0 as iade,
+            sum((data->>'tutar')::numeric) as total, count(*)::int as n
        from import_rows where shop_id = $1 and provider = 'square' and kind = 'kayit' and happened_on = any($2::date[])
-      group by 1, 2`,
+      group by 1, 2, 3`,
     [shopId, days],
   );
-  // Refunds are negative "satis" lines; a day's category total is what was kept.
+  // Book lines cannot be negative, so refunds get a line of their own (money going back out): a day's
+  // net stays right even when a refund is larger than that day's sales.
+  const IADE = { kind: 'expense' as const, category: 'other', ad: 'iade' };
   const merged = new Map<string, { day: string; kind: 'income' | 'expense'; category: string; cents: number; parts: string[] }>();
   for (const r of rows) {
-    const m = KATEGORI[r.kat] ?? KATEGORI.satis;
+    const m = r.iade ? IADE : KATEGORI[r.kat] ?? KATEGORI.satis;
     const key = `${r.day}:${m.kind}:${m.category}`;
     const e = merged.get(key) ?? { day: r.day, kind: m.kind, category: m.category, cents: 0, parts: [] as string[] };
-    e.cents += Math.round(Number(r.total) * 100);
+    e.cents += Math.abs(Math.round(Number(r.total) * 100));
     e.parts.push(`${r.n} ${m.ad}`);
     merged.set(key, e);
   }

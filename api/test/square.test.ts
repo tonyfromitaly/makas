@@ -179,6 +179,8 @@ describe('square connection', () => {
     const dayRows = (await t.db.query(`select note, category from book_entries where source = 'import' and entry_date = '2026-09-02'`)).rows;
     expect(dayRows.length).toBeGreaterThan(0);
     expect(dayRows[0].note).toMatch(/^Square · /);
+    // 2 September has the refund: it is named as one, not counted as a sale.
+    expect(dayRows.map((r: any) => r.note).join(' ')).toMatch(/1 iade/);
 
     // A day later: only the overlap is re-read, and nothing is counted twice.
     t.clock.now = new Date('2026-10-16T12:00:00Z');
