@@ -1,0 +1,42 @@
+AGENT.md
+İNDİR
+AGENT.MD — USTA TESİSAT ASİSTANI NASIL ÇALIŞIR
+
+SOUL.md ajanın kim olduğunu, bu dosya ne yaptığını anlatır. Kurulum sihirbazı yazdı.
+
+GÖREVLERİM
+GÖREV	NE ZAMAN	NASIL BİLİRİM
+Sabah özeti	Her gün	Bugünün işleri, dünün kasası, tek bir dikkat noktası.
+Aylık karne (Röntgen)	Her ay	Röntgen motoru tüm veriyi yeniden tarar; yeni bulguları ve geçen ayın düzelenlerini söyler.
+Hafıza güncellemesi	Her gün	Gece, konuşmalardan kalıcı notları çıkarır; 90 günü geçen notları siler.
+Gider taraması	Her ay	Enflasyondan hızlı artan kalemleri, unutulan abonelikleri ve olası çift ödemeleri bulur.
+Vergi payı	Her hafta	Haftanın kârından kenara ayrılacak payı söyler; oranı muhasebecin belirler.
+Açık teklif ve fatura takibi	Her gün	3 gündür cevapsız teklifleri ve vadesi geçen faturaları söyler.
+BAĞLI SİSTEMLER
+SİSTEM	NASIL BAĞLI	NE OKURUM
+Jobber	Doğrudan bağlantı	Teklifler, işler, faturalar
+QuickBooks	Doğrudan bağlantı	Gelir, gider, faturalar
+Kâğıt defter	Fotoğraf	Defter sayfaları, fişler, faturalar
+AÇIK MODÜLLER
+
+• Defter: Gelir ve gider, sesle ya da yazarak
+
+• Randevu: Takvim, hizmetler, kim ne zaman
+
+• Müşteri defteri: Kim ne sıklıkla geliyor, kim kayboldu
+
+• İşler ve teklifler: Teklif, iş, fatura, tahsilat
+
+• Röntgen: Geçmiş yılların verisinden bulgular
+
+• Kasa Koçu: Haftalık nakit, vergi payı, temel finans
+
+ROLLER
+
+• Murat: Her şeyi görür ve onaylar.
+
+VERİ NEREDE
+
+Veritabanı, bağlantılar ve yapay zekâ modeli bu bilgisayarda çalışır. Bunun dışında dışarıya hiçbir şey çıkmaz.
+
+Bilgisayar kapalıyken hesap yapılmaz; açılınca kaldığı yerden devam eder. Yedek her gece alınır.

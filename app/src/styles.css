@@ -2311,3 +2311,132 @@ input.narrow {
 .accent.own {
   background: conic-gradient(var(--carbon) 0 50%, var(--paper-2) 0);
 }
+
+/* --- Setup wizard (#kurulum) --- */
+.setup .screen {
+  padding-bottom: 32px;
+}
+.setup-steps {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.setup-steps li {
+  flex: none;
+  font: 700 0.72rem var(--font-head);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 6px 9px;
+  border: 1px dashed var(--rule);
+  border-radius: var(--r, 2px);
+}
+.setup-steps li.now {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.setup-steps li.done {
+  color: var(--carbon);
+  border-style: solid;
+}
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.setup-choice {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  background: var(--paper-2);
+  border: 2px solid transparent;
+  border-radius: var(--r, 2px);
+  cursor: pointer;
+}
+.setup-choice[aria-pressed='true'] {
+  border-color: var(--carbon);
+  background: var(--carbon-soft);
+}
+.setup-list {
+  display: grid;
+  gap: 2px;
+}
+.setup-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px dotted var(--line);
+  cursor: pointer;
+}
+.setup-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--carbon);
+  flex: none;
+}
+.chip.method-api {
+  color: var(--pos);
+  border-color: currentColor;
+}
+.chip.method-dosya {
+  color: var(--ink-2);
+}
+.chip.method-foto {
+  color: var(--carbon);
+  border-color: currentColor;
+}
+.setup-tabs {
+  margin: 14px 0 10px;
+}
+.setup-install {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 12px;
+}
+.setup-install li {
+  display: grid;
+  gap: 2px;
+}
+.setup-nav {
+  margin-top: 16px;
+}
+.md-h1 {
+  font-size: 1.1rem;
+}
+.md-h2 {
+  margin-top: 10px;
+}
+.md p {
+  margin: 0;
+  line-height: 1.5;
+}
+.md-li {
+  padding-left: 14px;
+  text-indent: -14px;
+}
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.md-table th,
+.md-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 6px 6px 0;
+  border-bottom: 1px dotted var(--line);
+}
+.md-table th {
+  font: 700 0.7rem var(--font-head);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}

@@ -27,3 +27,5 @@ export { ornekDukkan } from './rontgen/ornek';
 export { TUFE, TUFE_KAYNAK, endeks, birikmis, bugununParasi } from './rontgen/tufe';
 export { type Kayit, KATEGORI_ADI } from './rontgen/kayit';
 export { raporHtml } from './rontgen/rapor';
+export { kurulumUret, type Cevaplar, type Kurulum } from './kurulum/uret';
+export { SABLONLAR, SISTEMLER, DERTLER, MODULLER, CALISMA, GIZLILIK, type SablonId, type ModulId, type CalismaSekli, type Gizlilik, type Dil as KurulumDil } from './kurulum/katalog';

@@ -1,0 +1,48 @@
+AGENT.md
+İNDİR
+AGENT.MD — LALE KAFE ASİSTANI NASIL ÇALIŞIR
+
+SOUL.md ajanın kim olduğunu, bu dosya ne yaptığını anlatır. Kurulum sihirbazı yazdı.
+
+GÖREVLERİM
+GÖREV	NE ZAMAN	NASIL BİLİRİM
+Sabah özeti	Her gün	Bugünün işleri, dünün kasası, tek bir dikkat noktası.
+Aylık karne (Röntgen)	Her ay	Röntgen motoru tüm veriyi yeniden tarar; yeni bulguları ve geçen ayın düzelenlerini söyler.
+Hafıza güncellemesi	Her gün	Gece, konuşmalardan kalıcı notları çıkarır; 90 günü geçen notları siler.
+Nakit takvimi	Her hafta	Sabit ödemeleri ve geçmiş haftaların gelirini üst üste koyar; önümüzdeki 3 haftada kasanın düşeceği günü söyler.
+Vergi payı	Her hafta	Haftanın kârından kenara ayrılacak payı söyler; oranı muhasebecin belirler.
+Stok uyarısı	Her gün	Satış hızından bitiş gününü hesaplar; siparişi ne zaman vermen gerektiğini söyler.
+Ölü stok	Her ay	60 gündür satmayan ürünleri ve bağladıkları parayı listeler.
+Haftalık hakediş	Her hafta	Her kişinin işini, komisyonunu, yer kirasını ve bahşişini toplar; kim kime ne borçlu çıkarır.
+BAĞLI SİSTEMLER
+SİSTEM	NASIL BAĞLI	NE OKURUM
+Square	Doğrudan bağlantı	Satışlar, randevular, müşteriler, ödemeler
+Banka hesabı	Doğrudan bağlantı	Hesap hareketleri (yalnızca okuma)
+Kâğıt defter	Fotoğraf	Defter sayfaları, fişler, faturalar
+AÇIK MODÜLLER
+
+• Defter: Gelir ve gider, sesle ya da yazarak
+
+• Ekip ve hakediş: Maaş, komisyon ya da yer kirası; hafta sonu hesap
+
+• Bahşiş: Kişi başına, kart ve nakit ayrı
+
+• Stok: Biten, bayatlayan, fazla alınan
+
+• Satışlar: Kasa ve POS satışları, ürün ürün
+
+• Röntgen: Geçmiş yılların verisinden bulgular
+
+• Kasa Koçu: Haftalık nakit, vergi payı, temel finans
+
+ROLLER
+
+• Selin (sahip): Tüm işletmeyi, herkesin hesabını ve tüm notları görür.
+
+• Maaşlı çalışan: Kendi işini, kendi kazancını ve kendi notlarını görür.
+
+VERİ NEREDE
+
+Veritabanı, bağlantılar ve yapay zekâ modeli bu bilgisayarda çalışır. Bunun dışında dışarıya hiçbir şey çıkmaz.
+
+Bilgisayar kapalıyken hesap yapılmaz; açılınca kaldığı yerden devam eder. Yedek her gece alınır.

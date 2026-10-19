@@ -1,0 +1,52 @@
+AGENT.md
+İNDİR
+AGENT.MD — SALON ELİF ASİSTANI NASIL ÇALIŞIR
+
+SOUL.md ajanın kim olduğunu, bu dosya ne yaptığını anlatır. Kurulum sihirbazı yazdı.
+
+GÖREVLERİM
+GÖREV	NE ZAMAN	NASIL BİLİRİM
+Sabah özeti	Her gün	Bugünün işleri, dünün kasası, tek bir dikkat noktası.
+Aylık karne (Röntgen)	Her ay	Röntgen motoru tüm veriyi yeniden tarar; yeni bulguları ve geçen ayın düzelenlerini söyler.
+Hafıza güncellemesi	Her gün	Gece, konuşmalardan kalıcı notları çıkarır; 90 günü geçen notları siler.
+Kayıp müşteri takibi	Her hafta	Her düzenli müşterinin geliş aralığını hesaplar; aralık 1,5 katını geçince listeye alır.
+Randevu hatırlatması	Gerektiğinde	Bir gün önce ve birkaç saat önce, izin veren müşteriye.
+Boş saat haritası	Her hafta	Son 8 haftanın doluluğunu gün ve saate göre çıkarır; en boş üç dilimi söyler.
+Fiyat erimesi	Her ay	Her hizmetin/ürünün son zammından bu yana resmî enflasyonu hesaplar; geride kalanları söyler.
+Haftalık hakediş	Her hafta	Her kişinin işini, komisyonunu, yer kirasını ve bahşişini toplar; kim kime ne borçlu çıkarır.
+BAĞLI SİSTEMLER
+SİSTEM	NASIL BAĞLI	NE OKURUM
+Booksy	Dışa aktarılan dosya	Randevular ve müşteri listesi
+Banka hesabı	Doğrudan bağlantı	Hesap hareketleri (yalnızca okuma)
+Excel / Google Sheets	Dışa aktarılan dosya	Ne tutuyorsan: defter, liste, stok
+AÇIK MODÜLLER
+
+• Defter: Gelir ve gider, sesle ya da yazarak
+
+• Randevu: Takvim, hizmetler, kim ne zaman
+
+• Müşteri hatırlatmaları: WhatsApp ya da SMS, izin verenlere
+
+• Müşteri defteri: Kim ne sıklıkla geliyor, kim kayboldu
+
+• Ekip ve hakediş: Maaş, komisyon ya da yer kirası; hafta sonu hesap
+
+• Bahşiş: Kişi başına, kart ve nakit ayrı
+
+• Röntgen: Geçmiş yılların verisinden bulgular
+
+• Kasa Koçu: Haftalık nakit, vergi payı, temel finans
+
+ROLLER
+
+• Elif (sahip): Tüm işletmeyi, herkesin hesabını ve tüm notları görür.
+
+• Komisyonla çalışan: Kendi işini, kendi kazancını ve kendi notlarını görür.
+
+• Yer kiralayan bağımsız çalışan: Kendi işini, kendi kazancını ve kendi notlarını görür.
+
+VERİ NEREDE
+
+Veritabanı ve bağlantılar bu bilgisayarda çalışır. Buluttaki modele yalnızca isimsiz özet gider. Bunun dışında dışarıya yalnızca izin veren müşterilere hatırlatma mesajları çıkar.
+
+Bilgisayar kapalıyken hesap yapılmaz; açılınca kaldığı yerden devam eder. Yedek her gece alınır.

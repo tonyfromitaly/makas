@@ -9,6 +9,7 @@ import '@fontsource-variable/hanken-grotesk';
 import '@fontsource/caveat/600.css';
 import './styles.css';
 import { App } from './App';
+import { Setup } from './screens/Setup';
 import { applyLook, loadLook, watchSystem } from './theme';
 
 // The look is applied before the first paint so the app never flashes the wrong colours.
@@ -17,7 +18,7 @@ watchSystem(loadLook);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {location.hash.startsWith('#kurulum') ? <Setup /> : <App />}
   </StrictMode>,
 );
 
