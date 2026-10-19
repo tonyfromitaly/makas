@@ -5,6 +5,7 @@ import { dateLabel, toCents } from '../format';
 import { SupportChat } from '../components/SupportChat';
 import { ManagePlan } from '../components/ManagePlan';
 import type { Lang } from '../i18n';
+import { ACCENTS, SKINS, applyLook, isDark, loadLook, saveLook, type Look as LookT } from '../theme';
 
 export function Settings() {
   const { api, t, me, reloadMe, fail, toast, lang, setLang, signOut } = useApp();
@@ -53,6 +54,8 @@ export function Settings() {
           </select>
         </Field>
       </section>
+
+      <Look />
 
       {isOwner && (
         <section className="card stack">
@@ -103,6 +106,56 @@ export function Settings() {
       </section>
       <p className="muted small center">Fade v0.2 · {me.user.email}</p>
     </div>
+  );
+}
+
+function Look() {
+  const { t } = useApp();
+  const [look, setLook] = useState<LookT>(loadLook);
+  const pick = (next: LookT) => {
+    setLook(next);
+    saveLook(next);
+    applyLook(next);
+  };
+  const dark = isDark(look);
+  return (
+    <section className="card stack">
+      <h2 className="card-title">{t('look')}</h2>
+      <p className="muted small">{t('lookHint')}</p>
+      <div className="skins">
+        {SKINS.map((s) => {
+          const [paper, ink, accent, counter] = s.swatch;
+          return (
+            <button key={s.id} className="skin" aria-pressed={look.skin === s.id} onClick={() => pick({ ...look, skin: s.id })} title={t(`skinDesc_${s.id}` as any)}>
+              <span className="skin-art" style={{ background: counter }} aria-hidden>
+                <i style={{ left: 8, right: 8, top: 8, bottom: 0, background: paper, borderRadius: s.id === 'pudra' || s.id === 'cini' ? 8 : 1 }} />
+                <i style={{ left: 16, top: 16, width: 34, height: 6, background: ink }} />
+                <i style={{ left: 16, top: 28, width: 52, height: 4, background: ink, opacity: 0.35 }} />
+                <i style={{ left: 16, top: 40, width: 24, height: 10, background: accent, borderRadius: 2 }} />
+                {s.id === 'auto' && <i style={{ right: 8, top: 8, bottom: 0, width: '45%', background: '#1b2029' }} />}
+              </span>
+              <span className="skin-name">{t(`skin_${s.id}` as any)}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="muted small">{t(`skinDesc_${look.skin}` as any)}</p>
+      <span className="eyebrow">{t('accentColor')}</span>
+      <div className="accents">
+        <button className="accent own" aria-pressed={!look.accent} onClick={() => pick({ ...look, accent: null })} aria-label={t('accentOwn')} title={t('accentOwn')} />
+        {ACCENTS.map((a) => (
+          <button
+            key={a.id}
+            className="accent"
+            style={{ background: dark ? a.dark : a.light }}
+            aria-pressed={look.accent === a.id}
+            onClick={() => pick({ ...look, accent: a.id })}
+            aria-label={t(`accent_${a.id}` as any)}
+            title={t(`accent_${a.id}` as any)}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -9,6 +9,11 @@ import '@fontsource-variable/hanken-grotesk';
 import '@fontsource/caveat/600.css';
 import './styles.css';
 import { App } from './App';
+import { applyLook, loadLook, watchSystem } from './theme';
+
+// The look is applied before the first paint so the app never flashes the wrong colours.
+applyLook(loadLook());
+watchSystem(loadLook);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
