@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { ApiError, conflict, isoDate, lang as langSchema, notFound, ok, uuid, type Ctx, type Route } from '../http';
 import type { Queryable } from '../db';
 import { freeSlots, openOn, type Hours, type Slot } from '../ekip/saat';
-import { anyone, dayLabel, parseDay, parsePhoneish, parseTime, pick, say, PHONE_EXAMPLE, type AgentOption, type AgentState, type Field, type Lang } from '../ekip/ajan';
+import { anyone, dayLabel, onDay, parseDay, parsePhoneish, parseTime, pick, say, PHONE_EXAMPLE, type AgentOption, type AgentState, type Field, type Lang } from '../ekip/ajan';
 import { toE164 } from '../assistant/phone';
 import { enqueueReminders } from '../reminders';
 import { isLocked, loadSubscription } from './shop';
@@ -93,8 +93,9 @@ async function bookOnline(
   if (!client) {
     client = (
       await ctx.db.query(
-        `insert into clients (shop_id, name, phone_e164, language, consent_status, consent_at) values ($1, $2, $3, $4, $5, $6) returning id, consent_status`,
-        [shop.id, b.name.slice(0, 80), phone, b.lang, b.consent ? 'granted' : 'revoked', b.consent ? ctx.now : null],
+        `insert into clients (shop_id, name, phone_e164, language, channel_pref, consent_status, consent_at) values ($1, $2, $3, $4, $5, $6, $7) returning id, consent_status`,
+        // North American numbers get text messages; WhatsApp is the norm elsewhere.
+        [shop.id, b.name.slice(0, 80), phone, b.lang, phone.startsWith('+1') ? 'sms' : 'whatsapp', b.consent ? 'granted' : 'revoked', b.consent ? ctx.now : null],
       )
     ).rows[0];
   } else if (b.consent && client.consent_status !== 'granted') {
@@ -187,7 +188,7 @@ export const bookingRoutes: Route[] = [
       const d = DateTime.fromISO(query.date, { zone: shop.timezone });
       if (d < today || d > today.plus({ days: DAYS_AHEAD })) return { date: query.date, slots: [] };
       const a = await freeSlots(ctx.db, shop.id, { date: query.date, serviceId: query.service_id, staffId: query.staff_id, now: ctx.now, online: true });
-      return { date: query.date, hours: a.hours, slots: a.slots.map(({ station_id, ...s }) => s) };
+      return { date: query.date, hours: a.hours, slots: a.slots.map(({ station_id, alts, ...s }) => s) };
     },
   },
   {
@@ -279,17 +280,26 @@ export const bookingRoutes: Route[] = [
       // "Bugün", "Yarın" in the middle of a sentence are lower case; weekday labels keep their capital in English.
       const mid = (label: string) => (label === say(l, 'today') || label === say(l, 'tomorrow') ? label.toLocaleLowerCase(l) : label);
 
-      const timeOptions = (slots: Slot[]) =>
-        spread(slots).map((s) => ({ label: s.time, set: { time: s.time, ...(staffId ? {} : { staff_id: s.staff_id }) }, hint: staffId ? undefined : s.staff_name }));
+      // Under "anyone" the offered times take turns among the people free at each time, so the list is
+      // not one name all day.
+      const timeOptions = (slots: Slot[]) => {
+        const given = new Map<string, number>();
+        return spread(slots).map((s) => {
+          const who = staffId ? s : [s, ...(s.alts ?? [])].reduce((best, c) => ((given.get(c.staff_id) ?? 0) < (given.get(best.staff_id) ?? 0) ? c : best));
+          given.set(who.staff_id, (given.get(who.staff_id) ?? 0) + 1);
+          return { label: s.time, set: { time: s.time, ...(staffId ? {} : { staff_id: who.staff_id }) }, hint: staffId ? undefined : who.staff_name };
+        });
+      };
 
       if (service && st.staff_id && st.date) {
         const a = await freeSlots(ctx.db, shop.id, { date: st.date, serviceId: service.id, staffId, near: st.time ?? null, now: ctx.now, online: true });
         const label = dayLabel(l, st.date, today);
+        const onday = onDay(l, st.date, today);
         if (!a.hours) {
-          notes.push(say(l, 'closed', { day: label }));
+          notes.push(say(l, 'closed', { day: label, onday }));
           clear('date', 'time');
         } else if (!a.slots.length && !st.time) {
-          notes.push(say(l, 'full', { day: label }));
+          notes.push(say(l, 'full', { day: label, onday }));
           clear('date', 'time');
         } else if (st.time && a.taken) {
           const why = a.reason === 'past' ? 'past' : a.reason === 'closed' ? 'outside' : 'taken';
@@ -366,7 +376,7 @@ export const bookingRoutes: Route[] = [
             const a = await freeSlots(ctx.db, shop.id, { date: st.date!, serviceId: service!.id, staffId, now: ctx.now, online: true });
             options = timeOptions(a.slots);
           }
-          question = notes.some((n) => n.endsWith(':')) ? '' : say(l, 'time', { day: dayLabel(l, st.date!, today) });
+          question = notes.some((n) => n.endsWith(':')) ? '' : say(l, 'time', { day: dayLabel(l, st.date!, today), onday: onDay(l, st.date!, today) });
           break;
         }
         case 'name':

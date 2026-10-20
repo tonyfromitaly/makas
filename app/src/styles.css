@@ -2918,8 +2918,9 @@ button.kpi:focus-visible {
 .book-head h1 {
   margin: 2px 0 0;
   font: 700 1.5rem/1.1 var(--font-head);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  /* The shop's name as the shop writes it: upper-casing would follow the visitor's language
+     (a Turkish browser turns "Lakeview" into "LAKEVİEW"). */
 }
 .book-head p {
   margin: 4px 0 0;
@@ -2940,8 +2941,8 @@ button.kpi:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 24px 16px 32px;
-  scroll-padding-bottom: 160px;
+  /* Room under the last message for the sticky input bar, so the last answer and its buttons stay visible. */
+  padding: 24px 16px 200px;
 }
 .book-msg {
   display: flex;

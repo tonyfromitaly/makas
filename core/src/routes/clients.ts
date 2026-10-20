@@ -132,7 +132,7 @@ export const clientRoutes: Route[] = [
       name: z.string().trim().min(1).max(80),
       phone_e164: phone,
       language: lang.optional(),
-      channel_pref: z.enum(['whatsapp', 'sms']).default('whatsapp'),
+      channel_pref: z.enum(['whatsapp', 'sms']).optional(),
       /** The barber confirms the client agreed to receive reminders. */
       consent: z.boolean(),
       notes: z.string().trim().max(500).optional(),
@@ -148,7 +148,8 @@ export const clientRoutes: Route[] = [
             body.name,
             body.phone_e164,
             body.language ?? shopLang,
-            body.channel_pref,
+            // North American numbers get text messages by default; WhatsApp elsewhere.
+            body.channel_pref ?? (body.phone_e164.startsWith('+1') ? 'sms' : 'whatsapp'),
             body.consent ? 'granted' : 'revoked',
             body.consent ? ctx.now : null,
             body.notes ?? null,

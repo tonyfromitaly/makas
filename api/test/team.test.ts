@@ -114,12 +114,12 @@ describe('a team member’s own app', () => {
     await t.call('POST', '/books', { token: owner, body: { kind: 'expense', category: 'rent', amount_cents: 200000, entry_date: '2026-10-15' } });
 
     const ask = async (text: string, token = elif.token) => (await t.call('POST', '/assistant', { token, body: { text, lang: 'en' } })).body.reply as string;
-    expect(await ask('how much did I make this month')).toMatch(/you sold \$30: 1 jobs\. Tips \$5\. Their commission \(40%\) comes to \$12/);
+    expect(await ask('how much did I make this month')).toMatch(/you sold \$30: 1 job\. Tips \$5\. Your commission \(40%\) comes to \$12/);
     expect(await ask('what did we spend this month')).toMatch(/^That’s for the shop owner/);
     expect(await ask('whats in the bank')).toMatch(/^That’s for the shop owner/);
     expect(await ask('pay rent 1200 tomorrow')).toMatch(/shop owner records that/);
     // The owner asks about the team, or one person.
-    expect(await ask('how much did Elif sell this month', owner)).toMatch(/Elif sold \$30: 1 jobs, services \$30, products \$0\. Tips \$5\./);
+    expect(await ask('how much did Elif sell this month', owner)).toMatch(/Elif sold \$30: 1 job, services \$30, products \$0\. Tips \$5\. Their commission/);
     expect(await ask('how did the team do this week', owner)).toMatch(/the team sold \$30: Elif \$30/);
   });
 });

@@ -47,11 +47,14 @@ async function lists(ctx: Ctx, staff: string | null) {
 }
 
 /** "Primi (%50) $420 ediyor." — what a person's deal makes of their sales. */
-function dealLine(r: ReturnType<typeof replier>, row: PayRow) {
-  if (row.pay_model === 'booth_rent') return r.say('deal_rent', { rent: r.money(row.rent_cents) });
-  if (row.pay_model === 'salary') return r.say('deal_salary', { owed: r.money(row.owed_cents) });
-  return r.say('deal_commission', { pct: row.service_pct, owed: r.money(row.commission_cents) });
+function dealLine(r: ReturnType<typeof replier>, row: PayRow, you = false) {
+  const k = you ? 'you' : 'deal';
+  if (row.pay_model === 'booth_rent') return r.say(`${k}_rent`, { rent: r.money(row.rent_cents) });
+  if (row.pay_model === 'salary') return r.say(`${k}_salary`, { owed: r.money(row.owed_cents) });
+  return r.say(`${k}_commission`, { pct: row.service_pct, owed: r.money(row.commission_cents) });
 }
+
+const jobs = (r: ReturnType<typeof replier>, n: number) => (n === 1 ? r.say('jobs_one') : r.say('jobs_many', { n }));
 
 /** Metrics a team member may ask about: their own sales and appointments. Everything else is the owner's. */
 const STAFF_METRICS = new Set(['income', 'summary', 'net', 'team', 'appointments', 'top_service']);
@@ -155,7 +158,7 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
       const [row] = staff ? await payReport(ctx.db, ctx.shopId, f, upTo.toISODate()!, staff) : [];
       if (!row || !row.gross_cents) return { text: r.say('staff_income_none', { p, range }), data: { gross_cents: 0 } };
       return {
-        text: r.say('staff_income', { p, range, gross: r.money(row.gross_cents), visits: row.visits, tips: row.tips_cents ? r.say('team_tips', { tips: r.money(row.tips_cents) }) : '', deal: dealLine(r, row) }).trim(),
+        text: r.say('staff_income', { p, range, gross: r.money(row.gross_cents), jobs: jobs(r, row.visits), tips: row.tips_cents ? r.say('team_tips', { tips: r.money(row.tips_cents) }) : '', deal: dealLine(r, row, true) }).trim(),
         data: row,
       };
     }
@@ -176,7 +179,7 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
               range,
               name: row.name,
               gross: r.money(row.gross_cents),
-              visits: row.visits,
+              jobs: jobs(r, row.visits),
               service: r.money(row.service_cents),
               product: r.money(row.product_cents),
               tips: row.tips_cents ? r.say('team_tips', { tips: r.money(row.tips_cents) }) : '',

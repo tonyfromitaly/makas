@@ -38,6 +38,8 @@ export interface Slot {
   staff_name: string;
   station_id: string | null;
   station_name: string | null;
+  /** With no one named: the others who could take this time too (with their station). */
+  alts?: Omit<Slot, 'time' | 'alts'>[];
 }
 
 export interface SlotAnswer {
@@ -130,7 +132,10 @@ export async function freeSlots(
       return [...order.slice(k), ...order.slice(0, k)].sort((x, y) => (load.get(x.id) ?? 0) - (load.get(y.id) ?? 0));
     })();
     const pick = pickFor(turn, stations, kind, busy, a, b);
-    if (pick) out.push({ time: fromMin(m), ...pick, distance: Math.abs(m - nearMin) });
+    if (pick) {
+      const alts = q.staffId ? [] : order.filter((p) => p.id !== pick.staff_id).map((p) => pickFor([p], stations, kind, busy, a, b)).filter((x): x is NonNullable<typeof x> => !!x);
+      out.push({ time: fromMin(m), ...pick, ...(alts.length ? { alts } : {}), distance: Math.abs(m - nearMin) });
+    }
   }
   out.sort((x, y) => x.distance - y.distance || x.time.localeCompare(y.time));
   const taken = q.near ? !out.some((o) => o.time === q.near) : false;

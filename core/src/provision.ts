@@ -27,6 +27,44 @@ export const DEFAULT_SERVICES: Record<BusinessType, [string, number, number][]> 
   other: [],
 };
 
+/** The same menus in the shop's own language: a US salon starts with "Cut & blow-dry", not "Kesim & fön". */
+const NAMES: Record<'en' | 'es', Record<string, string>> = {
+  en: {
+    'Saç kesimi': 'Haircut',
+    'Sakal tıraşı': 'Beard trim',
+    'Saç + sakal': 'Haircut + beard',
+    'Çocuk tıraşı': 'Kids cut',
+    'Kesim & fön': 'Cut & blow-dry',
+    Fön: 'Blow-dry',
+    Boya: 'Color',
+    Röfle: 'Highlights',
+    'Keratin bakım': 'Keratin treatment',
+    Manikür: 'Manicure',
+    Pedikür: 'Pedicure',
+    'Kaş & bıyık': 'Brow & lip',
+    'Cilt bakımı': 'Facial',
+  },
+  es: {
+    'Saç kesimi': 'Corte de pelo',
+    'Sakal tıraşı': 'Arreglo de barba',
+    'Saç + sakal': 'Corte + barba',
+    'Çocuk tıraşı': 'Corte infantil',
+    'Kesim & fön': 'Corte y secado',
+    Fön: 'Secado',
+    Boya: 'Color',
+    Röfle: 'Mechas',
+    'Keratin bakım': 'Tratamiento de keratina',
+    Manikür: 'Manicura',
+    Pedikür: 'Pedicura',
+    'Kaş & bıyık': 'Cejas y labio',
+    'Cilt bakımı': 'Limpieza facial',
+  },
+};
+
+export function servicesIn(type: BusinessType, lang: 'tr' | 'en' | 'es'): [string, number, number][] {
+  return DEFAULT_SERVICES[type].map(([name, usd, min]) => [lang === 'tr' ? name : NAMES[lang][name] ?? name, usd, min]);
+}
+
 export interface ProvisionInput {
   shopName: string;
   ownerName: string;
@@ -75,7 +113,7 @@ export async function provisionShop(tx: Queryable, p: ProvisionInput) {
   // The owner usually works the floor too: their place on the team is linked to their login.
   await tx.query('insert into barbers (shop_id, name, user_id) values ($1, $2, $3)', [shop.id, p.ownerName, user.id]);
   if (p.defaultServices)
-    for (const [name, usd, min] of DEFAULT_SERVICES[p.businessType ?? 'barber'])
+    for (const [name, usd, min] of servicesIn(p.businessType ?? 'barber', p.language))
       await tx.query('insert into services (shop_id, name, price_cents, duration_min) values ($1, $2, $3, $4)', [shop.id, name, usd * 100, min]);
   await tx.query(
     `insert into subscriptions (shop_id, plan_key, status, current_period_end, stripe_customer_id, stripe_subscription_id)

@@ -157,9 +157,9 @@ const T: Record<Lang, Record<string, string>> = {
     anyoneShort: 'first available',
     day: 'Which day suits you?',
     dayNone: 'I can’t see a free time for {who} in the next two weeks. You can pick someone else or call the shop.',
-    closed: 'We’re closed on {day}.',
-    full: '{day} is fully booked.',
-    time: 'Free times on {day}:',
+    closed: 'We’re closed {onday}.',
+    full: 'We’re fully booked {onday}.',
+    time: 'Free times {onday}:',
     taken: '{time} is taken. The nearest free times:',
     past: 'That time has passed. The nearest free times:',
     outside: '{time} is outside our hours ({from}–{to}). Free times:',
@@ -188,9 +188,9 @@ const T: Record<Lang, Record<string, string>> = {
     anyoneShort: 'el primero libre',
     day: '¿Qué día le viene bien?',
     dayNone: 'No veo horas libres para {who} en las próximas dos semanas. Puede elegir a otra persona o llamar.',
-    closed: 'El {day} está cerrado.',
-    full: 'El {day} está completo.',
-    time: 'Horas libres el {day}:',
+    closed: 'Está cerrado {onday}.',
+    full: 'Está completo {onday}.',
+    time: 'Horas libres {onday}:',
     taken: 'Las {time} está ocupado. Las horas libres más cercanas:',
     past: 'Esa hora ya pasó. Las horas libres más cercanas:',
     outside: 'Las {time} queda fuera del horario ({from}–{to}). Horas libres:',
@@ -224,3 +224,10 @@ export function dayLabel(lang: Lang, iso: string, today: DateTime) {
 }
 
 export const PHONE_EXAMPLE: Record<string, string> = { TR: '+90 555 123 45 67', US: '+1 415 555 0142', ES: '+34 612 345 678', GB: '+44 7700 900123' };
+
+/** "today", "tomorrow", "on Thu 22 Oct" (English); "hoy", "mañana", "el jue 22 oct" (Spanish). Turkish uses the label. */
+export function onDay(lang: Lang, iso: string, today: DateTime) {
+  const label = dayLabel(lang, iso, today);
+  if (label === say(lang, 'today') || label === say(lang, 'tomorrow')) return label.toLocaleLowerCase(lang);
+  return lang === 'en' ? `on ${label}` : lang === 'es' ? `el ${label}` : label;
+}

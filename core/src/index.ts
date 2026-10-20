@@ -16,7 +16,7 @@ export { periodRange } from './routes/assistant';
 export { UNDERSTAND_SYSTEM, CHAT_SYSTEM, SHOP_KNOWLEDGE, FEW_SHOT, FEW_SHOT_CONTEXT } from './assistant/training';
 export { shopSnapshot, type ShopSnapshot } from './assistant/snapshot';
 export { localAdvice } from './assistant/advice';
-export { provisionShop, createAccessKey, generateAccessKey, normalizeKey, DEFAULT_SERVICES, type ProvisionInput, type BusinessType } from './provision';
+export { provisionShop, createAccessKey, generateAccessKey, normalizeKey, DEFAULT_SERVICES, servicesIn, type ProvisionInput, type BusinessType } from './provision';
 export { seedSample, SAMPLE_LOGINS, SAMPLE_STAFF_LOGINS, type SampleKind } from './sample';
 export { followUp, resolvePronoun, nextFocus, sessionView, earlierLine, RECENT, EARLIER_MAX, SESSION_GAP_HOURS, type Focus, type Turn, type Memory } from './assistant/memory';
 export { runMemoryUpkeep, memoryUpkeepIn, refreshDataNotes, liveNotes, memoryMarkdown, notesForPrompt, addNote, isSensitive, reflectSchema, NOTE_DAYS, type Note } from './assistant/notes';

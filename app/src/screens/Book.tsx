@@ -29,6 +29,10 @@ export function BookPage({ slug, api: given, onClose }: { slug: string; api?: Cl
     return q === 'tr' || q === 'en' || q === 'es' ? q : detectLang();
   });
   const t = makeT(lang);
+  // Upper-case headings follow the page language: "LAKEVIEW", not the Turkish dotted "LAKEVİEW".
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   const [shop, setShop] = useState<any>(null);
   const [error, setError] = useState('');
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -41,7 +45,6 @@ export function BookPage({ slug, api: given, onClose }: { slug: string; api?: Cl
   const [consent, setConsent] = useState(true);
   const [busy, setBusy] = useState(false);
   const hp = useRef<HTMLInputElement>(null);
-  const end = useRef<HTMLDivElement>(null);
 
   const turn = async (body: { set?: Record<string, unknown>; text?: string }, said?: string, l: Lang = lang, st: Record<string, unknown> = state) => {
     setBusy(true);
@@ -78,9 +81,10 @@ export function BookPage({ slug, api: given, onClose }: { slug: string; api?: Cl
       .catch((e) => setError(e?.code === 'BOOKING_OFF' ? t('bookOff') : t('error_generic')));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
-  // Braces matter: scrollIntoView returns a promise in newer browsers, and an effect must not return one.
+  // To the very bottom: the chat's bottom padding keeps the last answer and its buttons above the sticky
+  // input bar (scrolling the last message to the window's edge would hide it behind the bar).
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    if (turns.length > 1) window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   }, [turns, options]);
 
   const choose = (o: Option) => turn({ set: step === 'phone' ? { ...o.set, consent } : o.set }, o.hint && step === 'time' ? `${o.label} · ${o.hint}` : o.label);
@@ -169,7 +173,6 @@ export function BookPage({ slug, api: given, onClose }: { slug: string; api?: Cl
             ))}
           </div>
         )}
-        <div ref={end} />
       </main>
 
       {!booked && !error && (
