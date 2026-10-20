@@ -35,3 +35,5 @@ export { musteriBulgulari, type RandevuKaydi } from './rontgen/musteri';
 export { squareSimulasyon } from './baglanti/square-simulasyon';
 export { plaidBaglanti, type PlaidAyar } from './baglanti/plaid-esitle';
 export { plaidDefter, plaidKasa } from './baglanti/plaid';
+export { isaretleriGuncelle, isaretleriHesapla, type Isaret } from './ajan/isaretler';
+export { nakitTahmini, sabitOdemeler, type NakitTahmini } from './rontgen/tahmin';

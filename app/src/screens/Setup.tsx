@@ -37,6 +37,9 @@ const W = {
     download: 'İndir',
     notes: 'Dikkat',
     localNote: 'Bu sayfa hiçbir şeyi bir yere göndermez; kurulum bu bilgisayarda hazırlanır.',
+    apply: 'Kurulumu uygula',
+    applyHint: 'Modüller, görünüm ve ajan dükkânına kaydedilir. İstediğin zaman Ayarlar’dan yeniden kurabilirsin.',
+    close: 'Vazgeç',
     verify: 'Bağlantı türleri ve şartlar Ekim 2026 araştırmasına dayanır; firmalar şartlarını değiştirebilir.',
   },
   en: {
@@ -71,20 +74,29 @@ const W = {
     download: 'Download',
     notes: 'Heads-up',
     localNote: 'This page sends nothing anywhere; the setup is prepared on this computer.',
+    apply: 'Apply this setup',
+    applyHint: 'Modules, look and the agent are saved to your business. You can run setup again from Settings any time.',
+    close: 'Cancel',
     verify: 'Connection types and conditions follow our October 2026 research; vendors may change their terms.',
   },
 } as const;
 
 type Tab = keyof (typeof W)['tr']['tabs'];
 
-export function Setup() {
-  const [dil, setDil] = useState<KurulumDil>(() => (navigator.language?.startsWith('tr') ? 'tr' : 'en'));
+/**
+ * Standalone (#kurulum) it only shows what would be set up. Inside the app (onApply) the last step
+ * applies it to the shop: modules, look, and the agent's SOUL and tasks.
+ */
+export function Setup({ initial, onApply, onClose }: { initial?: Partial<Cevaplar>; onApply?(c: Cevaplar): Promise<void>; onClose?(): void } = {}) {
+  const [dil, setDil] = useState<KurulumDil>(() => initial?.dil ?? (navigator.language?.startsWith('tr') ? 'tr' : 'en'));
+  const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState('');
   const w = W[dil];
   const [step, setStep] = useState(0);
   const [tab, setTab] = useState<Tab>('adim');
   const [c, setC] = useState<Cevaplar>({
-    isletme: '',
-    sahip: '',
+    isletme: initial?.isletme ?? '',
+    sahip: initial?.sahip ?? '',
     sablon: 'kuafor',
     dil,
     sistemler: [],
@@ -118,6 +130,11 @@ export function Setup() {
     <div className="app setup">
       <header className="topbar">
         <span className="brand">Usta · {w.title}</span>
+        {onClose && (
+          <button className="link-btn" onClick={onClose}>
+            {w.close}
+          </button>
+        )}
         <div className="segmented small">
           {(['tr', 'en'] as const).map((l) => (
             <button key={l} className={dil === l ? 'on' : ''} onClick={() => (setDil(l), set({ dil: l }))}>
@@ -274,7 +291,27 @@ export function Setup() {
             <section className="card stack">
               <span className="eyebrow">{SABLONLAR.find((s) => s.id === c.sablon)!.ad[dil]}</span>
               <h2 className="card-title">{kurulum.ajanAdi}</h2>
-              <p className="muted small">{w.localNote}</p>
+              <p className="muted small">{onApply ? w.applyHint : w.localNote}</p>
+              {onApply && (
+                <button
+                  className="btn primary"
+                  disabled={applying}
+                  onClick={async () => {
+                    setApplying(true);
+                    setApplyError('');
+                    try {
+                      await onApply({ ...c, dil });
+                    } catch (e: any) {
+                      setApplyError(e?.message ?? String(e));
+                    } finally {
+                      setApplying(false);
+                    }
+                  }}
+                >
+                  {w.apply}
+                </button>
+              )}
+              {applyError && <p className="small neg">{applyError}</p>}
               {kurulum.uyarilar.length > 0 && (
                 <div className="subcard stack">
                   <span className="eyebrow">{w.notes}</span>

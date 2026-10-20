@@ -10,6 +10,7 @@ import { moneyRoutes } from './routes/money';
 import { adminRoutes, workerRoutes } from './routes/worker';
 import { assistantRoutes } from './routes/assistant';
 import { connectionRoutes } from './routes/connections';
+import { agentRoutes } from './routes/agent';
 
 export interface ApiRequest {
   method: string;
@@ -28,6 +29,7 @@ export interface ApiResponse {
 export const routes: Route[] = [
   ...authRoutes,
   ...connectionRoutes,
+  ...agentRoutes,
   ...shopRoutes,
   ...clientRoutes,
   ...appointmentRoutes,

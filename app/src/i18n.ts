@@ -1,6 +1,15 @@
 export type Lang = 'tr' | 'en' | 'es';
 
 const tr = {
+  setupApplied: 'Kurulum tamam. {name} işbaşında.',
+  setupBanner: 'İşletmeni kur: birkaç soru, sonra ajanın senin işine göre çalışır.',
+  setupStart: 'Kuruluma başla',
+  setupAgain: 'İşletmeyi yeniden kur',
+  setupAgainHint: 'Modülleri, görünümü ve ajanın görevlerini yeniden seç.',
+  agentNotes: 'Ajanın notları',
+  agentNotesEmpty: 'Şu an dikkat isteyen bir şey yok.',
+  dismiss: 'Tamam, gördüm',
+  details: 'Ayrıntı',
   bank: 'Banka',
   bankUnavailable: 'Banka bağlantısı bu sunucuda henüz açılmadı.',
   connectBank: 'Bankanı bağla',
@@ -67,7 +76,7 @@ const tr = {
   currency: 'Para birimi',
   haveAccount: 'Hesabın var mı? Giriş yap',
   noAccount: 'Yeni dükkân mı? 14 gün ücretsiz dene',
-  heroLine: 'Randevu defteri, gün kazancı, veresiye ve otomatik hatırlatma. Tek ekranda.',
+  heroLine: 'Defter, randevu, otomatik hatırlatma ve verini okuyan bir ajan. Tek ekranda.',
   inTheTill: 'Kasada',
   expected: 'Beklenen',
   booked: 'Sırada',
@@ -323,7 +332,7 @@ const tr = {
   heroB: 'kayıtta.',
   watchFilm: 'Filmi izle',
   startDemo: 'Demoyu başlat',
-  welcomeBody: 'Randevu defteri, gün kazancı, veresiye, otomatik hatırlatmalar ve sesle çalışan bir AI asistan. Berberin telefonunda, tek ekranda.',
+  welcomeBody: 'Defter, randevu, otomatik hatırlatmalar, kullandığın sistemlere bağlantı ve sesle çalışan bir AI asistan. İşletmenin telefonunda, tek ekranda.',
   welcomePoints: 'Söyle, kaydetsin · Sor, rakamla cevaplasın · Hatırlatmalar kendiliğinden gitsin',
   film: 'Tanıtım filmi',
 };
@@ -331,6 +340,15 @@ const tr = {
 type Dict = typeof tr;
 
 const en: Dict = {
+  setupApplied: 'Setup done. {name} is on duty.',
+  setupBanner: 'Set up your business: a few questions, then your agent works the way your business does.',
+  setupStart: 'Start setup',
+  setupAgain: 'Run setup again',
+  setupAgainHint: 'Choose your modules, look and the agent’s tasks again.',
+  agentNotes: 'Agent’s notes',
+  agentNotesEmpty: 'Nothing needs your attention right now.',
+  dismiss: 'Got it',
+  details: 'Details',
   bank: 'Bank',
   bankUnavailable: 'The bank connection is not switched on for this server yet.',
   connectBank: 'Connect your bank',
@@ -397,7 +415,7 @@ const en: Dict = {
   currency: 'Currency',
   haveAccount: 'Have an account? Sign in',
   noAccount: 'New shop? Try 14 days free',
-  heroLine: 'Appointment book, day takings, client tabs and automatic reminders. One screen.',
+  heroLine: 'Books, appointments, automatic reminders and an agent that reads your data. One screen.',
   inTheTill: 'In the till',
   expected: 'Expected',
   booked: 'Booked',
@@ -653,7 +671,7 @@ const en: Dict = {
   heroB: 'counted.',
   watchFilm: 'Watch the film',
   startDemo: 'Start the demo',
-  welcomeBody: 'Appointment book, day takings, client tabs, automatic reminders and a voice AI assistant. On the barber’s phone, one screen.',
+  welcomeBody: 'Books, appointments, automatic reminders, connections to the systems you use and a voice AI assistant. On your phone, one screen.',
   welcomePoints: 'Say it, it’s filed · Ask, it answers with numbers · Reminders go out on their own',
   film: 'Intro film',
 };

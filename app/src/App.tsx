@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient, httpTransport, type Client } from './api';
-import { Ctx, errorText, type Me } from './state';
+import { Ctx, DEFAULT_MODULES, errorText, type Me } from './state';
+import { Setup } from './screens/Setup';
+import { applyLook, loadLook, saveLook, type Skin } from './theme';
 import { detectLang, makeT, type Lang } from './i18n';
 import { money } from './format';
 import { Icon } from './components/ui';
@@ -72,6 +74,7 @@ export function App() {
     }
   };
   const [toastMsg, setToast] = useState('');
+  const [setupOpen, setSetupOpen] = useState(false);
   const [bump, setBump] = useState(0);
   const [operator, setOperator] = useState(() => typeof location !== 'undefined' && location.hash === '#operator');
   const [unread, setUnread] = useState(0);
@@ -113,6 +116,13 @@ export function App() {
 
   const loadMe = useCallback(async (client: Client) => {
     const m = await client.get<Me>('/shops/me');
+    // The shop's look from the setup wizard, unless this phone already chose its own.
+    const look = m.shop.look;
+    if (look && loadLook().skin === 'auto' && !loadLook().accent) {
+      const l = { skin: look.skin as Skin, accent: look.accent };
+      saveLook(l);
+      applyLook(l);
+    }
     setMe(m);
     if (!savedLang()) setLangState(m.shop.language);
     setPhase('in');
@@ -173,7 +183,29 @@ export function App() {
       setAutoMic(mic);
       setTab('assistant');
     },
+    has: (m: string) => (me.shop.modules ?? DEFAULT_MODULES).includes(m),
+    openSetup: () => setSetupOpen(true),
   };
+
+  if (setupOpen)
+    return (
+      <Ctx.Provider value={state}>
+        <Setup
+          initial={{ isletme: me.shop.name, sahip: me.user.name, dil: lang === 'tr' ? 'tr' : 'en' }}
+          onClose={() => setSetupOpen(false)}
+          onApply={async (c) => {
+            const r = await api.post<{ look: { skin: string; accent: string | null }; agent_name: string }>('/shops/me/setup', c);
+            const l = { skin: r.look.skin as Skin, accent: r.look.accent };
+            saveLook(l);
+            applyLook(l);
+            await loadMe(api);
+            setSetupOpen(false);
+            setTab('today');
+            toast(t('setupApplied', { name: r.agent_name }));
+          }}
+        />
+      </Ctx.Provider>
+    );
 
   return (
     <Ctx.Provider value={state}>
@@ -209,7 +241,10 @@ export function App() {
                 ['books', 'book'],
                 ['settings', 'gear'],
               ] as [Tab, string][]
-            ).map(([k, icon]) => (
+            )
+              // No client book and no appointments: the Clients tab has nothing to show.
+              .filter(([k]) => k !== 'clients' || state.has('musteri') || state.has('randevu'))
+              .map(([k, icon]) => (
               <button key={k} className={`${tab === k ? 'on' : ''} ${k === 'assistant' ? 'center' : ''}`} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined}>
                 <Icon name={icon} size={22} />
                 {k === 'settings' && unread > 0 && <span className="tab-badge">{unread}</span>}

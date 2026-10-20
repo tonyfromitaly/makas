@@ -14,6 +14,11 @@ export interface Me {
     country: string;
     reminder_day_before_hour: number;
     reminder_hours_before: number;
+    /** What the setup wizard switched on; null for shops set up before it (see DEFAULT_MODULES). */
+    modules?: string[] | null;
+    look?: { skin: string; accent: string | null } | null;
+    set_up?: boolean;
+    agent_name?: string | null;
   };
   user: { id: string; name: string; email: string; role: 'owner' | 'barber' };
   subscription: { plan_key: string; status: string; current_period_end: string | null };
@@ -37,7 +42,13 @@ interface AppState {
   openAssistant(mic?: boolean): void;
   showWelcome(): void;
   markSupportRead(): void;
+  /** Is this module on for the shop? */
+  has(module: string): boolean;
+  openSetup(): void;
 }
+
+/** Shops from before the wizard keep what they had, except store credit, which is now opt-in. */
+export const DEFAULT_MODULES = ['defter', 'randevu', 'hatirlatma', 'musteri', 'personel', 'bahsis', 'rontgen', 'kasa-kocu'];
 
 export const Ctx = createContext<AppState>(null as any);
 export const useApp = () => useContext(Ctx);

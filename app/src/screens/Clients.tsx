@@ -6,7 +6,7 @@ import { initials, shortDate, toCents } from '../format';
 type Filter = 'all' | 'debt' | 'lapsed' | 'risk';
 
 export function Clients() {
-  const { api, t, fmt, me, lang } = useApp();
+  const { api, t, fmt, me, lang, has } = useApp();
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -15,7 +15,8 @@ export function Clients() {
     () => api.get(`/clients?filter=${filter}&page_size=200${q ? `&q=${encodeURIComponent(q)}` : ''}`),
     [filter, q],
   );
-  const ledger = useLoad(() => api.get('/ledger?page_size=1'), []);
+  const credit = has('veresiye');
+  const ledger = useLoad(() => (credit ? api.get('/ledger?page_size=1') : Promise.resolve(null)), [credit]);
 
   return (
     <div className="screen">
@@ -31,7 +32,8 @@ export function Clients() {
         onChange={setFilter}
         options={[
           { value: 'all', label: t('all') },
-          { value: 'debt', label: t('debt') },
+          // Store credit is a module the owner switches on; off, there is no "owes" anywhere.
+          ...(credit ? [{ value: 'debt' as Filter, label: t('debt') }] : []),
           { value: 'lapsed', label: t('lapsed') },
           { value: 'risk', label: t('risky') },
         ]}
@@ -60,7 +62,7 @@ export function Clients() {
                   {c.visits} {t('visits')} · {t('lastVisit')}: {c.last_visit ? shortDate(c.last_visit, lang, me.shop.timezone) : t('never')}
                 </span>
               </span>
-              {c.balance_cents > 0 && <span className="chip debt numeral">{fmt(c.balance_cents)}</span>}
+              {credit && c.balance_cents > 0 && <span className="chip debt numeral">{fmt(c.balance_cents)}</span>}
             </button>
           </li>
         ))}
@@ -122,9 +124,10 @@ function NewClient({ onDone }: { onDone(): void }) {
 }
 
 function ClientDetail({ id }: { id: string }) {
-  const { api, t, fmt, me, lang, fail, toast } = useApp();
+  const { api, t, fmt, me, lang, fail, toast, has } = useApp();
+  const credit = has('veresiye');
   const { data: c, reload } = useLoad(() => api.get(`/clients/${id}`), [id]);
-  const ledger = useLoad(() => api.get(`/ledger?client_id=${id}&page_size=50`), [id]);
+  const ledger = useLoad(() => (credit ? api.get(`/ledger?client_id=${id}&page_size=50`) : Promise.resolve(null)), [id, credit]);
   const [phone, setPhone] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -207,6 +210,7 @@ function ClientDetail({ id }: { id: string }) {
         </div>
       </div>
 
+      {credit && (
       <div className="subcard stack">
         <div className="row spread">
           <span className="eyebrow">{t('balance')}</span>
@@ -239,6 +243,7 @@ function ClientDetail({ id }: { id: string }) {
           </ul>
         )}
       </div>
+      )}
 
       <div className="row spread">
         <span>

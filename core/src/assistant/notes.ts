@@ -311,7 +311,7 @@ type Summary = { shops: number; dataNotes: number; reviewed: number; added: numb
 const emptySummary = (): Summary => ({ shops: 0, dataNotes: 0, reviewed: 0, added: 0, updated: 0, forgotten: 0, expired: 0 });
 
 /** One shop's upkeep: recompute data notes, then let the model review each conversation gone quiet. */
-async function upkeepShop(tx: Queryable, deps: Deps, shop: { id: string; name: string; language: string }, now: Date, summary: Summary) {
+async function upkeepShop(tx: Queryable, deps: Deps, shop: { id: string; name: string; language: string; soul?: string | null }, now: Date, summary: Summary) {
   summary.shops++;
   summary.dataNotes += await refreshDataNotes(tx, shop.id, now);
   if (!deps.reflect) return;
@@ -335,6 +335,7 @@ async function upkeepShop(tx: Queryable, deps: Deps, shop: { id: string; name: s
           today: DateTime.fromJSDate(now).toISODate()!,
           notes: notes.map((n) => ({ id: n.id, kind: n.kind, subject: n.subject, text: n.text, source: n.source })),
           turns: turns.map((t) => ({ role: t.role, text: t.text })),
+          soul: shop.soul ?? undefined,
         }),
       );
       if (out.success) {
@@ -361,7 +362,7 @@ async function upkeepShop(tx: Queryable, deps: Deps, shop: { id: string; name: s
 export async function memoryUpkeepIn(tx: Queryable, deps: Deps, now: Date) {
   const summary = emptySummary();
   summary.expired = (await tx.query('delete from assistant_notes where not pinned and expires_at < $1 returning id', [now])).rows.length;
-  for (const shop of (await tx.query('select id, name, language from shops')).rows) await upkeepShop(tx, deps, shop, now, summary);
+  for (const shop of (await tx.query(`select id, name, language, nullif(concat_ws(E'\\n\\n', agent_soul, agent_md), '') as soul from shops`)).rows) await upkeepShop(tx, deps, shop, now, summary);
   return summary;
 }
 
@@ -373,7 +374,7 @@ export async function runMemoryUpkeep(db: Database, deps: Deps, now: Date) {
   const summary = emptySummary();
   const shops = await withSystem(db, async (tx) => {
     summary.expired = (await tx.query('delete from assistant_notes where not pinned and expires_at < $1 returning id', [now])).rows.length;
-    return (await tx.query('select id, name, language from shops')).rows;
+    return (await tx.query(`select id, name, language, nullif(concat_ws(E'\\n\\n', agent_soul, agent_md), '') as soul from shops`)).rows;
   });
   for (const shop of shops) await withSystem(db, (tx) => upkeepShop(tx, deps, shop, now, summary));
   return summary;

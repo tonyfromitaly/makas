@@ -29,7 +29,7 @@ export function forgetConversation() {
 const SESSION_GAP_MS = 6 * 3600_000;
 
 export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed?(): void }) {
-  const { api, t, lang, fail } = useApp();
+  const { api, t, lang, fail, has } = useApp();
   const [msgs, setMsgs] = useState<Msg[]>(history);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -124,7 +124,8 @@ export function Assistant({ autoMic, onMicUsed }: { autoMic?: boolean; onMicUsed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMic]);
 
-  const suggestions = ['sug1', 'sug3', 'sug4', 'sug5', 'sug6', 'sug7', 'sug2', 'sug8'] as const;
+  // "Who owes me?" only makes sense with store credit switched on.
+  const suggestions = (['sug1', 'sug3', 'sug4', 'sug5', 'sug6', 'sug7', 'sug2', 'sug8'] as const).filter((k) => k !== 'sug8' || has('veresiye'));
 
   return (
     <div className="screen assistant">

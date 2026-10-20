@@ -85,7 +85,8 @@ export function chatClient(env: Env): Deps['chat'] {
         temperature: 0.4,
         max_tokens: 400,
         messages: [
-          { role: 'system', content: `${SOUL}\n\n${CHAT_SYSTEM}` },
+          // The shop's own agent when the setup wizard wrote one; the generic one otherwise.
+          { role: 'system', content: `${input.soul ?? SOUL}\n\n${CHAT_SYSTEM}` },
           // The conversation so far, so "peki bunu nasıl düzeltirim?" knows what "bunu" is.
           ...(input.history ?? []).map((t) => ({ role: t.role, content: t.text })),
           { role: 'user', content: JSON.stringify({ language: input.lang, shop: input.shop, currency: input.currency, snapshot: input.snapshot, memory: input.memory ?? [], question: input.question }) },
@@ -105,8 +106,8 @@ export function reflectClient(env: Env): Deps['reflect'] {
         temperature: 0,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: `${SOUL}\n\n${REFLECT_RULES}` },
-          { role: 'user', content: JSON.stringify(input) },
+          { role: 'system', content: `${input.soul ?? SOUL}\n\n${REFLECT_RULES}` },
+          { role: 'user', content: JSON.stringify({ ...input, soul: undefined }) },
         ],
       },
       20000,

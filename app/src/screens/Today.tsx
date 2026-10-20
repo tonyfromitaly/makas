@@ -4,9 +4,12 @@ import { useApp, useLoad } from '../state';
 import { addDays, dateLabel, timeIn, todayIn } from '../format';
 import { Empty, Icon, Sheet } from '../components/ui';
 import { AppointmentForm } from './AppointmentForm';
+import { AgentNotes, SetupBanner } from '../components/AgentNotes';
 
 export function Today() {
-  const { api, me, t, lang, fmt, openAssistant } = useApp();
+  const { api, me, t, lang, fmt, openAssistant, has } = useApp();
+  const owner = me.user.role === 'owner';
+  const randevu = has('randevu');
   const tz = me.shop.timezone;
   const [date, setDate] = useState(todayIn(tz));
   const [creating, setCreating] = useState<{} | null>(null);
@@ -37,7 +40,11 @@ export function Today() {
         </button>
       </div>
 
+      {owner && !me.shop.set_up && <SetupBanner />}
+      {owner && <AgentNotes />}
+
       {/* The day as a till receipt: the takings on top, every appointment a line, a stamp once the day is settled. */}
+      {randevu ? (
       <section className="receipt">
         <header className="receipt-head">
           <strong>{t('dayReceipt')}</strong>
@@ -107,6 +114,9 @@ export function Today() {
           </button>
         </div>
       </section>
+      ) : (
+        <DayTill date={date} />
+      )}
 
       <TasksCard />
 
@@ -114,9 +124,11 @@ export function Today() {
         <button className="fab ghost" onClick={() => openAssistant(true)} aria-label={t('speak')}>
           <Icon name="mic" size={20} />
         </button>
-        <button className="fab" onClick={() => setCreating({})} aria-label={t('newAppointment')}>
-          <Icon name="plus" size={20} /> {t('appointmentShort')}
-        </button>
+        {randevu && (
+          <button className="fab" onClick={() => setCreating({})} aria-label={t('newAppointment')}>
+            <Icon name="plus" size={20} /> {t('appointmentShort')}
+          </button>
+        )}
       </div>
 
       <Sheet open={!!creating} onClose={() => setCreating(null)} title={t('newAppointment')}>
@@ -306,6 +318,28 @@ function TasksCard() {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+/** Without appointments the day is just the till: what came in and went out, from the books. */
+function DayTill({ date }: { date: string }) {
+  const { api, t, fmt, bump } = useApp();
+  const { data } = useLoad(() => api.get(`/books/summary?period=day&date=${date}`), [date, bump]);
+  return (
+    <section className="receipt">
+      <header className="receipt-head">
+        <strong>{t('dayReceipt')}</strong>
+      </header>
+      <hr className="rule" />
+      <div className="till-line">
+        <span className="eyebrow">{t('inTheTill')}</span>
+        <strong className="numeral big">{fmt(data?.income_cents ?? 0)}</strong>
+      </div>
+      <div className="ledger-line">
+        <span>{t('expense')}</span>
+        <span className="numeral">{fmt(data?.expense_cents ?? 0)}</span>
+      </div>
     </section>
   );
 }

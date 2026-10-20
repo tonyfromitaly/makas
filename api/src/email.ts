@@ -37,8 +37,8 @@ const COPY: Record<L, { subject: string; hello: string; ready: string; readyTria
   tr: {
     subject: 'Fade hazır: {shop} için giriş anahtarın',
     hello: 'Merhaba {name},',
-    ready: 'Aboneliğin başladı ve {shop} Fade’de hazır. Randevu defterin, gün kazancın, veresiye defterin ve AI asistanın seni bekliyor.',
-    readyTrial: 'Başvurun onaylandı: {shop} Fade’de hazır ve {days} günlük deneme sürün başladı. Randevu defterin, gün kazancın, veresiye defterin ve AI asistanın seni bekliyor.',
+    ready: 'Aboneliğin başladı ve {shop} Fade’de hazır. Defterin, bağlantıların, Röntgen’in ve AI asistanın seni bekliyor.',
+    readyTrial: 'Başvurun onaylandı: {shop} Fade’de hazır ve {days} günlük deneme sürün başladı. Defterin, bağlantıların, Röntgen’in ve AI asistanın seni bekliyor.',
     step1: 'Aşağıdaki düğmeye bas; anahtarın otomatik dolar.',
     step2: 'Kendine bir şifre belirle. Hepsi bu: dükkânın açık.',
     button: 'Fade’i aç',
@@ -49,8 +49,8 @@ const COPY: Record<L, { subject: string; hello: string; ready: string; readyTria
   en: {
     subject: 'Fade is ready: your access key for {shop}',
     hello: 'Hi {name},',
-    ready: 'Your subscription is active and {shop} is ready on Fade. Your appointment book, day takings, client tabs and AI assistant are waiting.',
-    readyTrial: 'You’re approved: {shop} is ready on Fade and your {days}-day trial has started. Your appointment book, day takings, client tabs and AI assistant are waiting.',
+    ready: 'Your subscription is active and {shop} is ready on Fade. Your books, connections, X-ray and AI assistant are waiting.',
+    readyTrial: 'You’re approved: {shop} is ready on Fade and your {days}-day trial has started. Your books, connections, X-ray and AI assistant are waiting.',
     step1: 'Tap the button below; your key is filled in for you.',
     step2: 'Choose a password. That’s it: your shop is open.',
     button: 'Open Fade',
@@ -61,8 +61,8 @@ const COPY: Record<L, { subject: string; hello: string; ready: string; readyTria
   es: {
     subject: 'Fade está listo: tu clave de acceso para {shop}',
     hello: 'Hola {name}:',
-    ready: 'Tu suscripción está activa y {shop} ya está en Fade. Tu agenda, la caja del día, los fiados y tu asistente de IA te esperan.',
-    readyTrial: 'Tu solicitud fue aprobada: {shop} ya está en Fade y empezó tu prueba de {days} días. Tu agenda, la caja del día, los fiados y tu asistente de IA te esperan.',
+    ready: 'Tu suscripción está activa y {shop} ya está en Fade. Tus libros, tus conexiones, la radiografía y tu asistente de IA te esperan.',
+    readyTrial: 'Tu solicitud fue aprobada: {shop} ya está en Fade y empezó tu prueba de {days} días. Tus libros, tus conexiones, la radiografía y tu asistente de IA te esperan.',
     step1: 'Pulsa el botón de abajo; tu clave se rellena sola.',
     step2: 'Elige una contraseña. Listo: tu barbería está abierta.',
     button: 'Abrir Fade',

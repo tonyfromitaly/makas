@@ -9,7 +9,7 @@ import type { Lang } from '../i18n';
 import { ACCENTS, SKINS, applyLook, isDark, loadLook, saveLook, type Look as LookT } from '../theme';
 
 export function Settings() {
-  const { api, t, me, reloadMe, fail, toast, lang, setLang, signOut } = useApp();
+  const { api, t, me, reloadMe, fail, toast, lang, setLang, signOut, has, openSetup } = useApp();
   const [shop, setShop] = useState({ ...me.shop });
   const isOwner = me.user.role === 'owner';
 
@@ -56,6 +56,16 @@ export function Settings() {
         </Field>
       </section>
 
+      {isOwner && (
+        <section className="card stack">
+          <h2 className="card-title">{me.shop.agent_name ?? t('setupStart')}</h2>
+          <p className="muted small">{me.shop.set_up ? t('setupAgainHint') : t('setupBanner')}</p>
+          <button className="btn" onClick={openSetup}>
+            {me.shop.set_up ? t('setupAgain') : t('setupStart')}
+          </button>
+        </section>
+      )}
+
       <Look />
 
       {isOwner && (
@@ -79,6 +89,8 @@ export function Settings() {
               <option value="es">Español</option>
             </select>
           </Field>
+          {has('hatirlatma') && (
+            <>
           <span className="eyebrow">{t('reminderRules')}</span>
           <div className="row two">
             <Field label={t('dayBeforeAt')}>
@@ -88,6 +100,8 @@ export function Settings() {
               <input type="number" min={1} max={24} value={shop.reminder_hours_before} onChange={(e) => setShop({ ...shop, reminder_hours_before: Number(e.target.value) })} />
             </Field>
           </div>
+            </>
+          )}
           <button className="btn primary" onClick={saveShop}>
             {t('save')}
           </button>
@@ -95,8 +109,8 @@ export function Settings() {
       )}
 
       {isOwner && <Connections />}
-      <Catalog kind="services" />
-      <Catalog kind="barbers" />
+      {(has('randevu') || has('satis')) && <Catalog kind="services" />}
+      {has('personel') && <Catalog kind="barbers" />}
       <SupportChat />
 
       <section className="card stack">

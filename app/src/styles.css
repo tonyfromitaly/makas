@@ -2446,3 +2446,40 @@ input.narrow {
   background: var(--carbon-soft);
   border-radius: var(--r, 2px);
 }
+
+/* --- Today › the agent's notes --- */
+.agent-notes {
+  margin-bottom: 14px;
+}
+.agent-note {
+  border-left: 4px solid var(--line);
+  padding: 2px 0 2px 12px;
+  display: grid;
+  gap: 4px;
+}
+.agent-note p {
+  margin: 0;
+}
+.agent-note.sev-high {
+  border-left-color: var(--stamp);
+}
+.agent-note.sev-mid {
+  border-left-color: var(--carbon);
+}
+.agent-note-head {
+  all: unset;
+  cursor: pointer;
+  font-weight: 700;
+}
+.agent-note-head:focus-visible {
+  outline: 2px solid var(--carbon);
+}
+.agent-advice {
+  background: var(--carbon-soft);
+  padding: 8px 10px;
+  border-radius: var(--r, 2px);
+}
+.setup-banner {
+  margin-bottom: 14px;
+  border: 2px dashed var(--carbon);
+}

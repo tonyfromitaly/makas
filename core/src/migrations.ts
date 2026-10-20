@@ -484,6 +484,36 @@ alter table connections add column sync_cursor text;
 alter table connections add column meta jsonb;
 `;
 
+// Setup and the agent: what the wizard decided for a shop (modules, look, the agent's SOUL and tasks),
+// and the agent's notes: signals computed from the records (Röntgen findings, the cash forecast).
+const agent = `
+alter table shops add column modules text[];
+alter table shops add column look jsonb;
+alter table shops add column setup jsonb;
+alter table shops add column agent_soul text;
+alter table shops add column agent_md text;
+alter table shops add column signals_at timestamptz;
+create table agent_signals (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  key text not null,
+  severity text not null check (severity in ('yuksek', 'orta', 'bilgi')),
+  title text not null,
+  body text not null,
+  advice text,
+  evidence jsonb,
+  effect numeric,
+  dismissed_at timestamptz,
+  resolved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (shop_id, key)
+);
+${rls('agent_signals')}
+alter policy tenant_isolation on agent_signals using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+${toTenant('grant select, insert, update, delete on agent_signals to makas_tenant;')}
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -494,4 +524,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '007_assistant_notes', sql: assistantNotes },
   { id: '008_connections', sql: connections },
   { id: '009_bank', sql: bank },
+  { id: '010_agent', sql: agent },
 ];

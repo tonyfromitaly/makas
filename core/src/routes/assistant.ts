@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isaretleriGuncelle, isaretlerEskiMi } from '../ajan/isaretler';
 import { DateTime } from 'luxon';
 import { badRequest, forbidden, isoDate, lang, noContent, notFound, ok, pageQuery, paged, positiveCents, type Ctx, type Route } from '../http';
 import { understandLocal } from '../assistant/local';
@@ -17,8 +18,12 @@ type Lang = 'tr' | 'en' | 'es';
 
 async function shopInfo(ctx: Ctx) {
   return (
-    await ctx.db.query('select name, timezone, language, currency, country from shops where id = $1', [ctx.shopId])
-  ).rows[0] as { name: string; timezone: string; language: Lang; currency: string; country: string };
+    await ctx.db.query(
+      `select name, timezone, language, currency, country,
+              nullif(concat_ws(E'\n\n', agent_soul, agent_md), '') as soul from shops where id = $1`,
+      [ctx.shopId],
+    )
+  ).rows[0] as { name: string; timezone: string; language: Lang; currency: string; country: string; soul: string | null };
 }
 
 async function lists(ctx: Ctx) {
@@ -319,7 +324,7 @@ export const assistantRoutes: Route[] = [
           let reply: string | null = null;
           if (ctx.deps.chat) {
             try {
-              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot, history: mem.view.recent, memory })).trim() || null;
+              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot, history: mem.view.recent, memory, soul: shop.soul ?? undefined })).trim() || null;
               if (reply) engine = 'ai';
             } catch {
               /* fall back to local advice */
@@ -545,7 +550,21 @@ export const assistantRoutes: Route[] = [
               .join('; '),
           }),
         );
-      return { reply: parts.join(' '), tasks };
+      // The owner also hears the agent's most important note (Röntgen and the cash forecast write them
+      // in Turkish for now, so the English and Spanish briefs leave it to the Today screen).
+      let signal = null;
+      if (ctx.role === 'owner') {
+        if (await isaretlerEskiMi(ctx.db, ctx.shopId, ctx.now)) await isaretleriGuncelle(ctx.db, ctx.shopId, ctx.now);
+        signal = (
+          await ctx.db.query(
+            `select id, severity, title from agent_signals where shop_id = $1 and dismissed_at is null and resolved_at is null
+              order by case severity when 'yuksek' then 0 when 'orta' then 1 else 2 end, effect desc nulls last limit 1`,
+            [ctx.shopId],
+          )
+        ).rows[0] ?? null;
+        if (signal && l === 'tr') parts.push(`${signal.title}.`);
+      }
+      return { reply: parts.join(' '), tasks, signal };
     },
   },
 

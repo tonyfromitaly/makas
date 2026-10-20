@@ -43,7 +43,7 @@ export function Connections() {
     setBusy(true);
     api
       .post('/connections/square/finish', { code, state })
-      .then((r: any) => toast(t('squareSynced').replace('{n}', String(r.sync.kayit))))
+      .then((r: any) => toast(t('squareSynced', { n: String(r.sync.kayit) })))
       .catch(fail)
       .finally(() => (setBusy(false), reload()));
   }, []);
@@ -60,9 +60,9 @@ export function Connections() {
     }
   };
   const connect = () => run(async () => void (location.href = (await api.post<{ url: string }>('/connections/square/start')).url));
-  const sync = () => run(async () => toast(t('squareSynced').replace('{n}', String((await api.post<any>('/connections/square/sync')).sync.kayit))));
+  const sync = () => run(async () => toast(t('squareSynced', { n: String((await api.post<any>('/connections/square/sync')).sync.kayit) })));
   const disconnect = () => run(async () => void (await api.del('/connections/square?data=keep')));
-  const bankDone = (r: any) => toast(t('bankSynced').replace('{n}', String(r.sync.kayit)));
+  const bankDone = (r: any) => toast(t('bankSynced', { n: String(r.sync.kayit) }));
   const connectBank = () =>
     run(async () => {
       const { link_token } = await api.post<{ link_token: string }>('/connections/plaid/link-token');

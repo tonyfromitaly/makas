@@ -16,7 +16,7 @@ export async function loadSubscription(db: Queryable, shopId: string) {
 }
 
 const SHOP_FIELDS = `id, name, country, timezone, language, currency, status, business_type,
-  reminder_day_before_hour, reminder_hours_before, created_at`;
+  reminder_day_before_hour, reminder_hours_before, created_at, modules, look, setup is not null as set_up, setup->>'ajanAdi' as agent_name`;
 
 export const shopRoutes: Route[] = [
   {

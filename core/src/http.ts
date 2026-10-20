@@ -23,10 +23,11 @@ export interface Deps {
   parseNote?(input: { text: string; lang: string; today: string; timezone: string }): Promise<unknown>;
   /** LLM that turns a sentence into a Plan (see assistant/plan.ts). Optional: the local engine is the fallback. */
   assistant?(input: AssistantInput): Promise<unknown>;
-  /** LLM that answers an open question in words, grounded on a SQL snapshot. Optional: local advice is the fallback. */
-  chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown; history?: Turn[]; memory?: string[] }): Promise<string>;
+  /** LLM that answers an open question in words, grounded on a SQL snapshot. Optional: local advice is the fallback.
+   *  soul: the shop's own agent (SOUL.md + AGENT.md written by the setup wizard), when it has one. */
+  chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown; history?: Turn[]; memory?: string[]; soul?: string }): Promise<string>;
   /** LLM that reviews a quiet conversation and edits the long-term notes (core/agent/AGENT.md). Optional. */
-  reflect?(input: { lang: string; shop: string; today: string; notes: { id: string; kind: string; subject: string | null; text: string; source: string }[]; turns: Turn[] }): Promise<unknown>;
+  reflect?(input: { lang: string; shop: string; today: string; notes: { id: string; kind: string; subject: string | null; text: string; source: string }[]; turns: Turn[]; soul?: string }): Promise<unknown>;
   /** Connections to the systems a business already uses. Set by the server when configured. */
   baglanti?: {
     square?: {
