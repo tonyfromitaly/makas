@@ -16,6 +16,8 @@ export function Today() {
   const [acting, setActing] = useState<any>(null);
   const [report, setReport] = useState(false);
   const { data, reload } = useLoad(() => api.get(`/appointments?date=${date}`), [date]);
+  // The same weekday a week earlier: the fair day to measure today against.
+  const { data: prev } = useLoad(() => (randevu ? api.get(`/appointments?date=${addDays(date, -7)}`) : Promise.resolve(null)), [date, randevu]);
 
   const isToday = date === todayIn(tz);
   const rel = isToday ? t('today') : date === addDays(todayIn(tz), 1) ? t('tomorrow') : date === addDays(todayIn(tz), -1) ? t('yesterday') : null;
@@ -41,7 +43,7 @@ export function Today() {
       </div>
 
       {owner && !me.shop.set_up && <SetupBanner />}
-      {owner && <AgentNotes />}
+      {owner && <AgentNotes compact />}
 
       {/* The day as a till receipt: the takings on top, every appointment a line, a stamp once the day is settled. */}
       {randevu ? (
@@ -57,6 +59,7 @@ export function Today() {
           <span className="eyebrow">{t('inTheTill')}</span>
           <strong className="numeral big">{fmt(s?.done_cents ?? 0)}</strong>
         </div>
+        <Versus cur={s?.done_cents} prev={prev?.summary?.done_cents} date={addDays(date, -7)} running={isToday} />
         <div className="meter" aria-hidden>
           <span style={{ width: `${pct}%` }} />
         </div>
@@ -324,8 +327,9 @@ function TasksCard() {
 
 /** Without appointments the day is just the till: what came in and went out, from the books. */
 function DayTill({ date }: { date: string }) {
-  const { api, t, fmt, bump } = useApp();
+  const { api, t, fmt, bump, me } = useApp();
   const { data } = useLoad(() => api.get(`/books/summary?period=day&date=${date}`), [date, bump]);
+  const { data: prev } = useLoad(() => api.get(`/books/summary?period=day&date=${addDays(date, -7)}`), [date, bump]);
   return (
     <section className="receipt">
       <header className="receipt-head">
@@ -336,10 +340,30 @@ function DayTill({ date }: { date: string }) {
         <span className="eyebrow">{t('inTheTill')}</span>
         <strong className="numeral big">{fmt(data?.income_cents ?? 0)}</strong>
       </div>
+      <Versus cur={data?.income_cents} prev={prev?.income_cents} date={addDays(date, -7)} running={date === todayIn(me.shop.timezone)} />
       <div className="ledger-line">
         <span>{t('expense')}</span>
         <span className="numeral">{fmt(data?.expense_cents ?? 0)}</span>
       </div>
     </section>
+  );
+}
+
+/**
+ * Under the hero number: the same weekday last week. A day still running is not given a percentage
+ * against a finished one; only the earlier day's total, so the owner can judge.
+ */
+function Versus({ cur, prev, date, running }: { cur?: number; prev?: number; date: string; running: boolean }) {
+  const { t, fmt, lang } = useApp();
+  if (prev === undefined || cur === undefined) return null;
+  // "Geçen salı", "Last Tuesday": the weekday alone reads naturally.
+  const wd = dateLabel(date, lang, { weekday: 'long' });
+  const day = lang === 'en' ? wd : wd.toLocaleLowerCase(lang);
+  const d = prev > 0 && !running ? cur / prev - 1 : null;
+  return (
+    <p className="versus small">
+      {t('lastWeekSameDay', { day })}: <span className="numeral">{fmt(prev)}</span>
+      {d !== null && Math.abs(d) >= 0.03 && <span className={d > 0 ? 'pos' : 'neg'}> · {d > 0 ? '+' : '−'}%{Math.round(Math.abs(d) * 100)}</span>}
+    </p>
   );
 }

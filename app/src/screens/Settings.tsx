@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { takeNavHint } from '../nav';
 import { useApp, useLoad } from '../state';
 import { Field, Icon } from '../components/ui';
 import { dateLabel, toCents } from '../format';
@@ -12,6 +13,11 @@ export function Settings() {
   const { api, t, me, reloadMe, fail, toast, lang, setLang, signOut, has, openSetup } = useApp();
   const [shop, setShop] = useState({ ...me.shop });
   const isOwner = me.user.role === 'owner';
+  // Opened from an agent note: start at the section it is about.
+  useEffect(() => {
+    const h = takeNavHint();
+    if (h) setTimeout(() => document.getElementById(`sec-${h}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 300);
+  }, []);
 
   const saveShop = async () => {
     try {
@@ -91,7 +97,7 @@ export function Settings() {
           </Field>
           {has('hatirlatma') && (
             <>
-          <span className="eyebrow">{t('reminderRules')}</span>
+          <span className="eyebrow" id="sec-reminders">{t('reminderRules')}</span>
           <div className="row two">
             <Field label={t('dayBeforeAt')}>
               <input type="number" min={0} max={23} value={shop.reminder_day_before_hour} onChange={(e) => setShop({ ...shop, reminder_day_before_hour: Number(e.target.value) })} />
@@ -109,7 +115,11 @@ export function Settings() {
       )}
 
       {isOwner && <Connections />}
-      {(has('randevu') || has('satis')) && <Catalog kind="services" />}
+      {(has('randevu') || has('satis')) && (
+        <div id="sec-services">
+          <Catalog kind="services" />
+        </div>
+      )}
       {has('personel') && <Catalog kind="barbers" />}
       <SupportChat />
 

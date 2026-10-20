@@ -96,7 +96,66 @@ async function syncIncome(ctx: Ctx, appointmentId: string, isDone: boolean, tz: 
   );
 }
 
+// The working day free slots are looked for in, until shops can set their own hours.
+const DAY_START = 9;
+const DAY_END = 20;
+
 export const appointmentRoutes: Route[] = [
+  {
+    // The nearest free start times for a service on a day: "that time is taken, 15:30 or 16:00?".
+    method: 'GET',
+    path: '/appointments/free',
+    auth: 'user',
+    gated: true,
+    query: z.object({
+      date: isoDate,
+      service_id: uuid,
+      barber_id: uuid.optional(),
+      near: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      count: z.coerce.number().int().min(1).max(8).default(3),
+    }),
+    async handler(ctx, { query }) {
+      const tz = await shopTz(ctx);
+      const service = await loadService(ctx, query.service_id);
+      const minutes = Number(service.duration_min) || 30;
+      const barbers = (
+        await ctx.db.query(`select id, name from barbers where shop_id = $1 and active order by created_at`, [ctx.shopId])
+      ).rows as { id: string; name: string }[];
+      // The barber asked for first; the others only when none was named.
+      const pool = query.barber_id ? barbers.filter((b) => b.id === query.barber_id) : barbers;
+      const day = DateTime.fromISO(query.date, { zone: tz }).startOf('day');
+      const busy = (
+        await ctx.db.query(
+          `select barber_id, starts_at, ends_at from appointments
+            where shop_id = $1 and status in ('booked', 'done') and starts_at < $3 and ends_at > $2`,
+          [ctx.shopId, day.toJSDate(), day.plus({ days: 1 }).toJSDate()],
+        )
+      ).rows.map((r: any) => ({ barber: r.barber_id, a: new Date(r.starts_at).getTime(), b: new Date(r.ends_at).getTime() }));
+      const nearMin = query.near ? Number(query.near.slice(0, 2)) * 60 + Number(query.near.slice(3)) : DAY_START * 60;
+      const earliest = ctx.now.getTime() + 15 * 60_000; // not in the past, not in the next quarter hour
+      const out: { time: string; barber_id: string; barber_name: string; distance: number }[] = [];
+      for (let m = DAY_START * 60; m + minutes <= DAY_END * 60; m += 15) {
+        const start = day.plus({ minutes: m });
+        const a = start.toMillis();
+        const b = a + minutes * 60_000;
+        if (a < earliest) continue;
+        const free = pool.find((br) => !busy.some((x) => x.barber === br.id && x.a < b && x.b > a));
+        if (free) out.push({ time: start.toFormat('HH:mm'), barber_id: free.id, barber_name: free.name, distance: Math.abs(m - nearMin) });
+      }
+      out.sort((x, y) => x.distance - y.distance || x.time.localeCompare(y.time));
+      const taken = query.near ? !out.some((o) => o.time === query.near) : false;
+      // Why that time cannot be booked: it is past, outside the working day, or someone has it.
+      const nearAt = day.plus({ minutes: nearMin }).toMillis();
+      const reason = !taken ? null : nearAt < earliest ? 'past' : nearMin < DAY_START * 60 || nearMin + minutes > DAY_END * 60 ? 'closed' : 'busy';
+      return {
+        date: query.date,
+        taken,
+        reason,
+        hours: { from: `${String(DAY_START).padStart(2, '0')}:00`, to: `${DAY_END}:00` },
+        slots: out.slice(0, query.count).sort((x, y) => x.time.localeCompare(y.time)).map(({ distance, ...o }) => o),
+      };
+    },
+  },
   {
     method: 'GET',
     path: '/appointments',

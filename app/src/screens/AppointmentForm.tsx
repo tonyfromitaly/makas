@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { VoiceDraft } from '@makas/core';
 import { useApp, useLoad } from '../state';
 import { Field, Icon } from '../components/ui';
+import { SlotCheck } from '../components/SlotCheck';
 import { fold } from '@makas/core';
 
 export function AppointmentForm({ date, draft, onDone }: { date: string; draft?: VoiceDraft; onDone(date?: string): void }) {
@@ -144,6 +145,7 @@ export function AppointmentForm({ date, draft, onDone }: { date: string; draft?:
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required step={300} />
         </Field>
       </div>
+      <SlotCheck date={day} time={time} serviceId={serviceId} barberId={barbers && barbers.data.length > 1 ? barberId : null} onPick={(tm, b) => (setTime(tm), setBarberId(b))} />
 
       <button className="btn primary block" disabled={busy || !serviceId || (!clientId && !query.trim())}>
         <Icon name="check" /> {draft ? t('confirm') : t('save')}

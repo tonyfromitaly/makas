@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import { CATEGORIES } from '@makas/core';
 import { useApp } from '../state';
 import { Field, Icon, Segmented } from './ui';
-import { toCents } from '../format';
+import { dateLabel, toCents } from '../format';
+import { SlotCheck } from './SlotCheck';
 
 export type Draft = Record<string, any> & { type: 'appointment' | 'client' | 'book' | 'reminder' | 'ledger' };
 type Status = 'open' | 'saved' | 'dismissed' | 'busy';
 
 /** One proposed write. Nothing reaches the database until the barber taps confirm. */
 export function DraftCard({ draft, lists, onSaved, confirmSignal = 0 }: { draft: Draft; lists?: { services: any[]; barbers: any[] }; onSaved?(): void; confirmSignal?: number }) {
-  const { api, t, fmt, fail, refreshAll } = useApp();
+  const { api, t, fmt, fail, refreshAll, lang } = useApp();
   const [d, setD] = useState<Draft>({ ...draft, amount: draft.amount_cents ? String(draft.amount_cents / 100) : '', consent: true });
   const [status, setStatus] = useState<Status>('open');
   const set = (patch: Record<string, unknown>) => setD((x) => ({ ...x, ...patch }));
@@ -39,6 +40,7 @@ export function DraftCard({ draft, lists, onSaved, confirmSignal = 0 }: { draft:
     }
   };
 
+  const svc = d.type === 'appointment' ? lists?.services.find((s) => s.id === d.service_id) : null;
   const valid =
     d.type === 'book' ? toCents(d.amount) > 0
     : d.type === 'ledger' ? toCents(d.amount) > 0
@@ -64,7 +66,19 @@ export function DraftCard({ draft, lists, onSaved, confirmSignal = 0 }: { draft:
       <div className="draft-head">
         <span className="chip">{label(d, t)}</span>
         {d.type === 'book' && <strong className={`numeral ${d.kind === 'income' ? 'pos' : 'neg'}`}>{d.kind === 'income' ? '+' : '−'}{fmt(toCents(d.amount))}</strong>}
+        {/* The price before the confirm button, always. */}
+        {d.type === 'appointment' && svc && <strong className="numeral">{fmt(svc.price_cents)}</strong>}
+        {d.type === 'reminder' && toCents(d.amount) > 0 && <strong className="numeral">{fmt(toCents(d.amount))}</strong>}
       </div>
+      {/* What will be saved, in one line that stays on top while the fields below change. */}
+      {d.type === 'appointment' && (
+        <p className="draft-summary">
+          {[d.client_name ?? '—', svc?.name, d.date ? `${dateLabel(d.date, lang, { weekday: 'short', day: 'numeric', month: 'short' })}${d.time ? ` ${d.time}` : ''}` : null, lists && lists.barbers.length > 1 ? lists.barbers.find((b) => b.id === d.barber_id)?.name : null]
+            .filter(Boolean)
+            .join(' · ')}
+          {svc?.duration_min ? <span className="muted"> · {svc.duration_min} {t('minutes')}</span> : null}
+        </p>
+      )}
 
       {d.type === 'book' && (
         <div className="stack tight">
@@ -132,6 +146,7 @@ export function DraftCard({ draft, lists, onSaved, confirmSignal = 0 }: { draft:
             <input type="date" value={d.date} onChange={(e) => set({ date: e.target.value })} aria-label={t('date')} />
             <input type="time" value={d.time ?? ''} onChange={(e) => set({ time: e.target.value })} aria-label={t('time')} />
           </div>
+          <SlotCheck date={d.date} time={d.time} serviceId={d.service_id} barberId={lists && lists.barbers.length > 1 ? d.barber_id : null} onPick={(time, barber_id) => set({ time, barber_id })} />
         </div>
       )}
 

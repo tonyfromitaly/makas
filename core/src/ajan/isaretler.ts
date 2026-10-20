@@ -16,7 +16,22 @@ export interface Isaret {
   advice?: string;
   evidence?: { etiket: string; deger: string }[];
   effect?: number;
+  /** One tap from the note: open the screen where it is fixed, or set the reminder that fixes it. */
+  action?: { type: 'open'; tab: 'clients' | 'books' | 'settings'; filter?: string } | { type: 'task'; title: string; due_date: string };
 }
+
+// Where each Röntgen finding is acted on.
+const ACTION: Record<string, Isaret['action']> = {
+  'musteri-kaybi': { type: 'open', tab: 'clients', filter: 'lapsed' },
+  'randevu-kaybi': { type: 'open', tab: 'settings', filter: 'reminders' },
+  'fiyat-erimesi': { type: 'open', tab: 'settings', filter: 'services' },
+  'fiyat-indirim': { type: 'open', tab: 'settings', filter: 'services' },
+  'gider-abonelik': { type: 'open', tab: 'books', filter: 'expense' },
+  'mukerrer': { type: 'open', tab: 'books', filter: 'expense' },
+  'gider-artis': { type: 'open', tab: 'books', filter: 'expense' },
+  'gider-malzeme': { type: 'open', tab: 'books', filter: 'expense' },
+  'pos': { type: 'open', tab: 'books', filter: 'expense' },
+};
 
 const TR_AY = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const gunAdi = (iso: string) => `${Number(iso.slice(8, 10))} ${TR_AY[Number(iso.slice(5, 7)) - 1]}`;
@@ -47,14 +62,27 @@ export async function isaretleriHesapla(tx: Queryable, shopId: string, now: Date
         advice: 'Ödemeden önce bekleyen tahsilatları iste, ertelenebilecek bir ödemeyi kaydır ya da o hafta için kısa vadeli bir tampon ayarla.',
         evidence: kanit,
         effect: -f.enDusuk.tutar,
+        // A reminder three days ahead of the day the money runs out (today if that is sooner).
+        action: {
+          type: 'task',
+          title: `Tahsilatları iste: ${gunAdi(f.eksiGun.tarih)} kasa sıkışıyor`,
+          due_date: [new Date(Date.parse(f.eksiGun.tarih) - 3 * 86_400_000).toISOString().slice(0, 10), bugun].sort().reverse()[0],
+        },
       });
     } else if (f.sabit.length && f.enDusuk.tutar < f.sabit.reduce((s, x) => s + x.tutar, 0) * 0.25) {
+      const aylikSabit = f.sabit.reduce((s, x) => s + x.tutar, 0);
+      // The lowest point may be today itself: then it is a thin cushion, not a dip ahead.
+      const bugunEnDusuk = f.enDusuk.tarih === bugun;
       out.push({
         key: 'nakit-tahmin',
         severity: 'orta',
-        title: `Kasa ${gunAdi(f.enDusuk.tarih)} civarı ${tl(f.enDusuk.tutar)}${ek(Math.round(f.enDusuk.tutar), 'e')} kadar iner`,
-        body: `Eksiye düşmüyor ama sabit ödemelerin dörtte birinin altına iniyor.${f.enDusuk.sebep ? ` Sebep: ${f.enDusuk.sebep} ödemesi.` : ''}`,
-        advice: 'O haftaya denk gelen büyük alımları sonraya bırak.',
+        title: bugunEnDusuk
+          ? `Kasada aylık sabit ödemelerin dörtte birinden az para var`
+          : `Kasa ${gunAdi(f.enDusuk.tarih)} civarı ${tl(f.enDusuk.tutar)}${ek(Math.round(f.enDusuk.tutar), 'e')} kadar iner`,
+        body: bugunEnDusuk
+          ? `Bugün kasada ${tl(f.kasa)} var; her ay ${tl(aylikSabit)} sabit ödeme çıkıyor. Önümüzdeki 4 hafta eksiye düşmüyor ama tampon ince.`
+          : `Eksiye düşmüyor ama sabit ödemelerin dörtte birinin altına iniyor.${f.enDusuk.sebep ? ` Sebep: ${f.enDusuk.sebep} ödemesi.` : ''}`,
+        advice: bugunEnDusuk ? 'Her hafta küçük bir miktarı kenara ayır; hedef bir aylık sabit ödeme kadar tampon.' : 'O haftaya denk gelen büyük alımları sonraya bırak.',
         evidence: kanit,
       });
     }
@@ -64,7 +92,7 @@ export async function isaretleriHesapla(tx: Queryable, shopId: string, now: Date
   const r = rontgen(v.kayitlar, { ad: v.ad, para: v.para, randevular: v.randevular, acilisKasa: v.acilisKasa });
   for (const b of r.bulgular) {
     if (b.id === 'nakit-omru' && out.some((x) => x.key === 'nakit-tahmin')) continue; // the forecast says it better
-    out.push({ key: `rontgen:${b.id}`, severity: b.ciddiyet, title: b.baslik, body: b.ozet, advice: b.oneri, evidence: b.kanit.slice(0, 6), effect: b.aylikEtki || undefined });
+    out.push({ key: `rontgen:${b.id}`, severity: b.ciddiyet, title: b.baslik, body: b.ozet, advice: b.oneri, evidence: b.kanit.slice(0, 6), effect: b.aylikEtki || undefined, action: ACTION[b.id] });
   }
   return out;
 }
@@ -77,12 +105,12 @@ export async function isaretleriGuncelle(tx: Queryable, shopId: string, now: Dat
     const o = eski.get(s.key);
     const degisti = !o || o.title !== s.title;
     await tx.query(
-      `insert into agent_signals (shop_id, key, severity, title, body, advice, evidence, effect, dismissed_at, resolved_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, null, null)
+      `insert into agent_signals (shop_id, key, severity, title, body, advice, evidence, effect, action, dismissed_at, resolved_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, null, null)
        on conflict (shop_id, key) do update set severity = excluded.severity, title = excluded.title, body = excluded.body,
-         advice = excluded.advice, evidence = excluded.evidence, effect = excluded.effect, resolved_at = null,
+         advice = excluded.advice, evidence = excluded.evidence, effect = excluded.effect, action = excluded.action, resolved_at = null,
          dismissed_at = case when $9 then null else agent_signals.dismissed_at end`,
-      [shopId, s.key, s.severity, s.title, s.body, s.advice ?? null, JSON.stringify(s.evidence ?? []), s.effect ?? null, degisti],
+      [shopId, s.key, s.severity, s.title, s.body, s.advice ?? null, JSON.stringify(s.evidence ?? []), s.effect ?? null, degisti, s.action ? JSON.stringify(s.action) : null],
     );
   }
   const keys = yeni.map((s) => s.key);

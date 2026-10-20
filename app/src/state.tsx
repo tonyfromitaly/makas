@@ -45,6 +45,8 @@ interface AppState {
   /** Is this module on for the shop? */
   has(module: string): boolean;
   openSetup(): void;
+  /** Open a tab, optionally on a filter or section (agent note buttons). */
+  go(tab: 'today' | 'clients' | 'assistant' | 'books' | 'settings', hint?: string): void;
 }
 
 /** Shops from before the wizard keep what they had, except store credit, which is now opt-in. */

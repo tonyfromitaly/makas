@@ -514,6 +514,11 @@ alter policy tenant_isolation on agent_signals using ${POLICY('shop_id')} with c
 ${toTenant('grant select, insert, update, delete on agent_signals to makas_tenant;')}
 `;
 
+// What a note lets the owner do in one tap (open a list, set a reminder).
+const signalAction = `
+alter table agent_signals add column action jsonb;
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -525,4 +530,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '008_connections', sql: connections },
   { id: '009_bank', sql: bank },
   { id: '010_agent', sql: agent },
+  { id: '011_signal_action', sql: signalAction },
 ];

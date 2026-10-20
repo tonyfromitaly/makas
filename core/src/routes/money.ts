@@ -238,6 +238,20 @@ export const moneyRoutes: Route[] = [
       };
       const { income, expense } = await totals(b.from, b.to);
       const prev = await totals(b.prevFrom, b.prevTo);
+      // A fair comparison for the cards: a period still running is set against the same days of the
+      // one before ("the same days last month"); a finished one against the whole previous period.
+      const today = DateTime.fromJSDate(ctx.now, { zone: tz }).toISODate()!;
+      const running = query.period !== 'day' && b.from <= today && today < b.to;
+      const span = running ? Math.round(DateTime.fromISO(today).diff(DateTime.fromISO(b.from), 'days').days) : 0;
+      const cur = running ? await totals(b.from, today) : { income, expense };
+      const base = running ? await totals(b.prevFrom, DateTime.fromISO(b.prevFrom).plus({ days: span }).toISODate()!) : prev;
+      const pct = (a: number, z: number) => (z > 0 && a >= 0 ? Math.round((a / z - 1) * 100) : null);
+      const compare = {
+        basis: running ? 'same_days' : 'previous',
+        income_pct: pct(cur.income, base.income),
+        expense_pct: pct(cur.expense, base.expense),
+        net_pct: base.income - base.expense > 0 ? pct(cur.income - cur.expense, base.income - base.expense) : null,
+      };
       const by_category = rows.map((r: any) => ({ kind: r.kind, category: r.category, total_cents: Number(r.total), count: r.n }));
       const prevNet = prev.income - prev.expense;
       const net = income - expense;
@@ -258,6 +272,7 @@ export const moneyRoutes: Route[] = [
         expense_cents: expense,
         net_cents: net,
         previous: { income_cents: prev.income, expense_cents: prev.expense, net_cents: prevNet },
+        compare,
         by_category,
         series,
         insight,

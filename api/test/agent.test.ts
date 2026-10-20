@@ -91,6 +91,8 @@ describe('agent notes', () => {
     expect(nakit.body).toContain('Oak Properties ödemesi');
     expect(nakit.evidence.map((e: any) => e.etiket)).toContain("Oak Properties · her ayın 1'i");
     expect(r.body.data[0].key).toBe('nakit-tahmin'); // the most urgent first
+    // One tap: a reminder three days before the day the money runs out.
+    expect(nakit.action).toEqual({ type: 'task', title: 'Tahsilatları iste: 1 Kasım kasa sıkışıyor', due_date: '2026-10-29' });
 
     expect((await t.call('POST', `/signals/${nakit.id}/dismiss`, { token: s.token })).status).toBe(204);
     // Recomputed with the same content: still dismissed.

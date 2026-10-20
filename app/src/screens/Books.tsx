@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp, useLoad } from '../state';
+import { takeNavHint } from '../nav';
 import { Empty, Icon, Segmented, useSpeech } from '../components/ui';
 import { DraftList } from '../components/Drafts';
 import { addDays, dateLabel, todayIn } from '../format';
@@ -10,6 +11,7 @@ export function Books() {
   const { api, t, fmt, me, lang, fail, toast } = useApp();
   const tz = me.shop.timezone;
   const [period, setPeriod] = useState<Period>('day');
+  const [focus, setFocus] = useState<'income' | 'expense' | null>(() => (takeNavHint() as 'income' | 'expense' | undefined) ?? null);
   const [date, setDate] = useState(todayIn(tz));
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState<any[] | null>(null);
@@ -115,19 +117,23 @@ export function Books() {
 
       {s && (
         <>
+          {/* Each card: the number, against a fair earlier period; a tap shows only that side below. */}
           <section className="kpis">
-            <div className="kpi">
+            <button className={`kpi ${focus === 'income' ? 'on' : ''}`} onClick={() => setFocus(focus === 'income' ? null : 'income')} aria-pressed={focus === 'income'}>
               <span className="eyebrow">{t('income')}</span>
               <strong className="numeral pos">{fmt(s.income_cents)}</strong>
-            </div>
-            <div className="kpi">
+              <Delta pct={s.compare?.income_pct} basis={s.compare?.basis} period={period} />
+            </button>
+            <button className={`kpi ${focus === 'expense' ? 'on' : ''}`} onClick={() => setFocus(focus === 'expense' ? null : 'expense')} aria-pressed={focus === 'expense'}>
               <span className="eyebrow">{t('expense')}</span>
               <strong className="numeral neg">{fmt(s.expense_cents)}</strong>
-            </div>
-            <div className="kpi net">
+              <Delta pct={s.compare?.expense_pct} basis={s.compare?.basis} period={period} lowerIsBetter />
+            </button>
+            <button className="kpi net" onClick={() => setFocus(null)}>
               <span className="eyebrow">{t('net')}</span>
               <strong className="numeral">{fmt(s.net_cents)}</strong>
-            </div>
+              <Delta pct={s.compare?.net_pct} basis={s.compare?.basis} period={period} />
+            </button>
           </section>
           {insight && (
             <p className="insight">
@@ -137,9 +143,10 @@ export function Books() {
           {period !== 'day' && s.series.length > 0 && <Series series={s.series} from={s.from} to={s.to} />}
           {!!s.by_category.length && (
             <ul className="bars">
-              {s.by_category.map((c: any) => (
+              {s.by_category.filter((c: any) => !focus || c.kind === focus).map((c: any) => (
                 <li key={c.kind + c.category}>
-                  <span className="bar-label">{t(`cat_${c.category}` as any)}</span>
+                  {/* "Other" exists on both sides; say which. */}
+                  <span className="bar-label">{c.category === 'other' ? t(c.kind === 'income' ? 'otherIncome' : 'otherExpense') : t(`cat_${c.category}` as any)}</span>
                   <span className="bar-track">
                     <span className={`bar ${c.kind}`} style={{ width: `${(c.total_cents / maxCat) * 100}%` }} />
                   </span>
@@ -154,7 +161,7 @@ export function Books() {
       <h3 className="mini-title">{t('entries')}</h3>
       {entries.data?.data.length ? (
         <ul className="mini-list entries">
-          {entries.data.data.map((e: any) => (
+          {entries.data.data.filter((e: any) => !focus || e.kind === focus).map((e: any) => (
             <li key={e.id}>
               <span className={`kind-dot ${e.kind}`} />
               <span className="grow">
@@ -219,4 +226,17 @@ function shiftMonth(date: string, n: number) {
   d.setUTCDate(1);
   d.setUTCMonth(d.getUTCMonth() + n);
   return d.toISOString().slice(0, 10);
+}
+
+/** "+12% vs the same days last month": colour only on the change, and only where it tells good from bad. */
+function Delta({ pct, basis, period, lowerIsBetter = false }: { pct?: number | null; basis?: string; period: string; lowerIsBetter?: boolean }) {
+  const { t } = useApp();
+  if (pct === null || pct === undefined) return null;
+  const good = lowerIsBetter ? pct < 0 : pct > 0;
+  const label = t(basis === 'same_days' ? `vs_same_${period}` as any : `vs_prev_${period}` as any);
+  return (
+    <span className="delta small">
+      {Math.abs(pct) < 3 ? t('aboutSame') : <span className={good ? 'pos' : 'neg'}>{pct > 0 ? '+' : '−'}%{Math.abs(pct)}</span>} <span className="muted">{label}</span>
+    </span>
+  );
 }

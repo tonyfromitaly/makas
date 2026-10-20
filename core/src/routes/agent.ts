@@ -57,7 +57,7 @@ export const agentRoutes: Route[] = [
     async handler(ctx) {
       if (await isaretlerEskiMi(ctx.db, ctx.shopId, ctx.now)) await isaretleriGuncelle(ctx.db, ctx.shopId, ctx.now);
       const { rows } = await ctx.db.query(
-        `select id, key, severity, title, body, advice, evidence, effect, updated_at from agent_signals
+        `select id, key, severity, title, body, advice, evidence, effect, action, updated_at from agent_signals
           where shop_id = $1 and dismissed_at is null and resolved_at is null
           order by case severity when 'yuksek' then 0 when 'orta' then 1 else 2 end, effect desc nulls last`,
         [ctx.shopId],

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp, useLoad } from '../state';
+import { takeNavHint } from '../nav';
 import { Empty, Field, Icon, Segmented, Sheet } from '../components/ui';
 import { initials, shortDate, toCents } from '../format';
 
@@ -7,7 +8,7 @@ type Filter = 'all' | 'debt' | 'lapsed' | 'risk';
 
 export function Clients() {
   const { api, t, fmt, me, lang, has } = useApp();
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(() => (takeNavHint() as Filter | undefined) ?? 'all');
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);

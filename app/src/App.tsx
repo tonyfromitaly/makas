@@ -3,6 +3,7 @@ import { createClient, httpTransport, type Client } from './api';
 import { Ctx, DEFAULT_MODULES, errorText, type Me } from './state';
 import { Setup } from './screens/Setup';
 import { applyLook, loadLook, saveLook, type Skin } from './theme';
+import { setNavHint } from './nav';
 import { detectLang, makeT, type Lang } from './i18n';
 import { money } from './format';
 import { Icon } from './components/ui';
@@ -185,6 +186,10 @@ export function App() {
     },
     has: (m: string) => (me.shop.modules ?? DEFAULT_MODULES).includes(m),
     openSetup: () => setSetupOpen(true),
+    go: (k: Tab, hint?: string) => {
+      setNavHint(hint);
+      setTab(k);
+    },
   };
 
   if (setupOpen)

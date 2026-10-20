@@ -97,7 +97,7 @@ export function Connections() {
       <p className="muted small">{t('connectionsHint')}</p>
       <div className="row spread">
         <b>Square</b>
-        <span className={`chip ${on && sq.status === 'connected' ? 'sub-active' : ''}`}>{on ? t(`conn_${sq.status}` as any) : t('conn_off')}</span>
+        <span className={`chip ${on && sq.status !== 'connected' ? 'attention' : ''}`}>{on ? t(`conn_${sq.status}` as any) : t('conn_off')}</span>
       </div>
       {on && (
         <p className="muted small">
@@ -123,7 +123,7 @@ export function Connections() {
       )}
       <div className="row spread">
         <b>{t('bank')}</b>
-        <span className={`chip ${bankOn && bank.status === 'connected' ? 'sub-active' : ''}`}>{bankOn ? t(`conn_${bank.status}` as any) : t('conn_off')}</span>
+        <span className={`chip ${bankOn && bank.status !== 'connected' ? 'attention' : ''}`}>{bankOn ? t(`conn_${bank.status}` as any) : t('conn_off')}</span>
       </div>
       {bankOn && (
         <p className="muted small">
