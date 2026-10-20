@@ -525,6 +525,165 @@ alter table shops add column deleted_at timestamptz;
 alter table shops add column purge_after timestamptz;
 `;
 
+// The team and the till. Stations are the chairs, rooms, beds and tables work happens at: a booking needs
+// a free person and, when the service asks for one, a free station of that kind. Each person is paid on
+// commission, rents their chair, or is on a salary (with an optional commission on top). Every payment
+// at the till is a sale, line by line and person by person; the books are written from the sales.
+const STATION_KINDS = `('chair', 'room', 'bed', 'table', 'other')`;
+const team = `
+create table stations (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  name text not null check (length(name) between 1 and 40),
+  kind text not null default 'chair' check (kind in ${STATION_KINDS}),
+  active boolean not null default true,
+  sort int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (shop_id, id)
+);
+${rls('stations')}
+alter policy tenant_isolation on stations using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+
+alter table barbers add column title text check (length(title) <= 60);
+alter table barbers add column pay_model text not null default 'commission' check (pay_model in ('commission', 'booth_rent', 'salary'));
+alter table barbers add column service_pct int not null default 50 check (service_pct between 0 and 100);
+alter table barbers add column product_pct int not null default 10 check (product_pct between 0 and 100);
+alter table barbers add column salary_cents int not null default 0 check (salary_cents >= 0);
+alter table barbers add column rent_cents int not null default 0 check (rent_cents >= 0);
+alter table barbers add column rent_period text not null default 'week' check (rent_period in ('week', 'month'));
+alter table barbers add column station_id uuid;
+alter table barbers add constraint barbers_station_fk foreign key (shop_id, station_id) references stations(shop_id, id);
+-- ISO weekdays, 1 = Monday.
+alter table barbers add column work_days int[] not null default '{1,2,3,4,5,6,7}';
+alter table barbers add column online boolean not null default true;
+create unique index barbers_user on barbers (user_id) where user_id is not null;
+
+alter table services add column station_kind text check (station_kind in ${STATION_KINDS});
+alter table services add column online boolean not null default true;
+
+alter table appointments add column station_id uuid;
+alter table appointments add constraint appointments_station_fk foreign key (shop_id, station_id) references stations(shop_id, id);
+alter table appointments drop constraint if exists appointments_source_check;
+alter table appointments add constraint appointments_source_check check (source in ('manual', 'voice', 'online'));
+do $$ begin
+  if exists (select 1 from pg_extension where extname = 'btree_gist') then
+    alter table appointments add constraint appointments_station_no_overlap exclude using gist (
+      station_id with =, tstzrange(starts_at, ends_at) with &&
+    ) where (status in ('booked', 'done') and station_id is not null);
+  end if;
+end $$;
+
+alter table clients add column created_by uuid;
+
+-- Online booking: the shop's public page (/book/<slug>) and its opening hours ({"1": ["09:00", "20:00"], "7": null}).
+alter table shops add column slug text;
+create unique index shops_slug on shops (lower(slug)) where slug is not null;
+alter table shops add column booking_enabled boolean not null default false;
+alter table shops add column hours jsonb;
+alter table shops add column booking_note text check (length(booking_note) <= 300);
+
+create table products (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  name text not null check (length(name) between 1 and 80),
+  price_cents int not null check (price_cents >= 0),
+  stock int,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (shop_id, id)
+);
+${rls('products')}
+alter policy tenant_isolation on products using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+
+create table sales (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  -- Who rang it up and gets the tip; each line also names who did that line.
+  staff_id uuid,
+  appointment_id uuid unique,
+  client_id uuid,
+  client_name text check (length(client_name) <= 80),
+  method text not null default 'cash' check (method in ('cash', 'card', 'other')),
+  subtotal_cents int not null check (subtotal_cents >= 0),
+  tip_cents int not null default 0 check (tip_cents >= 0),
+  total_cents int not null check (total_cents >= 0),
+  sold_on date not null,
+  sold_at timestamptz not null,
+  note text check (length(note) <= 200),
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (shop_id, id),
+  foreign key (shop_id, staff_id) references barbers(shop_id, id),
+  foreign key (shop_id, appointment_id) references appointments(shop_id, id) on delete cascade
+);
+${rls('sales')}
+alter policy tenant_isolation on sales using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+create index sales_day on sales (shop_id, sold_on);
+
+create table sale_items (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  sale_id uuid not null,
+  kind text not null check (kind in ('service', 'product', 'other')),
+  ref_id uuid,
+  name text not null check (length(name) between 1 and 80),
+  unit_cents int not null check (unit_cents >= 0),
+  qty int not null default 1 check (qty between 1 and 999),
+  staff_id uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  foreign key (shop_id, sale_id) references sales(shop_id, id) on delete cascade,
+  foreign key (shop_id, staff_id) references barbers(shop_id, id)
+);
+${rls('sale_items')}
+alter policy tenant_isolation on sale_items using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+create index sale_items_sale on sale_items (sale_id);
+create index sale_items_staff on sale_items (shop_id, staff_id);
+
+alter table book_entries add column sale_id uuid;
+alter table book_entries add constraint book_entries_sale_fk foreign key (shop_id, sale_id) references sales(shop_id, id) on delete cascade;
+alter table book_entries drop constraint if exists book_entries_source_check;
+alter table book_entries add constraint book_entries_source_check check (source in ('manual', 'ai_note', 'appointment', 'import', 'sale', 'payout'));
+
+-- Settling up: the shop pays a person (commission, salary, tips) or a chair renter pays the shop.
+create table staff_payouts (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  staff_id uuid not null,
+  kind text not null check (kind in ('pay', 'rent')),
+  period_from date not null,
+  period_to date not null,
+  amount_cents int not null check (amount_cents > 0),
+  book_entry_id uuid,
+  note text check (length(note) <= 200),
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (period_to >= period_from),
+  foreign key (shop_id, staff_id) references barbers(shop_id, id)
+);
+${rls('staff_payouts')}
+alter policy tenant_isolation on staff_payouts using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+
+${toTenant('grant select, insert, update, delete on stations, products, sales, sale_items, staff_payouts to makas_tenant;')}
+
+-- Visits done before the till existed become sales too, so each person's history starts complete.
+select set_config('app.system', 'on', true);
+insert into sales (shop_id, staff_id, appointment_id, client_id, client_name, method, subtotal_cents, tip_cents, total_cents, sold_on, sold_at)
+select a.shop_id, a.barber_id, a.id, a.client_id, c.name, 'other', a.price_cents_snapshot, 0, a.price_cents_snapshot,
+       (a.starts_at at time zone s.timezone)::date, a.starts_at
+  from appointments a join clients c on c.id = a.client_id join shops s on s.id = a.shop_id
+ where a.status = 'done';
+insert into sale_items (shop_id, sale_id, kind, ref_id, name, unit_cents, qty, staff_id)
+select x.shop_id, x.id, 'service', a.service_id, sv.name, a.price_cents_snapshot, 1, a.barber_id
+  from sales x join appointments a on a.id = x.appointment_id join services sv on sv.id = a.service_id;
+update book_entries b set sale_id = x.id, source = 'sale' from sales x where b.appointment_id = x.appointment_id;
+select set_config('app.system', 'off', true);
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -538,4 +697,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '010_agent', sql: agent },
   { id: '011_signal_action', sql: signalAction },
   { id: '012_soft_delete', sql: softDelete },
+  { id: '013_team_till', sql: team },
 ];

@@ -6,6 +6,7 @@ import { dateLabel, toCents } from '../format';
 import { SupportChat } from '../components/SupportChat';
 import { ManagePlan } from '../components/ManagePlan';
 import { Connections } from '../components/Connections';
+import { OnlineBooking, Products, Stations, TeamSettings } from '../components/TeamSettings';
 import type { Lang } from '../i18n';
 import { ACCENTS, SKINS, applyLook, isDark, loadLook, saveLook, type Look as LookT } from '../theme';
 
@@ -115,12 +116,15 @@ export function Settings() {
       )}
 
       {isOwner && <Connections />}
-      {(has('randevu') || has('satis')) && (
+      {isOwner && <TeamSettings />}
+      {isOwner && (has('randevu') || has('personel')) && <Stations />}
+      {isOwner && (has('randevu') || has('satis')) && (
         <div id="sec-services">
           <Catalog kind="services" />
         </div>
       )}
-      {has('personel') && <Catalog kind="barbers" />}
+      {isOwner && <Products />}
+      {isOwner && has('randevu') && <OnlineBooking />}
       <SupportChat />
 
       <section className="card stack">
@@ -222,6 +226,29 @@ function Catalog({ kind }: { kind: 'services' | 'barbers' }) {
               <span className="muted">
                 {r.duration_min} {t('minutes')} · <span className="numeral">{fmt(r.price_cents)}</span>
               </span>
+            )}
+            {kind === 'services' && (
+              <select
+                className="narrow mini-select"
+                value={r.station_kind ?? ''}
+                aria-label={t('needsStation')}
+                title={t('needsStation')}
+                onChange={async (e) => {
+                  try {
+                    await api.patch(`/services/${r.id}`, { station_kind: e.target.value || null });
+                    reload();
+                  } catch (err) {
+                    fail(err);
+                  }
+                }}
+              >
+                <option value="">{t('noStation')}</option>
+                {['chair', 'room', 'bed', 'table', 'other'].map((k) => (
+                  <option key={k} value={k}>
+                    {t(`kind_${k}` as any)}
+                  </option>
+                ))}
+              </select>
             )}
             <button className="link-btn" onClick={() => toggle(r)}>
               {r.active ? t('inactive') : t('activate')}

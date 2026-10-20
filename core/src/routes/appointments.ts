@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { audit, badRequest, conflict, isoDate, notFound, ok, pageQuery, paged, uuid, type Ctx, type Route } from '../http';
 import { dropQueued, enqueueReminders } from '../reminders';
+import { freeSlots, stationFor } from '../ekip/saat';
+import { staffOf, syncVisitSale } from '../ekip/kasa';
 
 const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Expected YYYY-MM-DDTHH:mm');
 const status = z.enum(['booked', 'done', 'missed', 'cancelled']);
@@ -23,7 +25,7 @@ function resolveStart(b: { starts_at?: string; starts_local?: string }, tz: stri
 
 const APPT_SELECT = `
   select a.id, a.barber_id, a.client_id, a.service_id, a.starts_at, a.ends_at, a.price_cents_snapshot,
-         a.status, a.source, a.notes, a.created_at,
+         a.status, a.source, a.notes, a.created_at, a.station_id, st.name as station_name,
          c.name as client_name, c.consent_status, s.name as service_name, b.name as barber_name,
          (select count(*) from appointments m where m.client_id = a.client_id and m.status = 'missed')::int as client_missed,
          coalesce((select json_agg(json_build_object('id', r.id, 'template_key', r.template_key, 'status', r.status,
@@ -32,12 +34,27 @@ const APPT_SELECT = `
     from appointments a
     join clients c on c.id = a.client_id
     join services s on s.id = a.service_id
-    join barbers b on b.id = a.barber_id`;
+    join barbers b on b.id = a.barber_id
+    left join stations st on st.id = a.station_id`;
 
 async function getAppointment(ctx: Ctx, id: string) {
   const row = (await ctx.db.query(`${APPT_SELECT} where a.shop_id = $1 and a.id = $2`, [ctx.shopId, id])).rows[0];
-  if (!row) throw notFound('Appointment');
+  // A team member's app holds only their own appointments; anyone else's is simply not there.
+  if (!row || (ctx.role === 'barber' && row.barber_id !== (await staffOf(ctx.db, ctx.shopId, ctx.userId)))) throw notFound('Appointment');
   return row;
+}
+
+/** A team member books, sees and moves only their own appointments; the owner, anyone's. */
+async function ownStaff(ctx: Ctx): Promise<string | null | undefined> {
+  if (ctx.role !== 'barber') return undefined;
+  return (await staffOf(ctx.db, ctx.shopId, ctx.userId)) ?? '00000000-0000-0000-0000-000000000000';
+}
+
+/** The chair or room the visit takes, or a 409 when the service needs one and none is free. */
+async function placeAt(ctx: Ctx, o: { serviceId: string; staffId: string; starts: Date; ends: Date; wanted?: string | null; exceptAppointment?: string }) {
+  const s = await stationFor(ctx.db, ctx.shopId, o);
+  if (s.needed && !s.id) throw conflict(o.wanted ? 'That station is taken at this time' : 'No free station for this service at this time', 'STATION_TAKEN');
+  return s.id;
 }
 
 async function loadService(ctx: Ctx, id: string) {
@@ -72,34 +89,6 @@ async function assertFree(ctx: Ctx, barberId: string, starts: Date, ends: Date, 
   if (clash) throw conflict('That barber already has an appointment at this time', 'SLOT_TAKEN');
 }
 
-/** A done appointment is the day's income; this keeps exactly one book row per done visit. */
-async function syncIncome(ctx: Ctx, appointmentId: string, isDone: boolean, tz: string) {
-  if (!isDone) {
-    await ctx.db.query('delete from book_entries where appointment_id = $1 and shop_id = $2', [appointmentId, ctx.shopId]);
-    return;
-  }
-  const a = (
-    await ctx.db.query(
-      `select a.starts_at, a.price_cents_snapshot, s.name as service_name, c.name as client_name
-         from appointments a join services s on s.id = a.service_id join clients c on c.id = a.client_id
-        where a.id = $1 and a.shop_id = $2`,
-      [appointmentId, ctx.shopId],
-    )
-  ).rows[0];
-  if (!a || a.price_cents_snapshot <= 0) return;
-  const day = DateTime.fromJSDate(new Date(a.starts_at), { zone: tz }).toISODate();
-  await ctx.db.query(
-    `insert into book_entries (shop_id, kind, category, amount_cents, entry_date, note, source, appointment_id, created_by)
-     values ($1, 'income', 'service', $2, $3, $4, 'appointment', $5, $6)
-     on conflict (appointment_id) do update set amount_cents = excluded.amount_cents, entry_date = excluded.entry_date`,
-    [ctx.shopId, a.price_cents_snapshot, day, `${a.service_name} · ${a.client_name}`.slice(0, 200), appointmentId, ctx.userId],
-  );
-}
-
-// The working day free slots are looked for in, until shops can set their own hours.
-const DAY_START = 9;
-const DAY_END = 20;
-
 export const appointmentRoutes: Route[] = [
   {
     // The nearest free start times for a service on a day: "that time is taken, 15:30 or 16:00?".
@@ -115,44 +104,22 @@ export const appointmentRoutes: Route[] = [
       count: z.coerce.number().int().min(1).max(8).default(3),
     }),
     async handler(ctx, { query }) {
-      const tz = await shopTz(ctx);
-      const service = await loadService(ctx, query.service_id);
-      const minutes = Number(service.duration_min) || 30;
-      const barbers = (
-        await ctx.db.query(`select id, name from barbers where shop_id = $1 and active order by created_at`, [ctx.shopId])
-      ).rows as { id: string; name: string }[];
-      // The barber asked for first; the others only when none was named.
-      const pool = query.barber_id ? barbers.filter((b) => b.id === query.barber_id) : barbers;
-      const day = DateTime.fromISO(query.date, { zone: tz }).startOf('day');
-      const busy = (
-        await ctx.db.query(
-          `select barber_id, starts_at, ends_at from appointments
-            where shop_id = $1 and status in ('booked', 'done') and starts_at < $3 and ends_at > $2`,
-          [ctx.shopId, day.toJSDate(), day.plus({ days: 1 }).toJSDate()],
-        )
-      ).rows.map((r: any) => ({ barber: r.barber_id, a: new Date(r.starts_at).getTime(), b: new Date(r.ends_at).getTime() }));
-      const nearMin = query.near ? Number(query.near.slice(0, 2)) * 60 + Number(query.near.slice(3)) : DAY_START * 60;
-      const earliest = ctx.now.getTime() + 15 * 60_000; // not in the past, not in the next quarter hour
-      const out: { time: string; barber_id: string; barber_name: string; distance: number }[] = [];
-      for (let m = DAY_START * 60; m + minutes <= DAY_END * 60; m += 15) {
-        const start = day.plus({ minutes: m });
-        const a = start.toMillis();
-        const b = a + minutes * 60_000;
-        if (a < earliest) continue;
-        const free = pool.find((br) => !busy.some((x) => x.barber === br.id && x.a < b && x.b > a));
-        if (free) out.push({ time: start.toFormat('HH:mm'), barber_id: free.id, barber_name: free.name, distance: Math.abs(m - nearMin) });
-      }
-      out.sort((x, y) => x.distance - y.distance || x.time.localeCompare(y.time));
-      const taken = query.near ? !out.some((o) => o.time === query.near) : false;
-      // Why that time cannot be booked: it is past, outside the working day, or someone has it.
-      const nearAt = day.plus({ minutes: nearMin }).toMillis();
-      const reason = !taken ? null : nearAt < earliest ? 'past' : nearMin < DAY_START * 60 || nearMin + minutes > DAY_END * 60 ? 'closed' : 'busy';
-      return {
+      await loadService(ctx, query.service_id);
+      const own = await ownStaff(ctx);
+      const a = await freeSlots(ctx.db, ctx.shopId, {
         date: query.date,
-        taken,
-        reason,
-        hours: { from: `${String(DAY_START).padStart(2, '0')}:00`, to: `${DAY_END}:00` },
-        slots: out.slice(0, query.count).sort((x, y) => x.time.localeCompare(y.time)).map(({ distance, ...o }) => o),
+        serviceId: query.service_id,
+        staffId: own ?? query.barber_id ?? null,
+        near: query.near ?? null,
+        now: ctx.now,
+        count: query.count,
+      });
+      return {
+        date: a.date,
+        taken: a.taken,
+        reason: a.reason,
+        hours: a.hours ?? { from: '09:00', to: '20:00' },
+        slots: a.slots.map((s) => ({ time: s.time, barber_id: s.staff_id, barber_name: s.staff_name, station_id: s.station_id, station_name: s.station_name })),
       };
     },
   },
@@ -173,11 +140,13 @@ export const appointmentRoutes: Route[] = [
         : DateTime.fromJSDate(ctx.now, { zone: tz }).startOf('day');
       const from = day.startOf('day').toJSDate();
       const to = day.plus({ days: 1 }).startOf('day').toJSDate();
+      const own = await ownStaff(ctx);
+      const who = own ?? query.barber_id ?? null;
       const { rows } = await ctx.db.query(
         `select x.*, count(*) over() as total_count from (${APPT_SELECT}
           where a.shop_id = $1 and a.starts_at >= $2 and a.starts_at < $3 and ($4::uuid is null or a.barber_id = $4)) x
           order by x.starts_at limit $5 offset $6`,
-        [ctx.shopId, from, to, query.barber_id ?? null, query.page_size, (query.page - 1) * query.page_size],
+        [ctx.shopId, from, to, who, query.page_size, (query.page - 1) * query.page_size],
       );
       const totals = (
         await ctx.db.query(
@@ -186,16 +155,25 @@ export const appointmentRoutes: Route[] = [
                   count(*) filter (where status = 'booked')::int as booked,
                   count(*) filter (where status = 'done')::int as done_count,
                   count(*) filter (where status = 'missed')::int as missed
-             from appointments where shop_id = $1 and starts_at >= $2 and starts_at < $3`,
-          [ctx.shopId, from, to],
+             from appointments where shop_id = $1 and starts_at >= $2 and starts_at < $3 and ($4::uuid is null or barber_id = $4)`,
+          [ctx.shopId, from, to, who],
         )
       ).rows[0];
+      // What is really in the till that day: every receipt (services, products, tips), not just visit prices.
+      const till = (
+        await ctx.db.query(
+          `select coalesce(sum(s.total_cents), 0)::int8 as t from sales s where s.shop_id = $1 and s.sold_on = $2
+             and ($3::uuid is null or s.staff_id = $3 or exists (select 1 from sale_items i where i.sale_id = s.id and i.staff_id = $3))`,
+          [ctx.shopId, day.toISODate(), who],
+        )
+      ).rows[0].t;
       return {
         ...paged(rows, query.page, query.page_size),
         date: day.toISODate(),
         summary: {
           expected_cents: Number(totals.expected),
           done_cents: Number(totals.done),
+          till_cents: Number(till),
           booked: totals.booked,
           done: totals.done_count,
           missed: totals.missed,
@@ -213,6 +191,7 @@ export const appointmentRoutes: Route[] = [
         client_id: uuid,
         service_id: uuid,
         barber_id: uuid.optional(),
+        station_id: uuid.optional(),
         starts_at: z.string().datetime({ offset: true }).optional(),
         starts_local: localDateTime.optional(),
         notes: z.string().trim().max(500).optional(),
@@ -226,15 +205,17 @@ export const appointmentRoutes: Route[] = [
       const client = (await ctx.db.query('select id from clients where id = $1 and shop_id = $2', [body.client_id, ctx.shopId]))
         .rows[0];
       if (!client) throw notFound('Client');
-      const barberId = await resolveBarber(ctx, body.barber_id);
+      const own = await ownStaff(ctx);
+      const barberId = own ?? (await resolveBarber(ctx, body.barber_id));
       const starts = resolveStart(body, tz)!;
       const ends = new Date(starts.getTime() + service.duration_min * 60_000);
       await assertFree(ctx, barberId, starts, ends);
+      const stationId = await placeAt(ctx, { serviceId: service.id, staffId: barberId, starts, ends, wanted: body.station_id });
       const row = (
         await ctx.db.query(
-          `insert into appointments (shop_id, barber_id, client_id, service_id, starts_at, ends_at, price_cents_snapshot, source, notes)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
-          [ctx.shopId, barberId, client.id, service.id, starts, ends, service.price_cents, body.source, body.notes ?? null],
+          `insert into appointments (shop_id, barber_id, client_id, service_id, station_id, starts_at, ends_at, price_cents_snapshot, source, notes)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id`,
+          [ctx.shopId, barberId, client.id, service.id, stationId, starts, ends, service.price_cents, body.source, body.notes ?? null],
         )
       ).rows[0];
       await enqueueReminders(ctx.db, row.id, ctx.now);
@@ -253,6 +234,7 @@ export const appointmentRoutes: Route[] = [
         starts_at: z.string().datetime({ offset: true }),
         starts_local: localDateTime,
         barber_id: uuid,
+        station_id: uuid,
         service_id: uuid,
         notes: z.string().trim().max(500).nullable(),
       })
@@ -264,10 +246,13 @@ export const appointmentRoutes: Route[] = [
       const starts = resolveStart(body, tz);
       const serviceId = body.service_id ?? before.service_id;
       const service = await loadService(ctx, serviceId);
+      // A team member cannot hand their visit to someone else.
+      if (ctx.role === 'barber' && body.barber_id && body.barber_id !== before.barber_id) throw notFound('Barber');
       const moved =
         (starts && starts.getTime() !== new Date(before.starts_at).getTime()) ||
         (body.service_id && body.service_id !== before.service_id) ||
-        (body.barber_id && body.barber_id !== before.barber_id);
+        (body.barber_id && body.barber_id !== before.barber_id) ||
+        (body.station_id && body.station_id !== before.station_id);
       if (moved) {
         const s = starts ?? new Date(before.starts_at);
         patch.starts_at = s;
@@ -285,6 +270,16 @@ export const appointmentRoutes: Route[] = [
           (patch.ends_at as Date) ?? new Date(before.ends_at),
           before.id,
         );
+      if ((moved || next !== before.status) && (next === 'booked' || next === 'done'))
+        patch.station_id = await placeAt(ctx, {
+          serviceId,
+          staffId: (patch.barber_id as string) ?? before.barber_id,
+          starts: (patch.starts_at as Date) ?? new Date(before.starts_at),
+          ends: (patch.ends_at as Date) ?? new Date(before.ends_at),
+          wanted: body.station_id ?? (moved ? null : before.station_id),
+          exceptAppointment: before.id,
+        });
+      if (patch.station_id === before.station_id) delete patch.station_id;
       if (body.notes !== undefined) patch.notes = body.notes;
       if (body.status && body.status !== before.status) patch.status = body.status;
       const keys = Object.keys(patch);
@@ -303,7 +298,7 @@ export const appointmentRoutes: Route[] = [
         await enqueueReminders(ctx.db, before.id, ctx.now);
       }
       if (patch.status || moved || patch.price_cents_snapshot !== undefined)
-        await syncIncome(ctx, before.id, nextStatus === 'done', tz);
+        await syncVisitSale(ctx.db, ctx.shopId, ctx.userId, before.id, nextStatus === 'done');
       if (patch.status) await audit(ctx, `appointment.${nextStatus}`, 'appointment', before.id);
       if (moved) await audit(ctx, 'appointment.reschedule', 'appointment', before.id);
       return getAppointment(ctx, before.id);

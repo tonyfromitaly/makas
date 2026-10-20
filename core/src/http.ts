@@ -165,7 +165,10 @@ export function maskPhone(p: string) {
 /** Postgres errors surface as ApiErrors with a stable code instead of leaking internals. */
 export function mapPgError(e: any): ApiError | null {
   const code = e?.code;
-  if (code === '23P01') return conflict('That barber already has an appointment at this time', 'SLOT_TAKEN');
+  if (code === '23P01')
+    return e?.constraint === 'appointments_station_no_overlap'
+      ? conflict('That station is taken at this time', 'STATION_TAKEN')
+      : conflict('That barber already has an appointment at this time', 'SLOT_TAKEN');
   if (code === '23505') return conflict('Duplicate value', 'DUPLICATE');
   if (code === '23503') return notFound('Related record');
   if (code === '23514' || code === '22P02' || code === '22007' || code === '22008')

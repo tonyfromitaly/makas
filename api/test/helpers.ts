@@ -18,7 +18,7 @@ export async function setup(start = '2026-10-15T09:00:00Z', extraDeps: Record<st
     now: () => clock.now,
   });
   const deps = { ...argon2Deps, ...extraDeps };
-  const app = await buildServer({ db, config, deps, authRateLimit: 1000, rateLimit: 100_000, assistantRateLimit: 100_000 });
+  const app = await buildServer({ db, config, deps, authRateLimit: 1000, rateLimit: 100_000, assistantRateLimit: 100_000, publicRateLimit: 100_000 });
 
   async function call(method: string, url: string, opts: { token?: string; body?: unknown } = {}) {
     const res = await app.inject({

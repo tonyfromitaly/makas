@@ -35,6 +35,22 @@ export const agentRoutes: Route[] = [
         `update shops set modules = $2, look = $3, setup = $4, agent_soul = $5, agent_md = $6, signals_at = null where id = $1`,
         [ctx.shopId, modules, JSON.stringify(k.tema), JSON.stringify({ cevaplar: body, ajanAdi: k.ajanAdi, at: ctx.now }), k.soulMd, k.agentMd],
       );
+      // Where the work happens: a salon gets its chairs, a spa its rooms, one per person to start with.
+      const place = ({ kuafor: 'chair', guzellik: 'room' } as Record<string, string>)[body.sablon];
+      if (place) {
+        const has = (await ctx.db.query('select count(*)::int as n from stations where shop_id = $1', [ctx.shopId])).rows[0].n;
+        if (!has) {
+          const word = place === 'chair' ? (body.dil === 'tr' ? 'Koltuk' : 'Chair') : body.dil === 'tr' ? 'Oda' : 'Room';
+          for (let i = 1; i <= Math.min(Math.max(body.kisi, 1), 20); i++)
+            await ctx.db.query('insert into stations (shop_id, name, kind, sort) values ($1, $2, $3, $4)', [ctx.shopId, `${word} ${i}`, place, i]);
+          await ctx.db.query('update services set station_kind = $2 where shop_id = $1 and station_kind is null', [ctx.shopId, place]);
+        }
+      }
+      // One way of paying the team named: it becomes everyone's starting deal (each can be changed later).
+      if (body.ekip.length === 1) {
+        const model = ({ maas: 'salary', komisyon: 'commission', kira: 'booth_rent' } as Record<string, string>)[body.ekip[0] as string];
+        await ctx.db.query(`update barbers set pay_model = $2 where shop_id = $1 and pay_model = 'commission' and service_pct = 50`, [ctx.shopId, model]);
+      }
       return { modules, look: k.tema, agent_name: k.ajanAdi, warnings: k.uyarilar, steps: k.adimlar };
     },
   },

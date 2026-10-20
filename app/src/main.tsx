@@ -9,6 +9,7 @@ import '@fontsource-variable/hanken-grotesk';
 import '@fontsource/caveat/600.css';
 import './styles.css';
 import { App } from './App';
+import { BookPage, bookSlug } from './screens/Book';
 import { Setup } from './screens/Setup';
 import { applyLook, loadLook, watchSystem } from './theme';
 
@@ -18,10 +19,11 @@ watchSystem(loadLook);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {location.hash.startsWith('#kurulum') ? <Setup /> : <App />}
+    {/* The public booking page needs no login and none of the app around it (the demo shows it inside the app). */}
+    {bookSlug() && import.meta.env.MODE !== 'demo' ? <BookPage slug={bookSlug()!} /> : location.hash.startsWith('#kurulum') ? <Setup /> : <App />}
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && !bookSlug()) {
   window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}));
 }

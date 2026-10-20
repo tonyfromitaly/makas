@@ -2,6 +2,7 @@
 //   /        the website (site/)
 //   /demo/   the in-browser demo (app in demo mode, incl. the sample shops)
 //   /app/    the real app; its /api calls are proxied to the API server (API_ORIGIN, e.g. Render)
+//   /book/   the public booking page shops embed on their websites (the same app, opened at /book/<slug>)
 import { execSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
@@ -15,7 +16,9 @@ cpSync('site/dist', out, { recursive: true });
 
 run('npx vite build --mode demo --outDir dist-netlify/demo --emptyOutDir', { cwd: 'app', env: { VITE_BASE: '/demo/' } });
 run('npx tsc --noEmit && npx vite build --outDir dist-netlify/app --emptyOutDir', { cwd: 'app', env: { VITE_BASE: '/app/' } });
+run('npx vite build --outDir dist-netlify/book --emptyOutDir', { cwd: 'app', env: { VITE_BASE: '/book/' } });
 cpSync('app/dist-netlify/demo', `${out}/demo`, { recursive: true });
+cpSync('app/dist-netlify/book', `${out}/book`, { recursive: true });
 cpSync('app/dist-netlify/app', `${out}/app`, { recursive: true });
 
 // Routing. Proxy rules come first; single-page fallbacks last.
@@ -24,6 +27,7 @@ const redirects = [
   api ? `/api/*  ${api}/api/:splat  200` : '/api/*  /api-offline.json  503',
   '/app/*   /app/index.html   200',
   '/demo/*  /demo/index.html  200',
+  '/book/*  /book/index.html  200',
 ];
 writeFileSync(`${out}/_redirects`, redirects.join('\n') + '\n');
 writeFileSync(`${out}/api-offline.json`, JSON.stringify({ error: { code: 'API_OFFLINE', message: 'The app server is not connected yet' } }));

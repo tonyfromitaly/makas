@@ -22,8 +22,12 @@ export interface Me {
     /** Deleted and waiting out its 30 days; purge_after is when it goes for good. */
     deleted_at?: string | null;
     purge_after?: string | null;
+    slug?: string | null;
+    booking_enabled?: boolean;
   };
   user: { id: string; name: string; email: string; role: 'owner' | 'barber' };
+  /** The team member behind this login: always for staff, and for an owner who works the floor. */
+  staff?: { id: string; name: string; title: string | null; pay_model: string; station_id: string | null; station_name: string | null } | null;
   subscription: { plan_key: string; status: string; current_period_end: string | null };
   locked: boolean;
 }
@@ -49,7 +53,7 @@ interface AppState {
   has(module: string): boolean;
   openSetup(): void;
   /** Open a tab, optionally on a filter or section (agent note buttons). */
-  go(tab: 'today' | 'clients' | 'assistant' | 'books' | 'settings', hint?: string): void;
+  go(tab: 'today' | 'till' | 'clients' | 'assistant' | 'books' | 'settings', hint?: string): void;
 }
 
 /** Shops from before the wizard keep what they had, except store credit, which is now opt-in. */

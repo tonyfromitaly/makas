@@ -26,6 +26,7 @@ export interface ServerOptions {
   authRateLimit?: number;
   /** Requests per minute per IP for everything (default 300). */
   rateLimit?: number;
+  publicRateLimit?: number;
   /** Assistant messages per minute per signed-in user (default 30): each may cost a model call. */
   assistantRateLimit?: number;
   logger?: boolean;
@@ -127,6 +128,13 @@ export async function buildServer(o: ServerOptions) {
     config: {
       rateLimit: { max: o.assistantRateLimit ?? 30, timeWindow: '1 minute', keyGenerator: (req) => String(req.headers.authorization ?? req.ip) },
     },
+    handler: forward,
+  });
+  // The public booking page: no login, so its own per-IP limit (a person books in a few dozen taps).
+  app.route({
+    method: ['GET', 'POST'],
+    url: `${prefix}/public/*`,
+    config: { rateLimit: { max: o.publicRateLimit ?? 60, timeWindow: '1 minute' } },
     handler: forward,
   });
   app.route({ method: ['GET', 'POST', 'PATCH', 'DELETE'], url: `${prefix}/*`, handler: forward });

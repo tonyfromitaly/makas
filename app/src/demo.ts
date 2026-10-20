@@ -1,7 +1,7 @@
 // In-browser backend for the live demo: the real @makas/core API on PGlite (Postgres in WebAssembly).
 import { PGlite } from '@electric-sql/pglite';
 import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
-import { createApi, fromPGlite, migrate, randomToken, runMemoryUpkeep, seedDemo, seedSample, DEMO_LOGIN, SAMPLE_LOGINS, type Database, type SampleKind } from '@makas/core';
+import { createApi, fromPGlite, migrate, randomToken, runMemoryUpkeep, seedDemo, seedSample, DEMO_LOGIN, DEMO_STAFF_LOGIN, SAMPLE_LOGINS, SAMPLE_STAFF_LOGINS, type Database, type SampleKind } from '@makas/core';
 import type { Transport } from './api';
 
 // PBKDF2 stands in for argon2 here (argon2 is native code on the server).
@@ -27,9 +27,9 @@ export const DEMO_KEYS = { service: randomToken(), admin: randomToken() };
 export { DEMO_LOGIN };
 
 let lite: PGlite | null = null;
-const DATA_DIR = 'idb://fade-demo-v4';
+const DATA_DIR = 'idb://fade-demo-v5';
 // Earlier demo databases (with sample data) are removed so every visitor starts from the empty shop.
-const OLD_DBS = ['/pglite/makas-demo-v1', '/pglite/makas-demo-v2', '/pglite/fade-demo-v3'];
+const OLD_DBS = ['/pglite/makas-demo-v1', '/pglite/makas-demo-v2', '/pglite/fade-demo-v3', '/pglite/fade-demo-v4', '/pglite/fade-sample-barber-v1', '/pglite/fade-sample-salon-v1'];
 
 /** ?ornek=berber or ?ornek=kuafor opens a lived-in sample shop (website "try with sample data"). */
 export function sampleKind(): SampleKind | null {
@@ -42,6 +42,12 @@ export function demoLogin() {
   return k ? SAMPLE_LOGINS[k] : DEMO_LOGIN;
 }
 
+/** The team member's login in the same demo shop: their own app, their own work. */
+export function demoStaffLogin() {
+  const k = sampleKind();
+  return k ? SAMPLE_STAFF_LOGINS[k] : DEMO_STAFF_LOGIN;
+}
+
 export async function startDemo(): Promise<Transport> {
   const kind = sampleKind();
   for (const name of OLD_DBS) {
@@ -52,7 +58,7 @@ export async function startDemo(): Promise<Transport> {
     }
   }
   try {
-    lite = await PGlite.create({ dataDir: kind ? `idb://fade-sample-${kind}-v1` : DATA_DIR, extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
+    lite = await PGlite.create({ dataDir: kind ? `idb://fade-sample-${kind}-v2` : DATA_DIR, extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
   } catch {
     // IndexedDB blocked (private mode): fall back to memory.
     lite = await PGlite.create({ extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { IANAZone } from 'luxon';
 import { audit, badRequest, cents, lang, noContent, notFound, ok, pageQuery, paged, unauthorized, uuid, type Ctx, type Route } from '../http';
 import type { Queryable } from '../db';
+import { STATION_KINDS } from '../ekip/saat';
 
 /** How long a deleted shop can still be restored. */
 export const DELETE_GRACE_DAYS = 30;
@@ -26,7 +27,7 @@ export async function loadSubscription(db: Queryable, shopId: string) {
 
 const SHOP_FIELDS = `id, name, country, timezone, language, currency, status, business_type,
   reminder_day_before_hour, reminder_hours_before, created_at, modules, look, setup is not null as set_up, setup->>'ajanAdi' as agent_name,
-  deleted_at, purge_after`;
+  deleted_at, purge_after, slug, booking_enabled`;
 
 export const shopRoutes: Route[] = [
   {
@@ -39,7 +40,16 @@ export const shopRoutes: Route[] = [
         await ctx.db.query('select id, name, email, role from users where id = $1 and shop_id = $2', [ctx.userId, ctx.shopId])
       ).rows[0];
       const subscription = await loadSubscription(ctx.db, ctx.shopId);
-      return { shop, user, subscription, locked: isLocked(subscription, ctx.now) };
+      // The team member behind this login (staff always; an owner who also works the floor, if linked).
+      const staff =
+        (
+          await ctx.db.query(
+            `select b.id, b.name, b.title, b.pay_model, b.station_id, st.name as station_name from barbers b left join stations st on st.id = b.station_id
+              where b.shop_id = $1 and b.user_id = $2`,
+            [ctx.shopId, ctx.userId],
+          )
+        ).rows[0] ?? null;
+      return { shop, user, staff, subscription, locked: isLocked(subscription, ctx.now) };
     },
   },
   {
@@ -87,6 +97,11 @@ export const shopRoutes: Route[] = [
         users: await q('select id, name, email, role, created_at from users where shop_id = $1'),
         services: await q('select * from services where shop_id = $1'),
         barbers: await q('select * from barbers where shop_id = $1'),
+        stations: await q('select * from stations where shop_id = $1'),
+        products: await q('select * from products where shop_id = $1'),
+        sales: await q('select * from sales where shop_id = $1 order by sold_at'),
+        sale_items: await q('select * from sale_items where shop_id = $1'),
+        staff_payouts: await q('select * from staff_payouts where shop_id = $1 order by period_to'),
         clients: await q('select * from clients where shop_id = $1'),
         appointments: await q('select * from appointments where shop_id = $1 order by starts_at'),
         ledger_entries: await q('select * from ledger_entries where shop_id = $1 order by created_at'),
@@ -189,7 +204,7 @@ export const shopRoutes: Route[] = [
     query: pageQuery.extend({ include_inactive: z.enum(['true', 'false']).default('false') }),
     async handler(ctx, { query }) {
       const { rows } = await ctx.db.query(
-        `select id, name, price_cents, duration_min, active, created_at, count(*) over() as total_count
+        `select id, name, price_cents, duration_min, active, station_kind, online, created_at, count(*) over() as total_count
            from services where shop_id = $1 and ($2 or active)
           order by active desc, name limit $3 offset $4`,
         [ctx.shopId, query.include_inactive === 'true', query.page_size, (query.page - 1) * query.page_size],
@@ -202,16 +217,19 @@ export const shopRoutes: Route[] = [
     path: '/services',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     body: z.object({
       name: z.string().trim().min(1).max(80),
       price_cents: cents,
       duration_min: z.number().int().min(5).max(600),
+      station_kind: z.enum(STATION_KINDS).nullable().optional(),
+      online: z.boolean().optional(),
     }),
     async handler(ctx, { body }) {
       const row = (
         await ctx.db.query(
-          'insert into services (shop_id, name, price_cents, duration_min) values ($1, $2, $3, $4) returning *',
-          [ctx.shopId, body.name, body.price_cents, body.duration_min],
+          'insert into services (shop_id, name, price_cents, duration_min, station_kind, online) values ($1, $2, $3, $4, $5, $6) returning *',
+          [ctx.shopId, body.name, body.price_cents, body.duration_min, body.station_kind ?? null, body.online ?? true],
         )
       ).rows[0];
       return ok(row, 201);
@@ -222,12 +240,15 @@ export const shopRoutes: Route[] = [
     path: '/services/:id',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     body: z
       .object({
         name: z.string().trim().min(1).max(80),
         price_cents: cents,
         duration_min: z.number().int().min(5).max(600),
         active: z.boolean(),
+        station_kind: z.enum(STATION_KINDS).nullable(),
+        online: z.boolean(),
       })
       .partial(),
     async handler(ctx, { params, body }) {
@@ -240,55 +261,13 @@ export const shopRoutes: Route[] = [
     path: '/services/:id',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     async handler(ctx, { params }) {
       await updateRow(ctx.db, 'services', ctx.shopId, params.id, { active: false });
       return noContent();
     },
   },
 
-  // --- barbers ---
-  {
-    method: 'GET',
-    path: '/barbers',
-    auth: 'user',
-    gated: true,
-    query: pageQuery.extend({ include_inactive: z.enum(['true', 'false']).default('false') }),
-    async handler(ctx, { query }) {
-      const { rows } = await ctx.db.query(
-        `select id, name, active, created_at, count(*) over() as total_count
-           from barbers where shop_id = $1 and ($2 or active)
-          order by active desc, created_at limit $3 offset $4`,
-        [ctx.shopId, query.include_inactive === 'true', query.page_size, (query.page - 1) * query.page_size],
-      );
-      return paged(rows, query.page, query.page_size);
-    },
-  },
-  {
-    method: 'POST',
-    path: '/barbers',
-    auth: 'user',
-    gated: true,
-    body: z.object({ name: z.string().trim().min(1).max(80) }),
-    async handler(ctx, { body }) {
-      const row = (
-        await ctx.db.query('insert into barbers (shop_id, name) values ($1, $2) returning id, name, active, created_at', [
-          ctx.shopId,
-          body.name,
-        ])
-      ).rows[0];
-      return ok(row, 201);
-    },
-  },
-  {
-    method: 'PATCH',
-    path: '/barbers/:id',
-    auth: 'user',
-    gated: true,
-    body: z.object({ name: z.string().trim().min(1).max(80), active: z.boolean() }).partial(),
-    async handler(ctx, { params, body }) {
-      return updateRow(ctx.db, 'barbers', ctx.shopId, params.id, body);
-    },
-  },
 ];
 
 /** Partial update that is always scoped to the caller's shop; a foreign id is a plain 404. */

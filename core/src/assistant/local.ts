@@ -40,6 +40,9 @@ const LEDGER_PAY = /(^|\s)(odedi|borcunu odedi|borcunu kapatti|kapatti|paid me|p
 const TIME_HINT = /(saat|\bat\b|a las|\d{1,2}[:.]\d{2}|bucuk|ceyrek|half past|o ?clock|y media|\d{1,2}'?(te|ta|de|da)\b|\b(bir|iki|uc|dort|bes|alti|yedi|sekiz|dokuz|on)(de|da|te|ta)\b)/;
 
 const MONEY_WORD = /(\$|€|₺|dolar|dollar|bucks|usd|lira|\btl\b|euro|peso|bin\b|kazan|gelir|gider|odedim|aldim|harcad|bahsis|kira|fatura|made|paid|spent|bought|tip|rent|gane|pague|gaste|propina|alquiler)/;
+/** The team: who sold what, commissions, settling up. */
+const TEAM = re(['ekip', 'ekibim', 'personel', 'calisan', 'eleman', 'kim en cok', 'en cok kim', 'hakedis', 'prim', 'komisyon', 'team', 'staff', 'employees', 'who sold', 'commission', 'payroll', 'equipo', 'empleados', 'comision', 'quien vendio', 'nomina']);
+const SOLD = /(^|\s)(satti|sattin|satmis|satis|satisi|cirosu|yapti|kazandirdi|kazandi|getirdi|sell|sells|sold|made|make|brought in|vende|vendio|hizo|gano)(\s|$|\?)/;
 const METRIC_RULES: [string, RegExp][] = [
   ['cash', re(['kasada ne', 'kasada kac', 'kasada ne kadar', 'kasa ne durumda', 'kasa durumu', 'bakiye', 'bankada', 'hesapta ne', 'hesapta kac', 'hesapta ne kadar', 'balance', 'in the bank', 'cash on hand', 'whats in the till', 'what s in the till', 'in the till', 'saldo', 'en el banco', 'en caja'])],
   ['payables', re(['odemem', 'odeyecegim', 'odenecek', 'odemeler', 'odemem gereken', 'borcum', 'faturalar', 'have to pay', 'need to pay', 'i owe', 'bills', 'payments due', 'due', 'debo', 'tengo que pagar', 'pagos', 'por pagar'])],
@@ -200,6 +203,10 @@ export function understandLocal(said: string, base: AssistantContext): Plan {
     const client = bestMatch(f.split(' '), ctx.clients);
     if (client && re(['borc', 'owe', 'debe', 'balance', 'bakiye', 'veresiye']).test(f))
       return { items: [{ type: 'query', metric: 'client_balance', period: 'this_month', client_name: client.item.name }] };
+    // "Ahmet bu ay ne kadar sattı", "ekip bu hafta ne yaptı", "kim en çok sattı": the team's sales.
+    const member = bestMatch(f.split(' ').map((w) => w.replace(/'.*$/, '')), ctx.barbers);
+    if (!ADVICE_REAL.test(f) && (TEAM.test(f) || (member && (SOLD.test(f) || metricHit?.[0] === 'income'))))
+      return { items: [{ type: 'query', metric: 'team', period: periodOf(f, 'team') as any, month, staff_name: member?.item.name ?? null }] };
     // "geçen aya göre nasılız", "compared to last month": this month, measured against the last.
     const versus = re(['gore', 'karsilastir', 'compared', 'versus', 'comparado', 'frente a']).test(f);
     if (summarySaid)

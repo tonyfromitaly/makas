@@ -46,6 +46,7 @@ export const moneyRoutes: Route[] = [
     path: '/ledger',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     query: pageQuery.extend({ client_id: uuid.optional() }),
     async handler(ctx, { query }) {
       if (!query.client_id) {
@@ -91,6 +92,7 @@ export const moneyRoutes: Route[] = [
     path: '/ledger',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     body: z.object({
       client_id: uuid,
       kind: z.enum(['charge', 'payment']),
@@ -116,6 +118,7 @@ export const moneyRoutes: Route[] = [
     path: '/books',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     query: pageQuery.extend({ from: isoDate.optional(), to: isoDate.optional(), kind: z.enum(['income', 'expense']).optional() }),
     async handler(ctx, { query }) {
       const { rows } = await ctx.db.query(
@@ -135,6 +138,7 @@ export const moneyRoutes: Route[] = [
     path: '/books',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     body: draftSchema.extend({
       note: z.string().trim().max(200).optional(),
       raw_text: z.string().trim().max(500).optional(),
@@ -157,13 +161,16 @@ export const moneyRoutes: Route[] = [
     path: '/books/:id',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     async handler(ctx, { params }) {
       const row = (
-        await ctx.db.query('select source from book_entries where id = $1 and shop_id = $2', [params.id, ctx.shopId])
+        await ctx.db.query('select source, appointment_id, sale_id from book_entries where id = $1 and shop_id = $2', [params.id, ctx.shopId])
       ).rows[0];
       if (!row) throw notFound('Entry');
-      if (row.source === 'appointment')
+      if (row.source === 'appointment' || row.appointment_id)
         throw conflict('This income comes from an appointment; change the appointment instead', 'LINKED_TO_APPOINTMENT');
+      if (row.sale_id) throw conflict('This income comes from a sale; void the sale instead', 'LINKED_TO_SALE');
+      if (row.source === 'payout') throw conflict('This is a team settlement; it stays in the books', 'LINKED_TO_PAYOUT');
       await ctx.db.query('delete from book_entries where id = $1 and shop_id = $2', [params.id, ctx.shopId]);
       return noContent();
     },
@@ -174,6 +181,7 @@ export const moneyRoutes: Route[] = [
     path: '/books/parse',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     body: z.object({ text: z.string().trim().min(1).max(500), lang: z.enum(['tr', 'en', 'es']).optional() }),
     async handler(ctx, { body }) {
       const shop = (await ctx.db.query('select timezone, language from shops where id = $1', [ctx.shopId])).rows[0];
@@ -204,6 +212,7 @@ export const moneyRoutes: Route[] = [
     path: '/books/summary',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     query: z.object({ period: z.enum(['day', 'week', 'month']).default('day'), date: isoDate.optional() }),
     async handler(ctx, { query }) {
       const tz = await shopTz(ctx);

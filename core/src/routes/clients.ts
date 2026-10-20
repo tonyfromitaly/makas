@@ -1,6 +1,21 @@
 import { z } from 'zod';
 import { audit, badRequest, lang, maskPhone, notFound, ok, pageQuery, paged, phone, type Ctx, type Route } from '../http';
 import { dropQueued, enqueueReminders } from '../reminders';
+import { staffOf } from '../ekip/kasa';
+
+/**
+ * A team member's client book: the people they served, have booked or added themselves. The owner sees
+ * everyone. Returns the extra condition and its two parameters ($a staff id, $b user id).
+ */
+async function scope(ctx: Ctx, a: number, b: number) {
+  if (ctx.role !== 'barber') return { sql: 'true', params: [] as string[] };
+  const staff = (await staffOf(ctx.db, ctx.shopId, ctx.userId)) ?? '00000000-0000-0000-0000-000000000000';
+  return {
+    sql: `(c.created_by = $${b}::uuid or exists (select 1 from appointments x where x.client_id = c.id and x.barber_id = $${a}::uuid)
+           or exists (select 1 from sales y where y.client_id = c.id and y.staff_id = $${a}::uuid))`,
+    params: [staff, ctx.userId],
+  };
+}
 
 // Stats are derived on read so they can never drift from the appointments and ledger.
 const CLIENT_SELECT = `
@@ -24,11 +39,12 @@ const CLIENT_SELECT = `
     ) nx on true`;
 
 /** The full number never leaves in list views; it is fetched on demand and that read is audited. */
-export function presentClient(c: any) {
+export function presentClient(c: any, staff = false) {
   const { phone_e164, ...rest } = c;
   return {
     ...rest,
-    balance_cents: Number(c.balance_cents),
+    // Store credit is between the owner and the client.
+    balance_cents: staff ? 0 : Number(c.balance_cents),
     phone_masked: maskPhone(phone_e164),
     // No-show risk: any missed visit, weighted by how often it happens.
     risk: c.missed >= 2 || (c.missed >= 1 && c.missed / Math.max(c.visits + c.missed, 1) >= 0.25) ? 'high' : c.missed >= 1 ? 'some' : 'none',
@@ -36,7 +52,8 @@ export function presentClient(c: any) {
 }
 
 async function getClient(ctx: Ctx, id: string) {
-  const row = (await ctx.db.query(`${CLIENT_SELECT} where c.shop_id = $1 and c.id = $3`, [ctx.shopId, ctx.now, id]))
+  const sc = await scope(ctx, 4, 5);
+  const row = (await ctx.db.query(`${CLIENT_SELECT} where c.shop_id = $1 and c.id = $3 and ${sc.sql}`, [ctx.shopId, ctx.now, id, ...sc.params]))
     .rows[0];
   if (!row) throw notFound('Client');
   return row;
@@ -59,6 +76,8 @@ export const clientRoutes: Route[] = [
         '($3::text is null or c.name ilike $3 or c.phone_e164 like $4::text)',
         '$7::int > 0',
       ];
+      const sc = await scope(ctx, 8, 9);
+      where.push(sc.sql);
       if (query.filter === 'lapsed')
         where.push(`st.last_visit < $2::timestamptz - make_interval(days => $7) and nx.next_at is null`);
       if (query.filter === 'debt') where.push('coalesce(lb.balance, 0) > 0');
@@ -69,10 +88,10 @@ export const clientRoutes: Route[] = [
         `select * , count(*) over() as total_count from (${CLIENT_SELECT} where ${where.join(' and ')}) x
           order by ${query.filter === 'lapsed' ? 'last_visit asc' : query.filter === 'debt' ? 'balance_cents desc' : 'name'}
           limit $5 offset $6`,
-        [ctx.shopId, ctx.now, q, digits && digits.length >= 3 ? `%${digits}%` : null, query.page_size, (query.page - 1) * query.page_size, query.lapsed_days],
+        [ctx.shopId, ctx.now, q, digits && digits.length >= 3 ? `%${digits}%` : null, query.page_size, (query.page - 1) * query.page_size, query.lapsed_days, ...sc.params],
       );
       const res = paged(rows, query.page, query.page_size);
-      return { ...res, data: res.data.map(presentClient) };
+      return { ...res, data: res.data.map((c) => presentClient(c, ctx.role === 'barber')) };
     },
   },
   {
@@ -90,7 +109,7 @@ export const clientRoutes: Route[] = [
           [ctx.shopId, c.id],
         )
       ).rows;
-      return { ...presentClient(c), history };
+      return { ...presentClient(c, ctx.role === 'barber'), history };
     },
   },
   {
@@ -122,8 +141,8 @@ export const clientRoutes: Route[] = [
       const shopLang = (await ctx.db.query('select language from shops where id = $1', [ctx.shopId])).rows[0].language;
       const row = (
         await ctx.db.query(
-          `insert into clients (shop_id, name, phone_e164, language, channel_pref, consent_status, consent_at, notes)
-           values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
+          `insert into clients (shop_id, name, phone_e164, language, channel_pref, consent_status, consent_at, notes, created_by)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
           [
             ctx.shopId,
             body.name,
@@ -133,12 +152,13 @@ export const clientRoutes: Route[] = [
             body.consent ? 'granted' : 'revoked',
             body.consent ? ctx.now : null,
             body.notes ?? null,
+            ctx.userId,
           ],
         )
       ).rows[0];
       await audit(ctx, 'client.create', 'client', row.id);
       if (body.consent) await audit(ctx, 'client.consent_granted', 'client', row.id);
-      return ok(presentClient(await getClient(ctx, row.id)), 201);
+      return ok(presentClient(await getClient(ctx, row.id), ctx.role === 'barber'), 201);
     },
   },
   {
@@ -195,7 +215,7 @@ export const clientRoutes: Route[] = [
           before.id,
           fields.channel_pref,
         ]);
-      return presentClient(await getClient(ctx, before.id));
+      return presentClient(await getClient(ctx, before.id), ctx.role === 'barber');
     },
   },
 ];

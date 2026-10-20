@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../state';
-import { DEMO_KEYS, resetDemo } from '../demo';
+import { DEMO_KEYS, demoLogin, demoStaffLogin, resetDemo } from '../demo';
 import { Icon, Sheet } from './ui';
 
 /** Lets a reviewer play the other two layers: Tony's message worker and our operator desk. */
@@ -51,6 +51,22 @@ export function DemoPanel() {
           <p className="muted small">{t('demoIntro')}</p>
           <button className="btn" onClick={() => (setOpen(false), showWelcome())}>
             <Icon name="sparkle" size={16} /> {t('film')}
+          </button>
+          {/* The same shop through a team member's eyes: their day, their till, nothing of the books. */}
+          <button
+            className="btn"
+            onClick={async () => {
+              try {
+                await api.signIn(await api.post('/auth/login', me.user.role === 'owner' ? demoStaffLogin() : demoLogin()));
+                await reloadMe();
+                refreshAll();
+                setOpen(false);
+              } catch (e) {
+                fail(e);
+              }
+            }}
+          >
+            <Icon name="users" size={16} /> {me.user.role === 'owner' ? t('demoAsStaff') : t('demoAsOwner')}
           </button>
 
           <section className="subcard stack">

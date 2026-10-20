@@ -72,7 +72,8 @@ export async function provisionShop(tx: Queryable, p: ProvisionInput) {
     ])
   ).rows[0];
   await tx.query('update shops set owner_user_id = $1 where id = $2', [user.id, shop.id]);
-  await tx.query('insert into barbers (shop_id, name) values ($1, $2)', [shop.id, p.ownerName]);
+  // The owner usually works the floor too: their place on the team is linked to their login.
+  await tx.query('insert into barbers (shop_id, name, user_id) values ($1, $2, $3)', [shop.id, p.ownerName, user.id]);
   if (p.defaultServices)
     for (const [name, usd, min] of DEFAULT_SERVICES[p.businessType ?? 'barber'])
       await tx.query('insert into services (shop_id, name, price_cents, duration_min) values ($1, $2, $3, $4)', [shop.id, name, usd * 100, min]);

@@ -5,6 +5,7 @@ import { addDays, dateLabel, timeIn, todayIn } from '../format';
 import { Empty, Icon, Sheet } from '../components/ui';
 import { AppointmentForm } from './AppointmentForm';
 import { AgentNotes, SetupBanner } from '../components/AgentNotes';
+import { Register } from './Till';
 
 export function Today() {
   const { api, me, t, lang, fmt, openAssistant, has } = useApp();
@@ -44,6 +45,7 @@ export function Today() {
 
       {owner && !me.shop.set_up && <SetupBanner />}
       {owner && <AgentNotes compact />}
+      {owner && randevu && isToday && data && <Floor appts={data.data} />}
 
       {/* The day as a till receipt: the takings on top, every appointment a line, a stamp once the day is settled. */}
       {randevu ? (
@@ -57,9 +59,9 @@ export function Today() {
         <hr className="rule" />
         <div className="till-line">
           <span className="eyebrow">{t('inTheTill')}</span>
-          <strong className="numeral big">{fmt(s?.done_cents ?? 0)}</strong>
+          <strong className="numeral big">{fmt(s?.till_cents ?? s?.done_cents ?? 0)}</strong>
         </div>
-        <Versus cur={s?.done_cents} prev={prev?.summary?.done_cents} date={addDays(date, -7)} running={isToday} />
+        <Versus cur={s?.till_cents ?? s?.done_cents} prev={prev?.summary?.till_cents ?? prev?.summary?.done_cents} date={addDays(date, -7)} running={isToday} />
         <div className="meter" aria-hidden>
           <span style={{ width: `${pct}%` }} />
         </div>
@@ -91,7 +93,9 @@ export function Today() {
                     {(a.status === 'missed' || a.status === 'cancelled') && <span className="appt-tag">{t(a.status)}</span>}
                   </span>
                   <span className="appt-meta">
-                    {a.service_name} · {a.barber_name}
+                    {a.service_name} · {owner ? a.barber_name : ''}
+                    {a.station_name ? `${owner ? ' · ' : ''}${a.station_name}` : ''}
+                    {a.source === 'online' && <span className="chip online-chip">{t('onlineTag')}</span>}
                   </span>
                 </span>
                 <span className="appt-end">
@@ -112,16 +116,18 @@ export function Today() {
         <hr className="rule" />
         <div className="receipt-foot">
           {settled ? <span className="stamp inline">{t('dayClosedStamp')}</span> : <span>{t('receiptThanks')}</span>}
-          <button className="link-btn" onClick={() => setReport(true)}>
-            {t('closeTill')} →
-          </button>
+          {owner && (
+            <button className="link-btn" onClick={() => setReport(true)}>
+              {t('closeTill')} →
+            </button>
+          )}
         </div>
       </section>
       ) : (
         <DayTill date={date} />
       )}
 
-      <TasksCard />
+      {owner && <TasksCard />}
 
       <div className="fab-row">
         <button className="fab ghost" onClick={() => openAssistant(true)} aria-label={t('speak')}>
@@ -174,6 +180,9 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
   const { api, t, fail, me, fmt } = useApp();
   const tz = me.shop.timezone;
   const [time, setTime] = useState(timeIn(appt.starts_at, tz));
+  // "Done" is the checkout: the visit's receipt, with products, a tip and how it was paid.
+  const [checkout, setCheckout] = useState(false);
+  if (checkout) return <Register appointment={appt} onDone={onDone} />;
   const local = DateTime.fromISO(appt.starts_at, { zone: tz });
   const set = async (body: any) => {
     try {
@@ -186,7 +195,8 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
   return (
     <div className="stack">
       <p className="muted">
-        {appt.service_name} · {appt.barber_name} · {fmt(appt.price_cents_snapshot)}
+        {appt.service_name} · {appt.barber_name}
+        {appt.station_name ? ` · ${appt.station_name}` : ''} · {fmt(appt.price_cents_snapshot)}
       </p>
       {appt.client_missed > 0 && (
         <p className="notice warn">
@@ -195,8 +205,8 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
       )}
       {appt.status === 'booked' ? (
         <div className="action-grid">
-          <button className="btn ok" onClick={() => set({ status: 'done' })}>
-            <Icon name="check" /> {t('done')}
+          <button className="btn ok" onClick={() => setCheckout(true)}>
+            <Icon name="check" /> {t('doneCheckout')}
           </button>
           <button className="btn" onClick={() => set({ status: 'missed' })}>
             {t('missed')}
@@ -365,5 +375,54 @@ function Versus({ cur, prev, date, running }: { cur?: number; prev?: number; dat
       {t('lastWeekSameDay', { day })}: <span className="numeral">{fmt(prev)}</span>
       {d !== null && Math.abs(d) >= 0.03 && <span className={d > 0 ? 'pos' : 'neg'}> · {d > 0 ? '+' : '−'}%{Math.round(Math.abs(d) * 100)}</span>}
     </p>
+  );
+}
+
+/**
+ * The floor right now: every chair and room, who is in it and until when, or who sits down next.
+ * Only shown once the shop has stations.
+ */
+function Floor({ appts }: { appts: any[] }) {
+  const { api, me, t, bump } = useApp();
+  const tz = me.shop.timezone;
+  const { data } = useLoad(() => api.get('/stations'), [bump]);
+  const stations = data?.data ?? [];
+  if (!stations.length) return null;
+  const now = Date.now();
+  const live = appts.filter((a) => a.status === 'booked' || a.status === 'done');
+  return (
+    <section className="floor" aria-label={t('stations')}>
+      {stations.map((s: any) => {
+        const here = live.filter((a) => a.station_id === s.id);
+        const cur = here.find((a) => new Date(a.starts_at).getTime() <= now && new Date(a.ends_at).getTime() > now);
+        const next = here.filter((a) => new Date(a.starts_at).getTime() > now).sort((x, y) => x.starts_at.localeCompare(y.starts_at))[0];
+        return (
+          <div key={s.id} className={`seat ${cur ? 'busy' : 'free'}`}>
+            <span className="seat-name">{s.name}</span>
+            {cur ? (
+              <>
+                <strong className="seat-who">{cur.client_name}</strong>
+                <span className="seat-meta">
+                  {cur.barber_name} · {t('untilTime')} <span className="numeral">{timeIn(cur.ends_at, tz)}</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <strong className="seat-who">{t('seatFree')}</strong>
+                <span className="seat-meta">
+                  {next ? (
+                    <>
+                      {t('nextAt')} <span className="numeral">{timeIn(next.starts_at, tz)}</span> · {next.barber_name}
+                    </>
+                  ) : (
+                    t('seatFreeAllDay')
+                  )}
+                </span>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </section>
   );
 }

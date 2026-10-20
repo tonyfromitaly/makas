@@ -25,6 +25,7 @@ const paths: Record<string, string> = {
   undo: 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
   clock: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
   beaker: 'M9 3h6M10 3v6L4.5 19a1 1 0 0 0 .9 1.5h13.2a1 1 0 0 0 .9-1.5L14 9V3',
+  till: 'M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9Zm2-5h12l2 5H4l2-5Zm3 9h6M9 3h6',
 };
 
 export function Icon({ name, size = 20 }: { name: keyof typeof paths | string; size?: number }) {

@@ -8,13 +8,14 @@
   # API_ORIGIN = "https://fade-xxxx.onrender.com"   (set in Netlify → Site configuration → Environment)
 
 # Security headers. Netlify merges every rule that matches a path, so the CSP rules below never overlap:
-# the site pages and /app/ share one policy, the in-browser demo (WebAssembly Postgres) has its own.
+# the site pages and /app/ share one policy, the in-browser demo (WebAssembly Postgres) has its own, and
+# the public booking page (/book/) is the one page other websites may frame. X-Frame-Options is set per
+# path for that reason, never on /*.
 [[headers]]
   for = "/*"
   [headers.values]
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "microphone=(self), camera=(), geolocation=(), payment=()"
     Cross-Origin-Opener-Policy = "same-origin"
@@ -22,28 +23,39 @@
 [[headers]]
   for = "/"
   [headers.values]
+    X-Frame-Options = "DENY"
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/index.html"
   [headers.values]
+    X-Frame-Options = "DENY"
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/gizlilik.html"
   [headers.values]
+    X-Frame-Options = "DENY"
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
 
 # The app also opens Plaid Link (bank sign-in) from Plaid's CDN, in an iframe.
 [[headers]]
   for = "/app/*"
   [headers.values]
+    X-Frame-Options = "DENY"
     Content-Security-Policy = "default-src 'self'; script-src 'self' https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self' https://production.plaid.com https://sandbox.plaid.com; frame-src https://cdn.plaid.com; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/demo/*"
   [headers.values]
+    X-Frame-Options = "DENY"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self' data: blob:; worker-src 'self' blob:; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+
+# The booking page, framed by the shop's own website (embed.js). No microphone, no Plaid; its API calls stay same-origin.
+[[headers]]
+  for = "/book/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors *; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
 
 # Hashed build assets can be cached for a year.
 [[headers]]
@@ -52,6 +64,10 @@
     Cache-Control = "public, max-age=31536000, immutable"
 [[headers]]
   for = "/app/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+[[headers]]
+  for = "/book/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 [[headers]]

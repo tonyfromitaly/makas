@@ -18,9 +18,10 @@ import { Assistant, forgetConversation } from './screens/Assistant';
 import { DemoPanel } from './components/DemoPanel';
 import { Welcome } from './components/Welcome';
 import { Operator } from './screens/Operator';
+import { Till } from './screens/Till';
 
 export const DEMO = import.meta.env.MODE === 'demo' || import.meta.env.VITE_DEMO === 'true';
-type Tab = 'today' | 'clients' | 'assistant' | 'books' | 'settings';
+type Tab = 'today' | 'till' | 'clients' | 'assistant' | 'books' | 'settings';
 
 const LANG_KEY = 'makas.lang';
 const savedLang = (): Lang | null => {
@@ -232,6 +233,7 @@ export function App() {
           ) : (
             <>
               {tab === 'today' && <Today key={bump} />}
+              {tab === 'till' && <Till />}
               {tab === 'clients' && <Clients />}
               {tab === 'assistant' && <Assistant autoMic={autoMic} onMicUsed={() => setAutoMic(false)} />}
               {tab === 'books' && <Books />}
@@ -240,18 +242,21 @@ export function App() {
           )}
         </main>
         {!me.locked && !me.shop.deleted_at && (
-          <nav className="tabbar">
+          <nav className={`tabbar ${me.user.role === 'owner' ? 'six' : ''}`}>
             {(
               [
                 ['today', 'calendar'],
-                ['clients', 'users'],
+                ['till', 'till'],
                 ['assistant', 'sparkle'],
+                ['clients', 'users'],
                 ['books', 'book'],
                 ['settings', 'gear'],
               ] as [Tab, string][]
             )
               // No client book and no appointments: the Clients tab has nothing to show.
               .filter(([k]) => k !== 'clients' || state.has('musteri') || state.has('randevu'))
+              // A team member's app: their day, their till, their clients. The books are the owner's.
+              .filter(([k]) => k !== 'books' || me.user.role === 'owner')
               .map(([k, icon]) => (
               <button key={k} className={`${tab === k ? 'on' : ''} ${k === 'assistant' ? 'center' : ''}`} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined}>
                 <Icon name={icon} size={22} />

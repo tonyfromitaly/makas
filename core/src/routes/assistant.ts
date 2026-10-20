@@ -13,6 +13,7 @@ import { updateRow } from './shop';
 import { shopSnapshot } from '../assistant/snapshot';
 import { localAdvice } from '../assistant/advice';
 import { EARLIER_MAX, RECENT, earlierLine, nextFocus, sessionView, type Focus } from '../assistant/memory';
+import { payReport, staffOf, type PayRow } from '../ekip/kasa';
 import { NOTE_KINDS, addNote, isSensitive, liveNotes, memoryMarkdown, notesForPrompt, memoryUpkeepIn } from '../assistant/notes';
 
 type Lang = 'tr' | 'en' | 'es';
@@ -27,14 +28,33 @@ async function shopInfo(ctx: Ctx) {
   ).rows[0] as { name: string; timezone: string; language: Lang; currency: string; country: string; soul: string | null };
 }
 
-async function lists(ctx: Ctx) {
-  const q = async (sql: string) => (await ctx.db.query(sql, [ctx.shopId])).rows as (Named & Record<string, any>)[];
+async function lists(ctx: Ctx, staff: string | null) {
+  const q = async (sql: string, p: unknown[] = []) => (await ctx.db.query(sql, [ctx.shopId, ...p])).rows as (Named & Record<string, any>)[];
   return {
     services: await q('select id, name, price_cents, duration_min from services where shop_id = $1 and active order by name'),
-    barbers: await q('select id, name from barbers where shop_id = $1 and active order by created_at'),
-    clients: await q('select id, name, phone_e164 from clients where shop_id = $1 order by name limit 500'),
+    // A team member's assistant knows only them on the team, and only their own clients.
+    barbers: staff ? await q('select id, name from barbers where shop_id = $1 and id = $2', [staff]) : await q('select id, name from barbers where shop_id = $1 and active order by created_at, name'),
+    clients:
+      ctx.role === 'barber'
+        ? await q(
+            `select c.id, c.name, c.phone_e164 from clients c where c.shop_id = $1 and (c.created_by = $3
+               or exists (select 1 from appointments a where a.client_id = c.id and a.barber_id = $2)
+               or exists (select 1 from sales s where s.client_id = c.id and s.staff_id = $2)) order by c.name limit 500`,
+            [staff ?? '00000000-0000-0000-0000-000000000000', ctx.userId],
+          )
+        : await q('select id, name, phone_e164 from clients where shop_id = $1 order by name limit 500'),
   };
 }
+
+/** "Primi (%50) $420 ediyor." — what a person's deal makes of their sales. */
+function dealLine(r: ReturnType<typeof replier>, row: PayRow) {
+  if (row.pay_model === 'booth_rent') return r.say('deal_rent', { rent: r.money(row.rent_cents) });
+  if (row.pay_model === 'salary') return r.say('deal_salary', { owed: r.money(row.owed_cents) });
+  return r.say('deal_commission', { pct: row.service_pct, owed: r.money(row.commission_cents) });
+}
+
+/** Metrics a team member may ask about: their own sales and appointments. Everything else is the owner's. */
+const STAFF_METRICS = new Set(['income', 'summary', 'net', 'team', 'appointments', 'top_service']);
 
 /** Calendar range for a period name, in the shop's timezone. */
 export function periodRange(period: string, now: DateTime) {
@@ -70,7 +90,7 @@ const match = (name: string | null | undefined, items: Named[]) => {
 };
 
 /** Answers a question. Every number comes from SQL; this only words the result. */
-async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop: Awaited<ReturnType<typeof shopInfo>>, l: Lang, clients: Named[]) {
+async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop: Awaited<ReturnType<typeof shopInfo>>, l: Lang, clients: Named[], staff: string | null = null, team: Named[] = []) {
   const r = replier(l, shop.currency);
   const now = DateTime.fromJSDate(ctx.now, { zone: shop.timezone });
   // A month named outright ("ekim ayının hesabı"): its latest occurrence, this month included.
@@ -128,7 +148,60 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
     return top && total > 0 ? r.say('expense_top', { cat: r.category(top.category), catAmount: r.money(Number(top.total)), pct: Math.round(share * 100), pctTr: yuzdeEk(share, 'i') }) : '';
   };
 
+  // A team member hears about their own work only.
+  if (ctx.role === 'barber') {
+    if (!STAFF_METRICS.has(item.metric)) return { text: r.say('owner_only'), data: null };
+    if (item.metric !== 'appointments') {
+      const [row] = staff ? await payReport(ctx.db, ctx.shopId, f, upTo.toISODate()!, staff) : [];
+      if (!row || !row.gross_cents) return { text: r.say('staff_income_none', { p, range }), data: { gross_cents: 0 } };
+      return {
+        text: r.say('staff_income', { p, range, gross: r.money(row.gross_cents), visits: row.visits, tips: row.tips_cents ? r.say('team_tips', { tips: r.money(row.tips_cents) }) : '', deal: dealLine(r, row) }).trim(),
+        data: row,
+      };
+    }
+  }
+
   switch (item.metric) {
+    case 'team': {
+      const rows = (await payReport(ctx.db, ctx.shopId, f, upTo.toISODate()!)).filter((x) => x.gross_cents > 0 || x.visits > 0);
+      if (item.staff_name) {
+        const who = match(item.staff_name, team);
+        if (!who) return { text: r.say('member_missing', { name: item.staff_name }), data: null };
+        const row = rows.find((x) => x.staff_id === who.id);
+        if (!row) return { text: r.say('member_none', { name: who.name, p, range }), data: null };
+        return {
+          text: r
+            .say('team_member', {
+              p,
+              range,
+              name: row.name,
+              gross: r.money(row.gross_cents),
+              visits: row.visits,
+              service: r.money(row.service_cents),
+              product: r.money(row.product_cents),
+              tips: row.tips_cents ? r.say('team_tips', { tips: r.money(row.tips_cents) }) : '',
+              deal: dealLine(r, row),
+            })
+            .trim(),
+          data: row,
+        };
+      }
+      if (!rows.length) return { text: r.say('team_none', { p, range }), data: { rows: [] } };
+      const sorted = [...rows].sort((a, b) => b.gross_cents - a.gross_cents);
+      const sum = (k: keyof PayRow) => rows.reduce((t, x) => t + (x[k] as number), 0);
+      return {
+        text: r.say('team', {
+          p,
+          range,
+          gross: r.money(sum('gross_cents')),
+          list: sorted.slice(0, 6).map((x) => `${x.name} ${r.money(x.gross_cents)}`).join(', '),
+          tips: sum('tips_cents') ? r.say('team_tips', { tips: r.money(sum('tips_cents')) }) : '',
+          owed: r.money(sum('owed_cents')),
+          shop: r.money(sum('shop_cents')),
+        }),
+        data: { rows: sorted },
+      };
+    }
     case 'cash': {
       // The real balance when a bank is connected; otherwise what the books say came in today.
       const bank = await one(`select meta->'kasa' as kasa, last_sync_at from connections where shop_id = $1 and provider = 'plaid' and status <> 'disconnected'`, [ctx.shopId]);
@@ -235,8 +308,8 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
         `select count(*) filter (where status in ('booked', 'done'))::int as n,
                 count(*) filter (where status = 'done')::int as d,
                 coalesce(sum(price_cents_snapshot) filter (where status in ('booked', 'done')), 0)::int8 as expected
-           from appointments where shop_id = $1 and starts_at >= $2 and starts_at < $3`,
-        [ctx.shopId, from.toJSDate(), to.plus({ days: 1 }).toJSDate()],
+           from appointments where shop_id = $1 and starts_at >= $2 and starts_at < $3 and ($4::uuid is null or barber_id = $4)`,
+        [ctx.shopId, from.toJSDate(), to.plus({ days: 1 }).toJSDate(), ctx.role === 'barber' ? staff ?? '00000000-0000-0000-0000-000000000000' : null],
       );
       if (!s.n) return { text: r.say('appointments_none', { p: pl }), data: { count: 0 } };
       return {
@@ -342,7 +415,10 @@ export const assistantRoutes: Route[] = [
       const shop = await shopInfo(ctx);
       const l: Lang = body.lang ?? shop.language;
       const r = replier(l, shop.currency);
-      const L = await lists(ctx);
+      const staff = await staffOf(ctx.db, ctx.shopId, ctx.userId);
+      const isStaff = ctx.role === 'barber';
+      const L = await lists(ctx, isStaff ? staff ?? '00000000-0000-0000-0000-000000000000' : null);
+      const team = L.barbers;
       const now = DateTime.fromJSDate(ctx.now, { zone: shop.timezone });
 
       // The conversation so far (this user's, this session's): what "him" or "make it 4" refers to.
@@ -393,11 +469,30 @@ export const assistantRoutes: Route[] = [
       const seen: PlanItem[] = []; // the plan with names as resolved, for the next turn's focus
       let noted: Focus['note'];
       for (const item of plan.items) {
+        if (isStaff && (item.type === 'book' || item.type === 'ledger' || item.type === 'reminder')) {
+          // The books, store credit and the shop's reminders are the owner's.
+          if (!texts.includes(r.say('owner_only_draft'))) texts.push(r.say('owner_only_draft'));
+          continue;
+        }
         if (item.type === 'query') {
-          const a = await answer(ctx, item, shop, l, L.clients);
+          const a = await answer(ctx, item, shop, l, L.clients, staff, team);
           if (a) texts.push(a.text);
           const c = item.metric === 'client_balance' ? match(item.client_name, L.clients) : null;
           seen.push({ ...item, client_name: c?.name ?? item.client_name ?? null });
+        } else if (item.type === 'chat' && isStaff) {
+          // A team member's open questions never see the shop's numbers; their own work only.
+          const [row] = staff ? await payReport(ctx.db, ctx.shopId, now.startOf('month').toISODate()!, now.toISODate()!, staff) : [];
+          let reply: string | null = null;
+          if (ctx.deps.chat) {
+            try {
+              reply = (await ctx.deps.chat({ question: item.question, lang: l, shop: shop.name, currency: shop.currency, snapshot: { role: 'team_member', this_month: row ?? null }, history: mem.view.recent, memory })).trim() || null;
+              if (reply) engine = 'ai';
+            } catch {
+              /* no shop numbers to fall back on */
+            }
+          }
+          texts.push(reply ?? r.say('owner_only'));
+          seen.push(item);
         } else if (item.type === 'chat') {
           // Open question: the shop's numbers come from SQL; the model (or local rules) only words them.
           const snapshot = await shopSnapshot(ctx.db, ctx.shopId, now);
@@ -419,7 +514,7 @@ export const assistantRoutes: Route[] = [
           // A note for the long-term memory; never sensitive details (core/agent/SOUL.md).
           const note = isSensitive(item.text)
             ? null
-            : await addNote(ctx.db, { shopId: ctx.shopId, userId: item.kind === 'preference' ? ctx.userId : null, kind: item.kind, subject: item.subject, text: item.text, source: 'said', now: ctx.now });
+            : await addNote(ctx.db, { shopId: ctx.shopId, userId: item.kind === 'preference' || isStaff ? ctx.userId : null, kind: item.kind, subject: item.subject, text: item.text, source: 'said', now: ctx.now });
           if (note) {
             texts.push(r.say('remembered', { text: note.text }));
             noted = { id: note.id, text: note.text };
@@ -436,7 +531,7 @@ export const assistantRoutes: Route[] = [
           // No service named: the client's usual one (memory from the records), else the first on the menu.
           const usual = !item.service && client ? await usualService(ctx, client.id) : null;
           const service = match(item.service, L.services) ?? (usual ? L.services.find((s) => s.id === usual) : null) ?? L.services[0] ?? null;
-          const barber = match(item.barber, L.barbers) ?? L.barbers[0] ?? null;
+          const barber = isStaff ? L.barbers[0] ?? null : match(item.barber, L.barbers) ?? L.barbers[0] ?? null;
           const phone = item.phone ? toE164(item.phone, shop.country) : null;
           drafts.push({
             type: 'appointment',
@@ -599,25 +694,31 @@ export const assistantRoutes: Route[] = [
       const now = DateTime.fromJSDate(ctx.now, { zone: shop.timezone });
       const day = now.startOf('day');
       const user = (await ctx.db.query('select name from users where id = $1 and shop_id = $2', [ctx.userId, ctx.shopId])).rows[0];
+      // A team member's morning: their own appointments and what they have sold today.
+      const staff = ctx.role === 'barber' ? (await staffOf(ctx.db, ctx.shopId, ctx.userId)) ?? '00000000-0000-0000-0000-000000000000' : null;
       const a = (
         await ctx.db.query(
           `select count(*) filter (where status in ('booked', 'done'))::int as n, count(*) filter (where status = 'booked')::int as left
-             from appointments where shop_id = $1 and starts_at >= $2 and starts_at < $3`,
-          [ctx.shopId, day.toJSDate(), day.plus({ days: 1 }).toJSDate()],
+             from appointments where shop_id = $1 and starts_at >= $2 and starts_at < $3 and ($4::uuid is null or barber_id = $4)`,
+          [ctx.shopId, day.toJSDate(), day.plus({ days: 1 }).toJSDate(), staff],
         )
       ).rows[0];
-      const till = (
-        await ctx.db.query(
-          `select coalesce(sum(amount_cents), 0)::int8 as t from book_entries where shop_id = $1 and kind = 'income' and entry_date = $2`,
-          [ctx.shopId, day.toISODate()],
-        )
-      ).rows[0].t;
-      const tasks = (
-        await ctx.db.query(
-          `select ${taskSelect} from shop_tasks where shop_id = $1 and status = 'open' and due_date <= $2 order by due_date, due_time nulls last limit 6`,
-          [ctx.shopId, day.plus({ days: 2 }).toISODate()],
-        )
-      ).rows;
+      const till = staff
+        ? (await payReport(ctx.db, ctx.shopId, day.toISODate()!, day.toISODate()!, staff))[0]?.gross_cents ?? 0
+        : (
+            await ctx.db.query(
+              `select coalesce(sum(amount_cents), 0)::int8 as t from book_entries where shop_id = $1 and kind = 'income' and entry_date = $2`,
+              [ctx.shopId, day.toISODate()],
+            )
+          ).rows[0].t;
+      const tasks = staff
+        ? []
+        : (
+            await ctx.db.query(
+              `select ${taskSelect} from shop_tasks where shop_id = $1 and status = 'open' and due_date <= $2 order by due_date, due_time nulls last limit 6`,
+              [ctx.shopId, day.plus({ days: 2 }).toISODate()],
+            )
+          ).rows;
       const today = day.toISODate()!;
       const parts = [r.say('brief_hello', { name: user?.name?.split(' ')[0] ?? '' })];
       parts.push(a.n ? r.say('brief_appts', { n: a.n, left: a.left }) : r.say('brief_no_appts'));
@@ -654,6 +755,7 @@ export const assistantRoutes: Route[] = [
     path: '/tasks',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     query: pageQuery.extend({ status: z.enum(['open', 'done', 'all']).default('open'), until: isoDate.optional() }),
     async handler(ctx, { query }) {
       const { rows } = await ctx.db.query(
@@ -670,6 +772,7 @@ export const assistantRoutes: Route[] = [
     path: '/tasks',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     body: z.object({
       kind: z.enum(['reminder', 'payment']).default('reminder'),
       title: z.string().trim().min(1).max(200),
@@ -695,6 +798,7 @@ export const assistantRoutes: Route[] = [
     path: '/tasks/:id',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     body: z
       .object({
         status: z.enum(['open', 'done']),
@@ -715,6 +819,7 @@ export const assistantRoutes: Route[] = [
     path: '/tasks/:id',
     auth: 'user',
     gated: true,
+    ownerOnly: true,
     async handler(ctx, { params }) {
       const { rows } = await ctx.db.query('delete from shop_tasks where id = $1 and shop_id = $2 returning id', [params.id, ctx.shopId]);
       if (!rows.length) throw notFound('Task');

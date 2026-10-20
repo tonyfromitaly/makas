@@ -2548,3 +2548,519 @@ button.kpi:focus-visible {
   color: inherit;
   opacity: 0.75;
 }
+
+/* ---------- The team and the till ---------- */
+/* Six tabs for the owner (the till joins): tighter labels so "Müşteriler" still fits on a phone. */
+.tabbar.six {
+  grid-template-columns: repeat(6, 1fr);
+}
+.tabbar.six button {
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+}
+
+.register {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.who-row {
+  display: grid;
+  gap: 6px;
+}
+.who-row .chips,
+.tip-row .chips,
+.chips.days {
+  flex-wrap: wrap;
+}
+.register-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.shelf {
+  display: grid;
+  gap: 8px;
+}
+/* Menu items as till keys: a counter-coloured tile, the price in the typewriter face. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+.tile {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  min-height: 64px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-bottom: 3px solid var(--rule);
+  border-radius: var(--r, 2px);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+.tile:active {
+  transform: translateY(1px);
+  border-bottom-width: 2px;
+}
+.tile:focus-visible {
+  outline: 2px solid var(--carbon);
+  outline-offset: 2px;
+}
+.tile.product {
+  border-bottom-color: var(--carbon);
+}
+.tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.tile-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+.tile .numeral {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.tile-stock {
+  font: 400 0.66rem var(--font-mono);
+  color: var(--ink-3);
+}
+.other-line input:first-child {
+  flex: 1;
+}
+
+.ticket {
+  display: grid;
+  gap: 8px;
+}
+.ticket-empty {
+  text-align: center;
+  margin: 6px 0;
+}
+.ticket-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.ticket-lines li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 0.84rem/1.3 var(--font-mono);
+}
+.ticket-name {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+.qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.qty-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px dashed var(--rule);
+  background: transparent;
+  color: var(--ink);
+  border-radius: var(--r, 2px);
+  font: 700 0.95rem/1 var(--font-mono);
+  cursor: pointer;
+}
+.tip-row {
+  display: grid;
+  gap: 6px;
+  font: 400 0.78rem var(--font-mono);
+  text-transform: uppercase;
+}
+.tip-input {
+  width: 84px;
+}
+.btn.charge {
+  width: 100%;
+  min-height: 52px;
+  font-size: 1rem;
+}
+/* Payment taken: the stamp lands on the ticket. */
+.paid-stamp {
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  font-size: 1.6rem;
+  padding: 10px 18px 8px;
+  animation: stamp-in 0.32s cubic-bezier(0.2, 1.4, 0.5, 1) both;
+  pointer-events: none;
+}
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-12deg) scale(1.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paid-stamp {
+    animation: none;
+  }
+}
+.ticket.is-paid .ticket-lines,
+.ticket.is-paid .ledger-line {
+  opacity: 0.55;
+}
+
+/* Settlement slips: one per person. */
+.team-kpis {
+  grid-template-columns: repeat(3, 1fr);
+}
+.team-kpis .kpi strong {
+  font-size: 1.02rem;
+}
+.slip {
+  display: grid;
+  gap: 4px;
+}
+.slip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.slip-name {
+  font: 700 1.15rem/1.1 var(--font-head);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ledger-line.strong {
+  font-weight: 800;
+  color: var(--ink);
+}
+.slip-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.receipts-list .list-row {
+  gap: 10px;
+}
+.btn.small {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
+/* The floor: every chair and room as a small ticket, busy ones inked. */
+.floor {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(132px, 1fr);
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.floor::-webkit-scrollbar {
+  display: none;
+}
+.seat {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border-top: 3px solid var(--line);
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.seat.busy {
+  border-top-color: var(--carbon);
+}
+.seat-name {
+  font: 700 0.66rem var(--font-head);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.seat-who {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.seat.free .seat-who {
+  color: var(--pos);
+}
+.seat-meta {
+  font-size: 0.74rem;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip.online-chip {
+  margin-left: 6px;
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  vertical-align: 1px;
+}
+
+/* Team settings */
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.team-row .row-meta {
+  display: block;
+}
+.team-list li {
+  padding: 10px 0;
+}
+.key-out {
+  display: block;
+  padding: 10px 12px;
+  background: var(--paper-2);
+  border: 1px dashed var(--rule);
+  font: 600 0.82rem/1.4 var(--font-mono);
+  word-break: break-all;
+  user-select: all;
+}
+.mini-select {
+  width: auto;
+  max-width: 108px;
+  min-height: 32px;
+  padding: 2px 6px;
+  font-size: 0.78rem;
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+.switch input {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  accent-color: var(--pos);
+}
+.mini-list.hours li {
+  gap: 8px;
+}
+.mini-list.hours .day {
+  width: 40px;
+  font: 700 0.74rem var(--font-head);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.mini-list.hours input[type='time'] {
+  width: auto;
+  min-height: 34px;
+  padding: 2px 6px;
+}
+.kind-dot[data-kind] {
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.kind-dot[data-kind='chair'] {
+  background: var(--carbon);
+}
+.kind-dot[data-kind='room'] {
+  background: var(--pos);
+}
+
+/* ---------- The public booking page ---------- */
+.book {
+  max-width: 560px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--counter);
+}
+.book-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 12px;
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.book-head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -9px;
+  height: 10px;
+  background: var(--zigzag);
+}
+.book-head h1 {
+  margin: 2px 0 0;
+  font: 700 1.5rem/1.1 var(--font-head);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.book-head p {
+  margin: 4px 0 0;
+}
+.book-tools {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.book-tools select {
+  width: auto;
+  min-height: 34px;
+  padding: 2px 6px;
+  font: 700 0.78rem var(--font-mono);
+}
+.book-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 16px 32px;
+  scroll-padding-bottom: 160px;
+}
+.book-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  max-width: 88%;
+}
+.book-msg p {
+  margin: 0;
+  padding: 10px 13px;
+  line-height: 1.45;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  border-radius: var(--r-card, 2px);
+}
+.book-msg.client {
+  align-self: flex-end;
+}
+.book-msg.client p {
+  background: var(--ink);
+  color: var(--paper);
+}
+.book-avatar {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 50%;
+}
+.book-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 34px;
+}
+.book-options.time .book-chip {
+  min-width: 76px;
+}
+.book-chip {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+  padding: 9px 13px;
+  background: var(--paper);
+  border: 1.5px dashed var(--rule);
+  border-radius: var(--r, 2px);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.book-chip small {
+  font: 400 0.7rem var(--font-mono);
+  color: var(--ink-3);
+}
+.book-chip.primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-style: solid;
+  border-color: var(--ink);
+}
+.book-chip.primary small {
+  color: inherit;
+}
+.book-chip:focus-visible {
+  outline: 2px solid var(--carbon);
+  outline-offset: 2px;
+}
+.book-chip:disabled {
+  opacity: 0.6;
+}
+.book-done {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding-top: 52px;
+  text-align: center;
+}
+.book-done .stamp {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-4deg);
+}
+.book-input {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--paper);
+  box-shadow: 0 -10px 22px -18px rgba(16, 22, 34, 0.5);
+}
+.book-input .row input {
+  flex: 1;
+}
+.book-fine {
+  margin: 0;
+  text-align: center;
+}
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+/* The owner's "see it as a client" preview, over the app. */
+.book-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--counter);
+  overflow-y: auto;
+}
+
+/* At a visit's checkout the receipt comes first; the shelf of extras sits under it. */
+.register.checkout .register-grid {
+  flex-direction: column-reverse;
+}
