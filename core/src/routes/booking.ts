@@ -231,13 +231,11 @@ export const bookingRoutes: Route[] = [
       const clear = (...keys: (keyof AgentState)[]) => keys.forEach((k) => (st[k] = null));
 
       // What the client chose or said. A tap sets fields; text can fill several at once.
-      for (const [k, v] of Object.entries(body.set ?? {})) {
-        if (k === 'confirm') continue;
-        (st as any)[k] = v;
-        if (k === 'service_id') clear('time');
-        if (k === 'staff_id') clear('time');
-        if (k === 'date') clear('time');
-      }
+      const picked = body.set ?? {};
+      for (const [k, v] of Object.entries(picked)) if (k !== 'confirm') (st as any)[k] = v;
+      // A new service, person or day drops the time, unless the tap set the time too (a time chip under
+      // "anyone" carries its person with it).
+      if (('service_id' in picked || 'staff_id' in picked || 'date' in picked) && !('time' in picked)) clear('time');
       if (body.text) {
         const t = body.text;
         const svc = pick(t, m.services);

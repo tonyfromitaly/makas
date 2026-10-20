@@ -684,6 +684,18 @@ update book_entries b set sale_id = x.id, source = 'sale' from sales x where b.a
 select set_config('app.system', 'off', true);
 `;
 
+// Shops opened before the team existed: the owner's place on the team (made at sign-up with the owner's
+// name) is linked to the owner's login, so the owner is never settled up with like staff.
+const ownerOnTeam = `
+select set_config('app.system', 'on', true);
+update barbers b set user_id = s.owner_user_id
+  from shops s join users u on u.id = s.owner_user_id
+ where b.shop_id = s.id and b.user_id is null and lower(b.name) = lower(u.name)
+   and not exists (select 1 from barbers x where x.user_id = s.owner_user_id)
+   and b.id = (select y.id from barbers y where y.shop_id = s.id and lower(y.name) = lower(u.name) order by y.created_at limit 1);
+select set_config('app.system', 'off', true);
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -698,4 +710,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '011_signal_action', sql: signalAction },
   { id: '012_soft_delete', sql: softDelete },
   { id: '013_team_till', sql: team },
+  { id: '014_owner_on_team', sql: ownerOnTeam },
 ];

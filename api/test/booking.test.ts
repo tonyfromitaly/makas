@@ -154,6 +154,14 @@ describe('the booking agent', () => {
     expect(state.staff_id).toBe((await t.call('GET', '/barbers', { token: owner })).body.data.find((b: any) => b.name === 'Can').id);
     expect(any.step).toBe('name');
 
+    // Tapping a time under "anyone" books that time with the person who has it free.
+    state = { service_id: s.service.id, staff_id: 'any', date: '2026-10-16' };
+    const times = await turn({});
+    const chip = times.options.find((o: any) => o.label === '12:00');
+    const tapped = await turn({ set: chip.set });
+    expect(tapped.step).toBe('name');
+    expect(state).toMatchObject({ time: '12:00', staff_id: chip.set.staff_id });
+
     // Elif at 09:30 tomorrow is taken: the agent says so and offers her nearest free times.
     state = { service_id: s.service.id, staff_id: elif.id, date: '2026-10-16' };
     const taken = await turn({ text: '9:30' });

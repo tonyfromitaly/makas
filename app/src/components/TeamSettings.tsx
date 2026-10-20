@@ -14,7 +14,6 @@ const DAYS = [1, 2, 3, 4, 5, 6, 7];
 export function TeamSettings() {
   const { api, t, fmt } = useApp();
   const { data, reload } = useLoad(() => api.get('/barbers?include_inactive=true'), []);
-  const { data: stations } = useLoad(() => api.get('/stations'), []);
   const [editing, setEditing] = useState<any>(null);
   return (
     <section className="card stack" id="sec-team">
@@ -42,14 +41,17 @@ export function TeamSettings() {
         <Icon name="plus" /> {t('addTeamMember')}
       </button>
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? editing.name : t('addTeamMember')}>
-        {editing && <MemberForm member={editing} stations={stations?.data ?? []} onDone={() => (setEditing(null), reload())} />}
+        {editing && <MemberForm member={editing} onDone={() => (setEditing(null), reload())} />}
       </Sheet>
     </section>
   );
 }
 
-function MemberForm({ member, stations, onDone }: { member: any; stations: any[]; onDone(): void }) {
+function MemberForm({ member, onDone }: { member: any; onDone(): void }) {
   const { api, t, fail, toast, me } = useApp();
+  // Fresh each time the form opens: chairs added a moment ago are offered too.
+  const { data: st } = useLoad(() => api.get('/stations'), []);
+  const stations: any[] = st?.data ?? [];
   const [m, setM] = useState({ ...member, salary: member.salary_cents ? String(member.salary_cents / 100) : '', rent: member.rent_cents ? String(member.rent_cents / 100) : '' });
   const [email, setEmail] = useState('');
   const [key, setKey] = useState<string | null>(null);

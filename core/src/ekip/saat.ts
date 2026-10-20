@@ -124,7 +124,12 @@ export async function freeSlots(
     const a = day.plus({ minutes: m }).toMillis();
     const b = a + minutes * 60_000;
     if (a < earliest) continue;
-    const pick = pickFor(order, stations, kind, busy, a, b);
+    // Equally booked people take turns slot by slot, so "anyone" is not always the same name.
+    const turn = q.staffId || order.length < 2 ? order : (() => {
+      const k = Math.floor(m / 30) % order.length;
+      return [...order.slice(k), ...order.slice(0, k)].sort((x, y) => (load.get(x.id) ?? 0) - (load.get(y.id) ?? 0));
+    })();
+    const pick = pickFor(turn, stations, kind, busy, a, b);
     if (pick) out.push({ time: fromMin(m), ...pick, distance: Math.abs(m - nearMin) });
   }
   out.sort((x, y) => x.distance - y.distance || x.time.localeCompare(y.time));

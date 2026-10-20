@@ -61,7 +61,11 @@ export function BookPage({ slug, api: given, onClose }: { slug: string; api?: Cl
     }
   };
 
+  // Opens the conversation once per page, even when React runs effects twice (development).
+  const opened = useRef<string | null>(null);
   useEffect(() => {
+    if (opened.current === slug) return;
+    opened.current = slug;
     api
       .get(`/public/book/${slug}`)
       .then((s) => {
