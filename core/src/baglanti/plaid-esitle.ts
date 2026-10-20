@@ -9,7 +9,7 @@
 //   would be counted twice: once as sales, again as the payout landing in the bank).
 import { withTenant, type Database, type Queryable } from '../db';
 import { coz, sifrele } from './esitle';
-import { plaidClient, plaidDefter, plaidKasa, PlaidError, type PlaidEnv } from './plaid';
+import { girisSayilir, plaidClient, plaidDefter, plaidKasa, PlaidError, type PlaidEnv } from './plaid';
 
 export interface PlaidAyar {
   env: PlaidEnv;
@@ -47,8 +47,9 @@ export function plaidBaglanti(db: Database, a: PlaidAyar, now: () => Date) {
     try {
       const token = await coz(a.kasaSecret, conn.access_token_enc);
       const s = await c.sync(token, conn.sync_cursor ?? '');
-      const kasa = plaidKasa(await c.accounts(token));
-      const kayitlar = plaidDefter([...s.added, ...s.modified]);
+      const accounts = await c.accounts(token);
+      const kasa = plaidKasa(accounts);
+      const kayitlar = plaidDefter([...s.added, ...s.modified], accounts);
       const days = await withTenant(db, shopId, async (tx) => {
         const touched = new Set<string>();
         for (const id of s.removed) {
@@ -113,33 +114,36 @@ export function plaidBaglanti(db: Database, a: PlaidAyar, now: () => Date) {
   };
 }
 
+/** The days another source of income covers (a sales system, or the app's own books), if any. */
+export async function gelirKapsami(tx: Queryable, shopId: string): Promise<{ bas: string; son: string } | null> {
+  const r = (
+    await tx.query(
+      `select min(d)::text as bas, max(d)::text as son from (
+         select happened_on as d from import_rows where shop_id = $1 and provider <> 'plaid' and kind = 'kayit' and data->>'tur' = 'gelir'
+         union all
+         select entry_date from book_entries where shop_id = $1 and kind = 'income' and source <> 'import') x`,
+      [shopId],
+    )
+  ).rows[0];
+  return r?.bas ? { bas: r.bas, son: r.son } : null;
+}
+
 /** Rewrites the books' bank lines for the given days: one per day and category. */
 async function bankaDefteri(tx: Queryable, shopId: string, days: string[]) {
   if (!days.length) return;
   await tx.query(`delete from book_entries where shop_id = $1 and source = 'import' and external_ref like 'plaid:%' and entry_date = any($2::date[])`, [shopId, days]);
-  const satisVar = (
-    await tx.query(
-      `select exists (select 1 from import_rows where shop_id = $1 and provider <> 'plaid' and kind = 'kayit')
-           or exists (select 1 from book_entries where shop_id = $1 and kind = 'income' and source <> 'import') as v`,
-      [shopId],
-    )
-  ).rows[0].v;
-  const { rows } = await tx.query(
-    `select happened_on::text as day, data->>'tur' as tur, data->>'kategori' as kat, sum((data->>'tutar')::numeric) as total, count(*)::int as n
-       from import_rows where shop_id = $1 and provider = 'plaid' and kind = 'kayit' and happened_on = any($2::date[])
-      group by 1, 2, 3`,
-    [shopId, days],
-  );
+  const kapsam = await gelirKapsami(tx, shopId);
+  const { rows } = await tx.query(`select data from import_rows where shop_id = $1 and provider = 'plaid' and kind = 'kayit' and happened_on = any($2::date[])`, [shopId, days]);
   const merged = new Map<string, { day: string; kind: 'income' | 'expense'; category: string; cents: number; n: number }>();
-  for (const r of rows) {
-    if (r.tur === 'cekis') continue; // the owner's money, not the business's expense
-    if (r.tur === 'gelir' && satisVar) continue;
-    const kind = r.tur === 'gelir' ? 'income' : 'expense';
-    const category = kind === 'income' ? 'other' : KITAP[r.kat] ?? 'other';
-    const key = `${r.day}:${kind}:${category}`;
-    const e = merged.get(key) ?? { day: r.day, kind, category, cents: 0, n: 0 };
-    e.cents += Math.round(Number(r.total) * 100);
-    e.n += r.n;
+  for (const { data: k } of rows) {
+    if (k.tur === 'cekis') continue; // the owner's money, not the business's expense
+    if (k.tur === 'gelir' && !girisSayilir(k, kapsam)) continue;
+    const kind = k.tur === 'gelir' ? 'income' : 'expense';
+    const category = kind === 'income' ? 'other' : KITAP[k.kategori] ?? 'other';
+    const key = `${k.tarih}:${kind}:${category}`;
+    const e = merged.get(key) ?? { day: k.tarih, kind, category, cents: 0, n: 0 };
+    e.cents += Math.round(Number(k.tutar) * 100);
+    e.n += 1;
     merged.set(key, e);
   }
   for (const e of merged.values()) {

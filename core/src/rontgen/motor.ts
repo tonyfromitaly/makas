@@ -68,6 +68,7 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 /** Investment and debt repayment: they grow for reasons other than waste, so they are not "cost creep". */
 const YATIRIM = /bond|principal|capital|construction|vehicle|equipment|system|asset|land|building|yatirim|demirbas|insaat|arac alim|anapara/i;
 const URUN_DEGIL = /postage|carriage|shipping|delivery charge|kargo|nakliye|manual|bank charge|amazon fee|commission|komisyon|discount|indirim|adjust|sample|numune|cruk/;
+const NOT_SUPPLIER = new Set(['maas', 'vergi', 'sahip']);
 const AY_ADI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 export const ayAdi = (m: string) => `${AY_ADI[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
 
@@ -137,9 +138,12 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
         subs.get(k.aciklama)!.add(m);
       }
       if (k.karsiTaraf) {
-        let v = vendors.get(k.karsiTaraf);
-        if (!v) vendors.set(k.karsiTaraf, (v = new Map()));
-        v.set(m, (v.get(m) ?? 0) + k.tutar);
+        // Wages, taxes and the owner are not suppliers; they stay out of the dependency count.
+        if (!NOT_SUPPLIER.has(k.kategori)) {
+          let v = vendors.get(k.karsiTaraf);
+          if (!v) vendors.set(k.karsiTaraf, (v = new Map()));
+          v.set(m, (v.get(m) ?? 0) + k.tutar);
+        }
         const key = `${k.karsiTaraf}|${k.tarih}|${k.tutar.toFixed(2)}|${k.aciklama ?? ''}`;
         const d = dup.get(key);
         if (d) d.n++;
@@ -210,8 +214,11 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   const adet = (w: string[]) => S(w, (a) => a.adet);
   if (!prev12.length) yapilamayan.push('24 aydan kısa veri: yıllık karşılaştırmalar yapılmadı.');
 
-  const reelBuyume = prev12.length && gelirVar ? ciroR(last12) / ciroR(prev12) - 1 : null;
-  const nominalBuyume = prev12.length && gelirVar ? ciro(last12) / ciro(prev12) - 1 : null;
+  // Growth needs takings in both years; a year with none (records that start late) gives no ratio.
+  const buyumeVar = prev12.length > 0 && gelirVar && ciro(prev12) > 0 && ciro(last12) > 0;
+  const reelBuyume = buyumeVar ? ciroR(last12) / ciroR(prev12) - 1 : null;
+  const nominalBuyume = buyumeVar ? ciro(last12) / ciro(prev12) - 1 : null;
+  if (prev12.length && gelirVar && !buyumeVar) yapilamayan.push('Gelir kayıtları iki yılın ikisini de kapsamıyor: yıllık büyüme hesaplanmadı.');
   const fiyatEtiketi = reelVar ? ` (${ayAdi(fiyatAyi)} parasıyla)` : '';
 
   // 1. Growth: nominal versus real, and how much is volume versus price.
@@ -365,7 +372,8 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   }
 
   // 4. Seasonality: how much of the year comes in its three best months.
-  if (gelirVar && last12.length === 12) {
+  // Seasonality needs takings in (nearly) every month of the year, not a handful of lines.
+  if (gelirVar && last12.length === 12 && last12.filter((m) => g(m).gelir > 0).length >= 10) {
     const sirali = [...last12].sort((a, b) => g(b).gelir - g(a).gelir);
     const pay = sum(sirali.slice(0, 3).map((m) => g(m).gelir)) / Math.max(1, ciro(last12));
     if (pay > 0.35) {
@@ -494,7 +502,7 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       bulgular.push({
         id: 'tedarikci',
         baslik: 'Giderler birkaç tedarikçide toplanıyor',
-        ozet: `Son 12 ayda ${v12.length.toLocaleString('tr-TR')} tedarikçiye ödeme yapıldı; ilk 5'i giderlerin ${yuzdeEk(top / tum12, 'ini')}, en büyüğü tek başına ${yuzdeEk(v12[0].t / tum12, 'ini')} alıyor.`,
+        ozet: `Son ${Math.min(12, last12.length)} ayda ${v12.length.toLocaleString('tr-TR')} tedarikçiye ödeme yapıldı; ilk 5'i giderlerin ${yuzdeEk(top / tum12, 'ini')}, en büyüğü tek başına ${yuzdeEk(v12[0].t / tum12, 'ini')} alıyor.`,
         aylikEtki: 0,
         oneri: 'En büyük beş tedarikçi için sözleşme bitiş tarihlerini ve fiyat maddelerini çıkar; her biri için en az bir alternatif teklif al.',
         ciddiyet: 'orta',
@@ -516,8 +524,9 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     }
   }
 
-  // 7. The cash calendar, from every year on record.
-  if (gelirVar && giderVar) {
+  // 7. The cash calendar, from every year on record. A month is "a tight month" only once a year of
+  // records shows it; a few months of data cannot tell a season from a bad month.
+  if (gelirVar && giderVar && ms.length >= 12) {
     const takvim = Array.from({ length: 12 }, (_, i) => {
       const xs = ms.filter((m) => Number(m.slice(5)) === i + 1);
       const net = xs.map((m) => real(g(m).gelir - g(m).gider - g(m).cekis, m));

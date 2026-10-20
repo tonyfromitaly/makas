@@ -10,6 +10,8 @@ import { withTenant, type Database, type Queryable } from '../db';
 import { squareAuthorizeUrl, squareCek, squareClient, squareDefter, squareToken, SquareError, type SquareEnv } from './square';
 import type { Kayit } from '../rontgen/kayit';
 import type { RandevuKaydi } from '../rontgen/musteri';
+import { girisSayilir } from './plaid';
+import { gelirKapsami } from './plaid-esitle';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -227,11 +229,11 @@ export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ ka
     )
   ).rows;
   const appts = (await tx.query(`select a.starts_at, a.status, c.name from appointments a join clients c on c.id = a.client_id where a.shop_id = $1`, [shopId])).rows;
-  // Money landing in the bank is the same money a sales system (or the app's own books) already counted
-  // as sales; bank deposits count as income only when there is no other source of income.
-  const satisVar = imported.some((r: any) => r.kind === 'kayit' && r.provider !== 'plaid' && r.data.tur === 'gelir') || books.some((b: any) => b.kind === 'income');
+  // Money landing in the bank may be money a sales system (or the app's own books) already counted:
+  // processor payouts and deposits on days those sources cover are left out (plaid.ts girisSayilir).
+  const kapsam = await gelirKapsami(tx, shopId);
   const kayitlar: Kayit[] = [
-    ...imported.filter((r: any) => r.kind === 'kayit' && !(satisVar && r.data.giris)).map((r: any) => {
+    ...imported.filter((r: any) => r.kind === 'kayit' && girisSayilir(r.data, kapsam)).map((r: any) => {
       const { giris, ...k } = r.data;
       return k as Kayit;
     }),

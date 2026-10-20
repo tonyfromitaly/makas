@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { plaidBaglanti, plaidDefter } from '@makas/core';
+import { girisSayilir, plaidEtiket } from '../../core/src/baglanti/plaid';
 import { setup } from './helpers';
 
 // The bank connection (Plaid) against a fake Plaid that pages /transactions/sync with cursors like the
@@ -94,6 +95,74 @@ describe('bank → ledger', () => {
     expect(by('dep-4-05')).toMatchObject({ tur: 'gelir', tutar: 2100, giris: true });
     expect(by('sav-4')).toBeUndefined(); // own accounts
     expect(by('pending-1')).toBeUndefined(); // waits until it posts
+  });
+});
+
+describe('bank → ledger, what real Plaid data looks like', () => {
+  // Cases seen in Plaid's own sandbox personas (user_transactions_dynamic, user_small_business).
+  const accounts = [
+    { account_id: 'chk', type: 'depository' },
+    { account_id: 'cc', type: 'credit' },
+    { account_id: 'mort', type: 'loan' },
+  ];
+  const t = (id: string, account_id: string, amount: number, detailed: string, name: string) => ({
+    transaction_id: id,
+    account_id,
+    date: '2026-09-10',
+    amount,
+    iso_currency_code: 'USD',
+    name,
+    merchant_name: name,
+    pending: false,
+    personal_finance_category: { primary: detailed.split('_')[0] === 'LOAN' ? `LOAN_${detailed.split('_')[1]}` : detailed.startsWith('TRANSFER_') ? detailed.split('_').slice(0, 2).join('_') : detailed.split('_')[0], detailed },
+  });
+
+  it('payments into a loan or card account are not income; their interest and purchases are costs', () => {
+    const k = plaidDefter(
+      [
+        t('m1', 'mort', -1700, 'LOAN_PAYMENTS_MORTGAGE_PAYMENT', 'Monthly payment'),
+        t('m2', 'mort', 62, 'BANK_FEES_INTEREST_CHARGE', 'Interest charged'),
+        t('c1', 'cc', -2836, 'INCOME_SALARY', 'Payment Thank You-Mobile'),
+        t('c2', 'cc', 46, 'GENERAL_MERCHANDISE_ONLINE_MARKETPLACES', 'Amazon'),
+        t('k1', 'chk', 2836, 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT', 'Card payment'),
+        t('k2', 'chk', 1700, 'LOAN_PAYMENTS_MORTGAGE_PAYMENT', 'Mortgage'),
+      ],
+      accounts,
+    );
+    expect(k.filter((x) => x.tur === 'gelir')).toEqual([]);
+    expect(k.map((x) => [x.dis, x.kategori])).toEqual([
+      ['tx:m2', 'finansman'],
+      ['tx:c2', 'malzeme'],
+    ]);
+  });
+
+  it('payroll filed as a transfer is still payroll; refunds and cash advances are not income', () => {
+    const k = plaidDefter(
+      [
+        t('p1', 'chk', 3930, 'TRANSFER_OUT_ACCOUNT_TRANSFER', 'Paychex Payroll'),
+        t('x1', 'chk', 500, 'TRANSFER_OUT_ACCOUNT_TRANSFER', 'Transfer to Savings'),
+        t('i1', 'chk', -5110, 'INCOME_CONTRACTOR', 'CLIENT ACH BOSTON PUBLIC SCHOOLS'),
+        t('i2', 'chk', -6815, 'TRANSFER_IN_WIRE', 'WIRE CREDIT MIT'),
+        t('i3', 'chk', -496, 'TRANSFER_IN_DEPOSIT', 'CASH DEPOSIT'),
+        t('r1', 'chk', -1475, 'FOOD_AND_DRINK_RESTAURANT', 'Sweetgreen'),
+        t('l1', 'chk', -95, 'LOAN_DISBURSEMENTS_CASH_ADVANCES', 'Brigit'),
+        t('a1', 'chk', 935, 'GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT', 'ADP'),
+      ],
+      [{ account_id: 'chk', type: 'depository' }],
+    );
+    expect(k.find((x) => x.dis === 'tx:p1')).toMatchObject({ tur: 'gider', kategori: 'maas' });
+    expect(k.find((x) => x.dis === 'tx:x1')).toBeUndefined();
+    expect(k.filter((x) => x.tur === 'gelir').map((x) => x.dis)).toEqual(['tx:i1', 'tx:i2', 'tx:i3']);
+    expect(k.find((x) => x.dis === 'tx:a1')).toMatchObject({ kategori: 'vergi' }); // ADP's payroll tax stays tax
+  });
+
+  it('shows Plaid codes in words, and keeps deposits only where no sales system counts them', () => {
+    expect(plaidEtiket('BANK_FEES', 'BANK_FEES_INTEREST_CHARGE')).toBe('Bank fees · interest charge');
+    const kapsam = { bas: '2026-10-19', son: '2026-10-19' };
+    expect(girisSayilir({ giris: true, tarih: '2025-03-01', karsiTaraf: 'CASH DEPOSIT' }, kapsam)).toBe(true);
+    expect(girisSayilir({ giris: true, tarih: '2026-10-19', karsiTaraf: 'CASH DEPOSIT' }, kapsam)).toBe(false);
+    expect(girisSayilir({ giris: true, tarih: '2025-03-01', karsiTaraf: 'SQUARE INC' }, kapsam)).toBe(false);
+    expect(girisSayilir({ giris: true, tarih: '2025-03-01', karsiTaraf: 'SQUARE INC' }, null)).toBe(true);
   });
 });
 

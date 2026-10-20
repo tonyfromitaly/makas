@@ -44,8 +44,8 @@ export function plaidClient(o: { env: PlaidEnv; clientId: string; secret: string
         transactions: { days_requested: 730 },
       }).then((r) => r.link_token as string),
     exchange: (publicToken: string) => post('/item/public_token/exchange', { public_token: publicToken }) as Promise<{ access_token: string; item_id: string }>,
-    /** Sandbox only: a linked test bank without the Link window. */
-    sandboxToken: (username = 'user_transactions_dynamic') =>
+    /** Sandbox only: a linked test bank without the Link window (Plaid's small-business persona by default). */
+    sandboxToken: (username = 'user_small_business') =>
       post('/sandbox/public_token/create', {
         institution_id: 'ins_109508',
         initial_products: ['transactions'],
@@ -104,36 +104,86 @@ export interface PlaidKayit extends Kayit {
   giris?: boolean;
 }
 
+/** "GENERAL_SERVICES_INSURANCE" → "General services · insurance": Plaid's codes, readable. */
+export function plaidEtiket(primary: string, detailed: string) {
+  const words = (s: string) => s.toLowerCase().replace(/_/g, ' ');
+  if (!detailed) return primary ? words(primary).replace(/^./, (c) => c.toUpperCase()) : '';
+  const rest = primary && detailed.startsWith(`${primary}_`) ? detailed.slice(primary.length + 1) : detailed;
+  return `${words(primary || '').replace(/^./, (c) => c.toUpperCase())}${primary ? ' · ' : ''}${words(rest)}`;
+}
+
+// Plaid files payroll runs under transfers; the payee's name says what they are.
+const BORDRO = /payroll|paychex|\badp\b|gusto|paylocity|rippling|justworks|trinet|onpay|patriot pay/i;
+// Money in that is income: customer payments, wires, deposits. Not loans, not own-account moves, not refunds.
+const GELIR = /^INCOME_|^TRANSFER_IN_(DEPOSIT|WIRE|OTHER_TRANSFER_IN)/;
+
 /**
- * Bank transactions as ledger lines. Money out: an expense in its category, or the owner taking money
- * (cash withdrawals). Transfers between the business's own accounts are neither and are left out.
- * Money in: income, marked as coming from the bank. Pending transactions wait until they post.
+ * Bank transactions as ledger lines, account by account:
+ * - checking/savings, money out: an expense in its category; payroll by the payee's name; cash
+ *   withdrawals are the owner taking money; transfers between own accounts are left out; card and loan
+ *   payments are left out when the card or loan is linked too (its own lines carry the spending and
+ *   the interest, and a principal repayment is not a cost);
+ * - checking/savings, money in: income only for customer payments, wires and deposits;
+ * - card and loan accounts: purchases and interest are expenses; payments into them are not income.
+ * Pending transactions wait until they post.
  */
-export function plaidDefter(txs: any[]): PlaidKayit[] {
+export function plaidDefter(txs: any[], accounts: any[] = []): PlaidKayit[] {
+  const tip = new Map<string, string>(accounts.map((a) => [a.account_id, a.type]));
+  const kartVar = accounts.some((a) => a.type === 'credit');
+  const krediVar = accounts.some((a) => a.type === 'loan');
   const out: PlaidKayit[] = [];
   for (const t of txs) {
     if (t.pending) continue;
     const pfc = t.personal_finance_category ?? {};
     const detay = String(pfc.detailed ?? '');
     const ana = String(pfc.primary ?? '');
-    const para = t.iso_currency_code ?? undefined;
-    const karsiTaraf = t.merchant_name || t.name || undefined;
     const tutar = Math.abs(Number(t.amount));
     if (!tutar) continue;
-    if (/ACCOUNT_TRANSFER/.test(detay)) continue; // between own accounts
-    const base = { dis: `tx:${t.transaction_id}`, tarih: t.date as string, tutar, para, karsiTaraf, kategoriAdi: detay || ana || undefined, aciklama: t.name };
-    if (Number(t.amount) < 0) {
-      out.push({ ...base, tur: 'gelir', kategori: 'satis', giris: true });
+    const ad = `${t.merchant_name ?? ''} ${t.name ?? ''}`;
+    const hesap = tip.get(t.account_id) ?? 'depository';
+    const base = { dis: `tx:${t.transaction_id}`, tarih: t.date as string, tutar, para: t.iso_currency_code ?? undefined, karsiTaraf: t.merchant_name || t.name || undefined, kategoriAdi: plaidEtiket(ana, detay) || undefined, aciklama: t.name };
+    const giris = Number(t.amount) < 0;
+
+    if (hesap !== 'depository') {
+      if (giris) continue; // a payment into the card or loan, or a refund on it
+      out.push({ ...base, tur: 'gider', kategori: /INTEREST/.test(detay) ? 'finansman' : kategori(detay, ana) });
       continue;
     }
+    if (giris) {
+      if (GELIR.test(detay) || (ana === 'INCOME' && !/LOAN/.test(detay))) out.push({ ...base, tur: 'gelir', kategori: 'satis', giris: true });
+      continue;
+    }
+    if (BORDRO.test(ad) && !/TAX/.test(detay)) {
+      out.push({ ...base, tur: 'gider', kategori: 'maas', kategoriAdi: 'Payroll' }); // not Plaid's "account transfer"
+      continue;
+    }
+    if (/ACCOUNT_TRANSFER/.test(detay)) continue;
     if (ana === 'TRANSFER_OUT' && /WITHDRAWAL/.test(detay)) {
       out.push({ ...base, tur: 'cekis', kategori: 'sahip' });
       continue;
     }
-    const kategori = DETAY.find(([re]) => re.test(detay))?.[1] ?? (ana === 'TRANSFER_OUT' ? 'diger' : 'diger');
-    out.push({ ...base, tur: 'gider', kategori });
+    if (detay === 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT' && kartVar) continue;
+    if (ana === 'LOAN_PAYMENTS' && detay !== 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT' && krediVar) continue;
+    out.push({ ...base, tur: 'gider', kategori: kategori(detay, ana) });
   }
   return out;
+}
+
+function kategori(detay: string, _ana: string) {
+  return DETAY.find(([re]) => re.test(detay))?.[1] ?? 'diger';
+}
+
+/** Card processors and marketplaces: their deposits are payouts of sales a sales system already counts. */
+export const ODEME_KURULUSU = /square|stripe|paypal|shopify|clover|toast|venmo|zelle from square|sq \*|etsy|amazon payments/i;
+
+/**
+ * A bank deposit counts as income unless the same money is already counted: a processor's payout, or
+ * a deposit on a day the sales system (or the app's own books) covers.
+ */
+export function girisSayilir(k: { giris?: boolean; tarih: string; karsiTaraf?: string; aciklama?: string }, kapsam: { bas: string; son: string } | null) {
+  if (!k.giris) return true;
+  if (ODEME_KURULUSU.test(`${k.karsiTaraf ?? ''} ${k.aciklama ?? ''}`)) return !kapsam;
+  return !kapsam || k.tarih < kapsam.bas || k.tarih > kapsam.son;
 }
 
 /** Cash today: the current balance of checking and savings accounts. */
