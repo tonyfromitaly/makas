@@ -64,6 +64,10 @@ export const env = {
   squareAppId: process.env.SQUARE_APP_ID ?? '',
   squareAppSecret: process.env.SQUARE_APP_SECRET ?? '',
   squareEnv: (process.env.SQUARE_ENV === 'production' ? 'production' : 'sandbox') as 'production' | 'sandbox',
+  // Bank connection through Plaid (dashboard.plaid.com → Developers → Keys). PLAID_ENV: sandbox or production.
+  plaidClientId: process.env.PLAID_CLIENT_ID ?? '',
+  plaidSecret: process.env.PLAID_SECRET ?? '',
+  plaidEnv: (process.env.PLAID_ENV === 'production' ? 'production' : 'sandbox') as 'production' | 'sandbox',
   /** Encrypts stored connection tokens. Required in production once a connection is configured. */
   connectionSecret: process.env.CONNECTION_SECRET ?? '',
   /** "true": reminders are printed and marked sent, nothing leaves the machine. Never in production. */

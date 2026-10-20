@@ -1,6 +1,11 @@
 export type Lang = 'tr' | 'en' | 'es';
 
 const tr = {
+  bank: 'Banka',
+  bankUnavailable: 'Banka bağlantısı bu sunucuda henüz açılmadı.',
+  connectBank: 'Bankanı bağla',
+  sandboxBank: 'Deneme bankası (sandbox)',
+  bankSynced: 'Banka eşitlendi: {n} hareket',
   connections: 'Bağlantılar',
   connectionsHint: 'Kullandığın sistemlerin verisi buraya akar; Röntgen hepsini birlikte okur. Yalnızca okuma izni isteriz.',
   conn_connected: 'Bağlı',
@@ -326,6 +331,11 @@ const tr = {
 type Dict = typeof tr;
 
 const en: Dict = {
+  bank: 'Bank',
+  bankUnavailable: 'The bank connection is not switched on for this server yet.',
+  connectBank: 'Connect your bank',
+  sandboxBank: 'Test bank (sandbox)',
+  bankSynced: 'Bank synced: {n} transactions',
   connections: 'Connections',
   connectionsHint: 'Data from the systems you use flows in here; the X-ray reads it all together. We only ask for read access.',
   conn_connected: 'Connected',

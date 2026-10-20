@@ -13,7 +13,84 @@ const square = (ctx: { deps: any }) => {
   return s as NonNullable<NonNullable<import('../http').Deps['baglanti']>['square']>;
 };
 
+
+const plaid = (ctx: { deps: any }) => {
+  const p = ctx.deps.baglanti?.plaid;
+  if (!p) throw new ApiError(503, 'NOT_CONFIGURED', 'Bank connection is not set up on this server');
+  return p as NonNullable<NonNullable<import('../http').Deps['baglanti']>['plaid']>;
+};
+
+const plaidRoutes: Route[] = [
+  {
+    method: 'POST',
+    path: '/connections/plaid/link-token',
+    auth: 'user',
+    ownerOnly: true,
+    gated: true,
+    outside: true,
+    async handler(ctx) {
+      return { link_token: await plaid(ctx).linkToken(ctx.shopId) };
+    },
+  },
+  {
+    method: 'POST',
+    path: '/connections/plaid/finish',
+    auth: 'user',
+    ownerOnly: true,
+    gated: true,
+    outside: true,
+    body: z.object({ public_token: z.string().min(1).max(500) }),
+    async handler(ctx, { body }) {
+      const p = plaid(ctx);
+      const { item } = await p.bagla(ctx.shopId, body.public_token);
+      return ok({ item, sync: await p.esitle(ctx.shopId) }, 201);
+    },
+  },
+  {
+    // Sandbox only: Plaid's test bank, without the Link window.
+    method: 'POST',
+    path: '/connections/plaid/sandbox',
+    auth: 'user',
+    ownerOnly: true,
+    gated: true,
+    outside: true,
+    async handler(ctx) {
+      const p = plaid(ctx);
+      if (!p.sandbox) throw new ApiError(404, 'ROUTE_NOT_FOUND', 'No such endpoint');
+      const { item } = await p.sandboxBagla(ctx.shopId);
+      return ok({ item, sync: await p.esitle(ctx.shopId) }, 201);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/connections/plaid/sync',
+    auth: 'user',
+    ownerOnly: true,
+    gated: true,
+    outside: true,
+    async handler(ctx) {
+      return { sync: await plaid(ctx).esitle(ctx.shopId) };
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/connections/plaid',
+    auth: 'user',
+    ownerOnly: true,
+    outside: true,
+    query: z.object({ data: z.enum(['keep', 'delete']).default('keep') }),
+    async handler(ctx, { query }) {
+      await plaid(ctx).kopar(ctx.shopId);
+      if (query.data === 'delete') {
+        await ctx.db.query(`delete from import_rows where shop_id = $1 and provider = 'plaid'`, [ctx.shopId]);
+        await ctx.db.query(`delete from book_entries where shop_id = $1 and source = 'import' and external_ref like 'plaid:%'`, [ctx.shopId]);
+      }
+    },
+  },
+];
+
 export const connectionRoutes: Route[] = [
+  ...plaidRoutes,
   {
     method: 'GET',
     path: '/connections',
@@ -21,12 +98,12 @@ export const connectionRoutes: Route[] = [
     ownerOnly: true,
     async handler(ctx) {
       const { rows } = await ctx.db.query(
-        `select provider, status, external_account, last_sync_at, last_error, created_at,
+        `select provider, status, external_account, last_sync_at, last_error, created_at, meta->'kasa' as balance,
                 (select count(*)::int from import_rows i where i.shop_id = c.shop_id and i.provider = c.provider and i.kind = 'kayit') as rows
            from connections c where shop_id = $1 order by provider`,
         [ctx.shopId],
       );
-      return { data: rows, available: { square: !!ctx.deps.baglanti?.square } };
+      return { data: rows, available: { square: !!ctx.deps.baglanti?.square, plaid: !!ctx.deps.baglanti?.plaid, plaidSandbox: !!ctx.deps.baglanti?.plaid?.sandbox } };
     },
   },
   {
@@ -94,7 +171,7 @@ export const connectionRoutes: Route[] = [
     async handler(ctx, { query }) {
       const v = await rontgenVerisi(ctx.db, ctx.shopId);
       if (!v.kayitlar.length) return { rontgen: null, reason: 'NO_DATA' };
-      const r = rontgen(v.kayitlar, { ad: v.ad, para: v.para, randevular: v.randevular });
+      const r = rontgen(v.kayitlar, { ad: v.ad, para: v.para, randevular: v.randevular, acilisKasa: v.acilisKasa });
       return query.format === 'html' ? { html: raporHtml(r) } : { rontgen: r };
     },
   },

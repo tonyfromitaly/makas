@@ -1,4 +1,4 @@
-import { migrate, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
+import { migrate, plaidBaglanti, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
 import { env, loadConfig } from './config';
 import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
@@ -26,18 +26,22 @@ console.log(env.aiApiKey ? `assistant: ${env.aiModel} via ${env.aiBaseUrl}` : 'a
 const llm = { url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel };
 // Square: on when the app id and secret are set. Stored tokens are encrypted with CONNECTION_SECRET.
 const squareOn = !!(env.squareAppId && env.squareAppSecret);
-if (squareOn && env.isProd && env.connectionSecret.length < 32) throw new Error('CONNECTION_SECRET (32+ characters) is required when Square is configured');
+const plaidOn = !!(env.plaidClientId && env.plaidSecret);
+if ((squareOn || plaidOn) && env.isProd && env.connectionSecret.length < 32) throw new Error('CONNECTION_SECRET (32+ characters) is required when a connection is configured');
+const plaid = plaidOn
+  ? plaidBaglanti(db, { env: env.plaidEnv, clientId: env.plaidClientId, secret: env.plaidSecret, kasaSecret: env.connectionSecret || config.jwtSecret }, () => new Date())
+  : undefined;
 const square = squareOn
   ? squareBaglanti(db, { env: env.squareEnv, clientId: env.squareAppId, clientSecret: env.squareAppSecret, secret: env.connectionSecret || config.jwtSecret }, () => new Date())
   : undefined;
-console.log(`connections: ${squareOn ? `square (${env.squareEnv})` : 'off (set SQUARE_APP_ID and SQUARE_APP_SECRET)'}`);
+console.log(`connections: ${[squareOn ? `square (${env.squareEnv})` : '', plaidOn ? `bank via plaid (${env.plaidEnv})` : ''].filter(Boolean).join(' + ') || 'off (set SQUARE_APP_ID/SECRET or PLAID_CLIENT_ID/SECRET)'}`);
 const deps = {
   ...argon2Deps,
   parseNote: parseServiceClient(env.parseServiceUrl, env.parseServiceKey),
   assistant: assistantClient(llm),
   chat: chatClient(llm),
   reflect: reflectClient(llm),
-  baglanti: square ? { square } : undefined,
+  baglanti: square || plaid ? { square, plaid } : undefined,
 };
 const app = await buildServer({
   db,
@@ -98,19 +102,20 @@ const upkeep = async () => {
 };
 // Connected shops with a live subscription are synced every hour, one after the other.
 const syncAll = async () => {
-  if (!square) return;
   const shops = await withSystem(db, async (tx) => (
       await tx.query(
-        `select c.shop_id from connections c join subscriptions s on s.shop_id = c.shop_id
-          where c.provider = 'square' and c.status in ('connected', 'error')
+        `select c.shop_id, c.provider from connections c join subscriptions s on s.shop_id = c.shop_id
+          where c.status in ('connected', 'error')
             and s.status in ('trial', 'active') and (s.current_period_end is null or s.current_period_end > now())`,
       )
     ).rows);
-  for (const { shop_id } of shops) {
+  for (const { shop_id, provider } of shops) {
+    const p = provider === 'square' ? square : provider === 'plaid' ? plaid : undefined;
+    if (!p) continue;
     try {
-      app.log.info({ shop: shop_id, square: await square.esitle(shop_id) }, 'square sync');
+      app.log.info({ shop: shop_id, [provider]: await p.esitle(shop_id) }, `${provider} sync`);
     } catch (e) {
-      app.log.warn({ shop: shop_id, error: String((e as Error).message) }, 'square sync failed');
+      app.log.warn({ shop: shop_id, error: String((e as Error).message) }, `${provider} sync failed`);
     }
   }
 };

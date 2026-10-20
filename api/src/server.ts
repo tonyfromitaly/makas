@@ -44,7 +44,17 @@ export async function buildServer(o: ServerOptions) {
   const app = Fastify({ logger: o.logger ?? false, trustProxy: o.trustProxy ?? false, bodyLimit: 64 * 1024 });
   const handle = createApi({ db: o.db, config: o.config, deps: o.deps, log: (e) => app.log.error(e) });
 
-  await app.register(helmet, { hsts: { maxAge: 31536000, includeSubDomains: true } });
+  // The app opens Plaid Link (the bank sign-in window) from Plaid's own CDN when served from here.
+  await app.register(helmet, {
+    hsts: { maxAge: 31536000, includeSubDomains: true },
+    contentSecurityPolicy: {
+      directives: {
+        'script-src': ["'self'", 'https://cdn.plaid.com'],
+        'frame-src': ["'self'", 'https://cdn.plaid.com'],
+        'connect-src': ["'self'", 'https://production.plaid.com', 'https://sandbox.plaid.com'],
+      },
+    },
+  });
   await app.register(cors, {
     // Only the app's own origin(s); everything else gets no CORS headers.
     origin: (origin, cb) => cb(null, !origin || (o.corsOrigins ?? []).includes(origin)),

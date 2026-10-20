@@ -35,6 +35,14 @@ export interface Deps {
       esitle(shopId: string): Promise<{ kayit: number; musteri: number; randevu: number; gun: number; bas: string; son: string }>;
       kopar(shopId: string): Promise<void>;
     };
+    plaid?: {
+      sandbox: boolean;
+      linkToken(shopId: string): Promise<string>;
+      bagla(shopId: string, publicToken: string): Promise<{ item: string }>;
+      sandboxBagla(shopId: string): Promise<{ item: string }>;
+      esitle(shopId: string): Promise<{ kayit: number; silinen: number; gun: number; bas: string; son: string; kasa: { tutar: number; para: string; hesap: number } | null; hazir: boolean }>;
+      kopar(shopId: string): Promise<void>;
+    };
   };
 }
 

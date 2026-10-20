@@ -4,12 +4,32 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp, useLoad } from '../state';
 import { dateLabel } from '../format';
 
+declare global {
+  interface Window {
+    Plaid?: { create(o: { token: string; onSuccess(publicToken: string): void; onExit?(err: unknown): void }): { open(): void } };
+  }
+}
+
+/** Plaid Link must load from Plaid's CDN (their rule); it is fetched only when the owner connects a bank. */
+function plaidScript() {
+  return new Promise<void>((ok, fail) => {
+    if (window.Plaid) return ok();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+    s.onload = () => ok();
+    s.onerror = () => fail(new Error('Plaid could not be loaded'));
+    document.head.appendChild(s);
+  });
+}
+
 export function Connections() {
   const { api, t, fail, toast, lang } = useApp();
   const { data, reload } = useLoad(() => api.get('/connections'), []);
   const [busy, setBusy] = useState(false);
   const finishing = useRef(false);
   const sq = data?.data?.find((c: any) => c.provider === 'square');
+  const bank = data?.data?.find((c: any) => c.provider === 'plaid');
+  const bankOn = bank && bank.status !== 'disconnected';
 
   // Back from Square: finish once, then clean the address bar.
   useEffect(() => {
@@ -42,6 +62,24 @@ export function Connections() {
   const connect = () => run(async () => void (location.href = (await api.post<{ url: string }>('/connections/square/start')).url));
   const sync = () => run(async () => toast(t('squareSynced').replace('{n}', String((await api.post<any>('/connections/square/sync')).sync.kayit))));
   const disconnect = () => run(async () => void (await api.del('/connections/square?data=keep')));
+  const bankDone = (r: any) => toast(t('bankSynced').replace('{n}', String(r.sync.kayit)));
+  const connectBank = () =>
+    run(async () => {
+      const { link_token } = await api.post<{ link_token: string }>('/connections/plaid/link-token');
+      await plaidScript();
+      await new Promise<void>((resolve) =>
+        window.Plaid!.create({
+          token: link_token,
+          onSuccess: (public_token) => {
+            api.post('/connections/plaid/finish', { public_token }).then(bankDone).catch(fail).finally(() => (resolve(), reload()));
+          },
+          onExit: () => resolve(),
+        }).open(),
+      );
+    });
+  const sandboxBank = () => run(async () => bankDone(await api.post('/connections/plaid/sandbox')));
+  const syncBank = () => run(async () => bankDone(await api.post('/connections/plaid/sync')));
+  const disconnectBank = () => run(async () => void (await api.del('/connections/plaid?data=keep')));
   const xray = () =>
     run(async () => {
       const r = await api.get<{ html?: string; reason?: string }>('/rontgen?format=html');
@@ -82,6 +120,40 @@ export function Connections() {
         <button className="btn primary" disabled={busy} onClick={connect}>
           {t('connectSquare')}
         </button>
+      )}
+      <div className="row spread">
+        <b>{t('bank')}</b>
+        <span className={`chip ${bankOn && bank.status === 'connected' ? 'sub-active' : ''}`}>{bankOn ? t(`conn_${bank.status}` as any) : t('conn_off')}</span>
+      </div>
+      {bankOn && (
+        <p className="muted small">
+          {bank.balance ? `${t('balance')}: ${bank.balance.para} ${Number(bank.balance.tutar).toLocaleString(undefined, { maximumFractionDigits: 2 })} · ` : ''}
+          {bank.last_sync_at ? `${t('lastSync')}: ${dateLabel(bank.last_sync_at.slice(0, 10), lang, { day: 'numeric', month: 'long' })} · ${bank.rows} ${t('rowsRead')}` : t('notSyncedYet')}
+          {bank.last_error ? ` · ${bank.last_error}` : ''}
+        </p>
+      )}
+      {!data.available.plaid ? (
+        <p className="muted small">{t('bankUnavailable')}</p>
+      ) : bankOn && bank.status !== 'needs_reconnect' ? (
+        <div className="row wrap">
+          <button className="btn" disabled={busy} onClick={syncBank}>
+            {t('syncNow')}
+          </button>
+          <button className="btn danger-ghost" disabled={busy} onClick={disconnectBank}>
+            {t('disconnect')}
+          </button>
+        </div>
+      ) : (
+        <div className="row wrap">
+          <button className="btn primary" disabled={busy} onClick={connectBank}>
+            {t('connectBank')}
+          </button>
+          {data.available.plaidSandbox && (
+            <button className="btn" disabled={busy} onClick={sandboxBank}>
+              {t('sandboxBank')}
+            </button>
+          )}
+        </div>
       )}
       <button className="btn" disabled={busy} onClick={xray}>
         {t('openXray')}

@@ -476,6 +476,14 @@ alter table book_entries add column external_ref text;
 create unique index book_entries_external on book_entries (shop_id, external_ref) where external_ref is not null;
 `;
 
+// The bank (Plaid): a second provider, its sync cursor and today's balance.
+const bank = `
+alter table connections drop constraint if exists connections_provider_check;
+alter table connections add constraint connections_provider_check check (provider in ('square', 'plaid'));
+alter table connections add column sync_cursor text;
+alter table connections add column meta jsonb;
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -485,4 +493,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '006_assistant_memory', sql: assistantMemory },
   { id: '007_assistant_notes', sql: assistantNotes },
   { id: '008_connections', sql: connections },
+  { id: '009_bank', sql: bank },
 ];

@@ -214,9 +214,10 @@ const GERI: Record<string, string> = { service: 'hizmet', product: 'urun', tips:
  * Everything Röntgen can read for a shop: imported lines (all providers) plus the app's own books and
  * appointments. The books' import summaries are skipped, so nothing is counted twice.
  */
-export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ kayitlar: Kayit[]; randevular: RandevuKaydi[]; para: string; ad: string }> {
+export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ kayitlar: Kayit[]; randevular: RandevuKaydi[]; para: string; ad: string; acilisKasa?: number }> {
   const shop = (await tx.query('select name, currency from shops where id = $1', [shopId])).rows[0];
-  const imported = (await tx.query(`select kind, data from import_rows where shop_id = $1 and kind in ('kayit', 'randevu') order by happened_on`, [shopId])).rows;
+  const imported = (await tx.query(`select provider, kind, data from import_rows where shop_id = $1 and kind in ('kayit', 'randevu') order by happened_on`, [shopId])).rows;
+  const bank = (await tx.query(`select meta->'kasa' as kasa from connections where shop_id = $1 and provider = 'plaid' and status <> 'disconnected'`, [shopId])).rows[0];
   const books = (
     await tx.query(
       `select b.kind, b.category, b.amount_cents, b.entry_date::text as day, b.note, c.name as client
@@ -226,8 +227,14 @@ export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ ka
     )
   ).rows;
   const appts = (await tx.query(`select a.starts_at, a.status, c.name from appointments a join clients c on c.id = a.client_id where a.shop_id = $1`, [shopId])).rows;
+  // Money landing in the bank is the same money a sales system (or the app's own books) already counted
+  // as sales; bank deposits count as income only when there is no other source of income.
+  const satisVar = imported.some((r: any) => r.kind === 'kayit' && r.provider !== 'plaid' && r.data.tur === 'gelir') || books.some((b: any) => b.kind === 'income');
   const kayitlar: Kayit[] = [
-    ...imported.filter((r: any) => r.kind === 'kayit').map((r: any) => r.data as Kayit),
+    ...imported.filter((r: any) => r.kind === 'kayit' && !(satisVar && r.data.giris)).map((r: any) => {
+      const { giris, ...k } = r.data;
+      return k as Kayit;
+    }),
     ...books.map((b: any) => ({
       tarih: b.day,
       tur: b.kind === 'income' ? ('gelir' as const) : ('gider' as const),
@@ -243,5 +250,11 @@ export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ ka
     ...imported.filter((r: any) => r.kind === 'randevu').map((r: any) => r.data as RandevuKaydi),
     ...appts.map((a: any) => ({ tarih: new Date(a.starts_at).toISOString().slice(0, 10), durum: DURUM[a.status] ?? 'bekliyor', musteri: a.name })),
   ];
-  return { kayitlar, randevular, para: shop.currency, ad: shop.name };
+  // Cash: today's bank balance, worked back to the start of the records so Röntgen can run it forward.
+  let acilisKasa: number | undefined;
+  if (bank?.kasa && bank.kasa.para === shop.currency) {
+    const net = kayitlar.reduce((s, k) => s + (k.tur === 'gelir' ? k.tutar : -k.tutar), 0);
+    acilisKasa = Math.round((Number(bank.kasa.tutar) - net) * 100) / 100;
+  }
+  return { kayitlar, randevular, para: shop.currency, ad: shop.name, acilisKasa };
 }

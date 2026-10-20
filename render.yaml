@@ -81,6 +81,13 @@ services:
         value: sandbox
       - key: CONNECTION_SECRET
         generateValue: true
+      # Bank connection via Plaid (docs/banka-baglantisi.md). Empty = off.
+      - key: PLAID_CLIENT_ID
+        sync: false
+      - key: PLAID_SECRET
+        sync: false
+      - key: PLAID_ENV
+        value: sandbox
 
 databases:
   - name: fade-db
