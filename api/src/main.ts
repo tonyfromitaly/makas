@@ -13,7 +13,8 @@ import { startSender } from './messaging-routes';
 const db = await openDatabase(env.databaseUrl);
 const applied = await migrate(db);
 if (applied.length) console.log('migrations applied:', applied.join(', '));
-if (env.seedDemo || env.databaseUrl.startsWith('pglite:')) {
+// The demo shop has a published password: never on a production server unless SEED_DEMO asks for it.
+if (env.seedDemo || (!env.isProd && env.databaseUrl.startsWith('pglite:'))) {
   const r = await seedDemo(db, { hashPassword: argon2Deps.hashPassword, now: new Date() });
   if (r.created) console.log('demo shop seeded (see README for the demo login)');
 }
