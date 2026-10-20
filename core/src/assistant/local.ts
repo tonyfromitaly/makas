@@ -17,11 +17,15 @@ export interface AssistantContext {
 }
 
 const re = (words: string[]) => new RegExp(`(^|\\s)(${words.join('|')})`);
-const QUESTION = re(['ne kadar', 'kac', 'hangi', 'kim', 'nedir', 'ne zaman', 'var mi', 'how much', 'how many', 'what', 'which', 'who', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'que', 'quien', 'cual']);
+const QUESTION = re(['ne kadar', 'kac', 'hangi', 'kim', 'nedir', 'ne zaman', 'var mi', 'ne var', 'ne durumda', 'ne tuttu', 'ne oldu', 'miyiz', 'muyuz', 'how much', 'how many', 'what', 'which', 'who', 'are we', 'did we', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'que', 'quien', 'cual', 'como']);
 // Weak cues only count when the sentence carries no amount ("toplam 500 kazandım" is a note, not a question).
 // Open questions and requests for advice go to the data-grounded chat.
 const ADVICE = re(['ne yapmali', 'ne yapsam', 'nasil', 'neden', 'niye', 'oneri', 'tavsiye', 'fikir', 'yorumla', 'durum ne', 'nasil gidiyor', 'why', 'how can', 'how do i', 'what should', 'advice', 'suggest', 'tips', 'por que', 'como puedo', 'que hago', 'consejo', 'recomienda']);
-const QUESTION_WEAK = re(['toplam', 'goster', 'listele', 'ozet', 'total', 'show', 'list', 'summary', 'muestra', 'resumen']);
+const QUESTION_WEAK = re(['toplam', 'goster', 'listele', 'ozet', 'getir', 'cikar', 'dokum', 'rapor', 'tablo', 'total', 'show', 'list', 'summary', 'give me', 'pull up', 'muestra', 'resumen', 'dame']);
+// The whole picture of a period: the books' account, a summary, a comparison, "how did it go".
+const SUMMARY = re(['hesab', 'hesap', 'dokum', 'ozet', 'rapor', 'bilanco', 'kar zarar', 'gelir gider', 'nasil gecti', 'nasildi', 'nasiliz', 'nasil gidiyor', 'isler nasil', 'karsilastir', 'gore nasil', 'how did', 'how are we doing', 'how we did', 'how was', 'numbers', 'summary', 'recap', 'rundown', 'p&l', 'p l ', 'pnl', 'profit and loss', 'report', 'compared to', 'como nos fue', 'como vamos', 'como estuvo', 'resumen', 'informe']);
+// Advice proper ("nasıl daha çok kazanırım") as opposed to "how did we do" about the shop's own numbers.
+const ADVICE_REAL = re(['nasil daha', 'nasil artir', 'ne yapmali', 'ne yapsam', 'neden', 'niye', 'oneri', 'tavsiye', 'fikir', 'why', 'how can', 'how do i', 'what should', 'advice', 'suggest', 'tips', 'por que', 'como puedo', 'que hago', 'consejo', 'recomienda']);
 // "Keep this in mind" is a note for the assistant's memory, not a dated reminder ("unutma ki" ≠ "unutma").
 const REMEMBER = re(['aklinda tut', 'aklinda olsun', 'aklina yaz', 'kafana yaz', 'bilmen gereken', 'bilesin', 'not et ki', 'unutma ki', 'sunu bil', 'sunu aklinda', 'remember that', 'keep in mind', 'note that', 'for the record', 'ten en cuenta', 'recuerda que', 'apunta que', 'que sepas']);
 const REMEMBER_STRIP = /(şunu\s+|sunu\s+)?(aklında tut|aklinda tut|aklında olsun|aklinda olsun|aklına yaz|aklina yaz|kafana yaz|bilmen gereken|bilesin|not et ki|unutma ki|şunu bil|sunu bil|remember that|keep in mind( that)?|note that|for the record|ten en cuenta( que)?|recuerda que|apunta que|que sepas)[:,]?\s*/gi;
@@ -37,15 +41,25 @@ const TIME_HINT = /(saat|\bat\b|a las|\d{1,2}[:.]\d{2}|bucuk|ceyrek|half past|o 
 
 const MONEY_WORD = /(\$|€|₺|dolar|dollar|bucks|usd|lira|\btl\b|euro|peso|bin\b|kazan|gelir|gider|odedim|aldim|harcad|bahsis|kira|fatura|made|paid|spent|bought|tip|rent|gane|pague|gaste|propina|alquiler)/;
 const METRIC_RULES: [string, RegExp][] = [
+  ['cash', re(['kasada ne', 'kasada kac', 'kasada ne kadar', 'kasa ne durumda', 'kasa durumu', 'bakiye', 'bankada', 'hesapta ne', 'hesapta kac', 'hesapta ne kadar', 'balance', 'in the bank', 'cash on hand', 'whats in the till', 'what s in the till', 'in the till', 'saldo', 'en el banco', 'en caja'])],
   ['payables', re(['odemem', 'odeyecegim', 'odenecek', 'odemeler', 'odemem gereken', 'borcum', 'faturalar', 'have to pay', 'need to pay', 'i owe', 'bills', 'payments due', 'due', 'debo', 'tengo que pagar', 'pagos', 'por pagar'])],
   ['receivables', re(['alacak', 'veresiye', 'borclu', 'bana borc', 'owe me', 'owed', 'outstanding', 'receivable', 'me deben', 'fiado', 'por cobrar'])],
   ['reminders', re(['hatirlatma', 'yapilacak', 'isler', 'reminder', 'to do', 'todo', 'tasks', 'recordatorio', 'pendiente'])],
-  ['top_service', re(['en cok', 'en populer', 'hangi hizmet', 'most popular', 'best selling', 'top service', 'mas vendido', 'mas popular'])],
-  ['appointments', re(['randevu', 'musteri gel', 'kac musteri', 'appointment', 'booking', 'customers', 'clients', 'cita', 'clientes'])],
-  ['net', /(^|\s)(net|kar|kari|kazanc kaldi|elimde kalan|profit|ganancia|beneficio)(\s|$)/],
-  ['expense', re(['masraf', 'gider', 'harca', 'odedik', 'expense', 'spent', 'spend', 'cost', 'gasto', 'gastamos', 'gastado'])],
-  ['income', re(['kazan', 'gelir', 'ciro', 'kasa', 'hasilat', 'income', 'earn', 'made', 'make', 'bring in', 'brought in', 'revenue', 'sales', 'take', 'ingreso', 'ganamos', 'ganado', 'ganancia', 'vendimos', 'facturamos'])],
+  ['top_service', re(['en cok', 'en populer', 'hangi hizmet', 'en iyi satan', 'most popular', 'best selling', 'best seller', 'top service', 'what sold', 'mas vendido', 'mas popular'])],
+  ['appointments', re(['randevu', 'musteri gel', 'kac musteri', 'kimler var', 'kim var', 'kim geliyor', 'appointment', 'booking', 'customers', 'clients', 'who is coming', 'whos coming', 'who s coming', 'cita', 'clientes', 'quien viene'])],
+  ['net', /(^|\s)(net|kar|kari|kar ettik|kardayiz|zarar|zarardayiz|zarar ettik|kazanc kaldi|elimde kalan|elimde ne kaldi|cebimizde|cepte ne|profit|profitable|in the red|in the black|left over|ganancia|beneficio|perdida|nos quedo)(\s|$|\?)/],
+  ['expense', re(['masraf', 'gider', 'harca', 'odedik', 'cikti', 'expense', 'spent', 'spend', 'cost', 'gasto', 'gastamos', 'gastado'])],
+  ['income', re(['kazan', 'gelir', 'ciro', 'kasa', 'hasilat', 'girdi', 'para yaptik', 'satis', 'income', 'earn', 'made', 'make', 'bring in', 'brought in', 'revenue', 'sales', 'take', 'till', 'ingreso', 'ganamos', 'ganado', 'ganancia', 'vendimos', 'facturamos', 'caja'])],
 ];
+
+/** "ekim ayının hesabı", "eylül ne kadar kazandırdı", "how was september": a month named outright. */
+function namedMonth(f: string): number | null {
+  for (const [name, n] of Object.entries(MONTHS)) {
+    // "25 ekim" is a date, not the month as a whole.
+    if (new RegExp(`(^|\\s)${name}`).test(f) && !new RegExp(`\\d+\\S* ${name}`).test(f)) return n;
+  }
+  return null;
+}
 
 function periodOf(f: string, metric: string) {
   if (re(['gecen ay', 'onceki ay', 'last month', 'previous month', 'mes pasado', 'el mes anterior']).test(f)) return 'last_month';
@@ -172,14 +186,28 @@ export function understandLocal(said: string, base: AssistantContext): Plan {
       return { items: [{ type: 'remember', kind, subject: client?.item.name ?? barber?.item.name ?? null, text: (note.charAt(0).toLocaleUpperCase('tr') + note.slice(1)).slice(0, 200) }] };
   }
 
-  // 1. Questions about the shop's numbers.
-  const isQuestion = /\?\s*$/.test(text.trim()) || QUESTION.test(f) || (QUESTION_WEAK.test(f) && !parseAmountCents(f));
+  // 1. Questions about the shop's numbers. A metric (or "the account", "how did it go") with a period
+  //    and no amount is a question even without a question word: "bu ayın cirosu", "geçen ayın hesabını
+  //    getir", "ekim ayının hesabı".
+  const amountSaid = !!parseAmountCents(f);
+  const month = namedMonth(f);
+  const periodSaid = !!periodWord(f) || month !== null || re(['bugun', 'dun', 'today', 'yesterday', 'hoy', 'ayer', 'aylik', 'monthly', 'mensual', 'haftalik', 'weekly', 'semanal']).test(f);
+  const metricHit = METRIC_RULES.find(([, r]) => r.test(f));
+  const summarySaid = SUMMARY.test(f) && !ADVICE_REAL.test(f);
+  const isQuestion =
+    /\?\s*$/.test(text.trim()) || QUESTION.test(f) || (QUESTION_WEAK.test(f) && !amountSaid) || (summarySaid && !amountSaid) || (!!metricHit && periodSaid && !amountSaid);
   if (isQuestion && !hasAny(f, REMIND)) {
     const client = bestMatch(f.split(' '), ctx.clients);
     if (client && re(['borc', 'owe', 'debe', 'balance', 'bakiye', 'veresiye']).test(f))
       return { items: [{ type: 'query', metric: 'client_balance', period: 'this_month', client_name: client.item.name }] };
-    const hit = METRIC_RULES.find(([, r]) => r.test(f));
-    if (hit && !ADVICE.test(f)) return { items: [{ type: 'query', metric: hit[0] as any, period: periodOf(f, hit[0]) as any }] };
+    // "geçen aya göre nasılız", "compared to last month": this month, measured against the last.
+    const versus = re(['gore', 'karsilastir', 'compared', 'versus', 'comparado', 'frente a']).test(f);
+    if (summarySaid)
+      return { items: [{ type: 'query', metric: 'summary', period: (versus ? 'this_month' : periodOf(f, 'summary')) as any, month: versus ? null : month }] };
+    if (metricHit && !ADVICE_REAL.test(f)) return { items: [{ type: 'query', metric: metricHit[0] as any, period: periodOf(f, metricHit[0]) as any, month }] };
+    // "bu hafta nasıl geçti", "¿cómo nos fue?": how did the shop do, with a period → the summary.
+    if (!ADVICE_REAL.test(f) && periodSaid && !amountSaid && re(['nasil', 'durum', 'how', 'como']).test(f))
+      return { items: [{ type: 'query', metric: 'summary', period: periodOf(f, 'summary') as any, month }] };
     return { items: [{ type: 'chat', question: text.trim().slice(0, 600) }] };
   }
   if (ADVICE.test(f)) return { items: [{ type: 'chat', question: text.trim().slice(0, 600) }] };

@@ -3,7 +3,7 @@ import { CATEGORIES } from '../parse/note';
 
 // What the assistant understood. Both the local rule engine and the LLM produce exactly this;
 // the server then resolves names to ids and computes every number with SQL.
-export const METRICS = ['income', 'expense', 'net', 'payables', 'receivables', 'appointments', 'top_service', 'client_balance', 'reminders'] as const;
+export const METRICS = ['summary', 'cash', 'income', 'expense', 'net', 'payables', 'receivables', 'appointments', 'top_service', 'client_balance', 'reminders'] as const;
 export const PERIODS = ['today', 'yesterday', 'tomorrow', 'this_week', 'last_week', 'this_month', 'last_month', 'this_year'] as const;
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -53,6 +53,8 @@ export const planItem = z.discriminatedUnion('type', [
     type: z.literal('query'),
     metric: z.enum(METRICS),
     period: z.enum(PERIODS).default('this_month'),
+    /** A month named by the owner ("ekim ayının hesabı"): its most recent occurrence, overriding period. */
+    month: z.number().int().min(1).max(12).nullable().optional(),
     client_name: z.string().max(80).nullable().optional(),
   }),
   z.object({ type: z.literal('chat'), question: z.string().min(1).max(600) }),

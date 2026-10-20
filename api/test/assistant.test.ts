@@ -90,7 +90,32 @@ describe('assistant', () => {
     expect(exp.body.reply).toContain('$1.864');
     expect(exp.body.reply).toContain('kira');
     const net = await ask('bu ay net ne kadar');
-    expect(net.body.reply).toContain('-$1.614');
+    expect(net.body.reply).toContain('$1.614 açık var'); // a shortfall is said in words, not as a minus sign
+  });
+
+  it('gives the whole account of a period, compared with the one before, in plain words', async () => {
+    // Clock: 15 October 2026. September is a whole month; October is still running. A shop of its own.
+    const own = (await t.registerShop('Hesap', { language: 'tr' })).token;
+    for (const e of [
+      { kind: 'income', category: 'service', amount_cents: 40000, entry_date: '2026-08-05' },
+      { kind: 'income', category: 'service', amount_cents: 50000, entry_date: '2026-09-05' },
+      { kind: 'expense', category: 'rent', amount_cents: 30000, entry_date: '2026-09-03' },
+      { kind: 'expense', category: 'supplies', amount_cents: 10000, entry_date: '2026-09-10' },
+      { kind: 'income', category: 'service', amount_cents: 20000, entry_date: '2026-10-06' },
+    ])
+      await t.call('POST', '/books', { token: own, body: e });
+    const r = (await ask('geçen ayın hesabını getir', own)).body.reply;
+    expect(r).toContain('Geçen ay (1 Eyl – 30 Eyl) $500 girdi, $400 çıktı; elinde $100 kaldı.');
+    expect(r).toContain('Gelir bir önceki aya göre %25 arttı.');
+    expect(r).toContain("En büyük kalem kira: $300, giderlerin %75'i.");
+    const named = (await ask('eylül ayının hesabı', own)).body.reply;
+    expect(named).toContain('Eylül (1 Eyl – 30 Eyl)');
+    const running = (await ask('bu ay nasıl gidiyor', own)).body.reply;
+    expect(running).toMatch(/^Bu ay \(1 Eki – 1\d Eki\)/); // counted and named up to today
+    expect(running).not.toContain('31 Eki');
+    expect(running).toContain('Ay daha bitmedi');
+    // No bank connected: what the books say came in today, and how to get the real balance.
+    expect((await ask('kasada ne var', own)).body.reply).toContain('Bankanı bağlarsan gerçek bakiyeyi söylerim');
   });
 
   it('handles client tabs and answers balance questions', async () => {

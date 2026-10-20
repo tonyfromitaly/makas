@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isaretleriGuncelle, isaretlerEskiMi } from '../ajan/isaretler';
+import { yuzdeEk } from '../rontgen/ek';
 import { DateTime } from 'luxon';
 import { badRequest, forbidden, isoDate, lang, noContent, notFound, ok, pageQuery, paged, positiveCents, type Ctx, type Route } from '../http';
 import { understandLocal } from '../assistant/local';
@@ -72,44 +73,123 @@ const match = (name: string | null | undefined, items: Named[]) => {
 async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop: Awaited<ReturnType<typeof shopInfo>>, l: Lang, clients: Named[]) {
   const r = replier(l, shop.currency);
   const now = DateTime.fromJSDate(ctx.now, { zone: shop.timezone });
-  const { from, to } = periodRange(item.period, now);
+  // A month named outright ("ekim ayının hesabı"): its latest occurrence, this month included.
+  const named = item.month ? now.set({ month: item.month }).startOf('month').minus({ years: item.month > now.month ? 1 : 0 }) : null;
+  const { from, to } = named ? { from: named, to: named.endOf('month').startOf('day') } : periodRange(item.period, now);
   const f = from.toISODate()!;
   const t = to.toISODate()!;
-  const p = r.period(item.period);
-  const pl = r.period(item.period, true);
-  const range = r.range(f, t);
+  const p = named ? r.monthName(named.month, named.year !== now.year ? named.year : null) : r.period(item.period);
+  const pl = named ? p : r.period(item.period, true);
+  // A period still running is counted, and named, up to today: "1 Eki – 20 Eki", not the whole month.
+  const today = now.startOf('day');
+  const running = from <= today && to > today;
+  const upTo = running ? today : to;
+  const range = r.range(f, upTo.toISODate()!);
   const one = async (sql: string, params: unknown[]) => (await ctx.db.query(sql, params)).rows[0];
-  const sums = async () =>
-    one(
+  const sumsBetween = async (a: string, b: string) => {
+    const s = await one(
       `select coalesce(sum(amount_cents) filter (where kind = 'income'), 0)::int8 as income,
               coalesce(sum(amount_cents) filter (where kind = 'expense'), 0)::int8 as expense,
               count(*) filter (where kind = 'income')::int as n_income
          from book_entries where shop_id = $1 and entry_date between $2 and $3`,
+      [ctx.shopId, a, b],
+    );
+    return { income: Number(s.income), expense: Number(s.expense), n: s.n_income as number };
+  };
+  const sums = () => sumsBetween(f, upTo.toISODate()!);
+
+  // What to measure against. A period still running is compared day for day with the one before
+  // ("the same days last month"), so a half month is never set against a whole one.
+  const days = Math.round(upTo.diff(from, 'days').days);
+  const unit = named || item.period.endsWith('month') ? 'month' : item.period.endsWith('week') ? 'week' : item.period.endsWith('year') ? 'year' : 'day';
+  const prevFrom = unit === 'day' ? (item.period === 'today' ? from.minus({ weeks: 1 }) : from.minus({ days: 1 })) : from.minus({ [`${unit}s`]: 1 } as any);
+  const prevTo = DateTime.min(prevFrom.plus({ days }), unit === 'day' ? prevFrom : prevFrom.endOf(unit as any).startOf('day'));
+  const base = r.say(`cmp_${unit}${running && unit !== 'day' ? '_sofar' : ''}${item.period === 'today' ? '_weekday' : ''}`);
+  const baseLower = base.charAt(0).toLocaleLowerCase('tr') + base.slice(1);
+  const versus = async () => {
+    const [cur, prev] = await Promise.all([sumsBetween(f, upTo.toISODate()!), sumsBetween(prevFrom.toISODate()!, prevTo.toISODate()!)]);
+    return { cur, prev };
+  };
+  /** " Geçen aya göre %12 fazla." — nothing when there is nothing to compare with. */
+  const change = (cur: number, prev: number, key = 'cmp') => {
+    if (prev <= 0 || cur < 0) return '';
+    const d = cur / prev - 1;
+    if (Math.abs(d) < 0.03) return r.say(`${key}_same`, { base, baseLower });
+    return r.say(d > 0 ? `${key}_up` : `${key}_down`, { base, baseLower, pct: Math.round(Math.abs(d) * 100) });
+  };
+  const topExpense = async (total: number) => {
+    const top = await one(
+      `select category, sum(amount_cents)::int8 as total from book_entries
+        where shop_id = $1 and kind = 'expense' and entry_date between $2 and $3
+        group by category order by total desc limit 1`,
       [ctx.shopId, f, t],
     );
+    const share = Number(top?.total ?? 0) / Math.max(1, total);
+    return top && total > 0 ? r.say('expense_top', { cat: r.category(top.category), catAmount: r.money(Number(top.total)), pct: Math.round(share * 100), pctTr: yuzdeEk(share, 'i') }) : '';
+  };
 
   switch (item.metric) {
+    case 'cash': {
+      // The real balance when a bank is connected; otherwise what the books say came in today.
+      const bank = await one(`select meta->'kasa' as kasa, last_sync_at from connections where shop_id = $1 and provider = 'plaid' and status <> 'disconnected'`, [ctx.shopId]);
+      if (bank?.kasa) {
+        const at = DateTime.fromJSDate(new Date(bank.last_sync_at), { zone: shop.timezone });
+        return { text: r.say('cash_bank', { amount: r.money(Math.round(Number(bank.kasa.tutar) * 100)), n: bank.kasa.hesap, when: at.hasSame(now, 'day') ? at.toFormat('HH:mm') : r.day(at.toISODate()!) }), data: { balance: Number(bank.kasa.tutar) } };
+      }
+      const s = await sumsBetween(today.toISODate()!, today.toISODate()!);
+      return { text: r.say('cash_books', { income: r.money(s.income), expense: r.money(s.expense) }), data: { income_cents: s.income, expense_cents: s.expense } };
+    }
+    case 'summary': {
+      const s = await sums();
+      if (!s.income && !s.expense) return { text: r.say('summary_empty', { p, range }), data: { from: f, to: t } };
+      const net = s.income - s.expense;
+      const { cur, prev } = await versus();
+      const parts = [
+        r.say(net >= 0 ? 'net_pos' : 'net_neg', { p, range, income: r.money(s.income), expense: r.money(s.expense), net: r.money(Math.abs(net)), cmp: '' }),
+        change(cur.income, prev.income, 'cmp_income').trim(),
+        (await topExpense(s.expense)).trim(),
+      ];
+      const svc = await one(
+        `select s.name, count(*)::int as n from appointments a join services s on s.id = a.service_id
+          where a.shop_id = $1 and a.status = 'done' and a.starts_at >= $2 and a.starts_at < $3
+          group by s.name order by n desc limit 1`,
+        [ctx.shopId, from.toJSDate(), to.plus({ days: 1 }).toJSDate()],
+      );
+      if (svc) parts.push(r.say('summary_service', { name: svc.name, n: svc.n }));
+      if (running) parts.push(r.say(`summary_running_${unit}`));
+      // The owner also hears the agent's most important note (written in Turkish for now).
+      if (ctx.role === 'owner' && l === 'tr') {
+        const sig = await one(
+          `select title from agent_signals where shop_id = $1 and dismissed_at is null and resolved_at is null and severity = 'yuksek'
+            order by effect desc nulls last limit 1`,
+          [ctx.shopId],
+        );
+        if (sig) parts.push(r.say('summary_signal', { title: sig.title }));
+      }
+      return { text: parts.filter(Boolean).join(' '), data: { from: f, to: t, income_cents: s.income, expense_cents: s.expense, net_cents: net } };
+    }
     case 'income': {
       const s = await sums();
-      return { text: r.say('income', { p, range, amount: r.money(Number(s.income)), n: s.n_income }), data: { from: f, to: t, income_cents: Number(s.income) } };
+      if (!s.income) return { text: r.say('income_none', { p, range }), data: { from: f, to: t, income_cents: 0 } };
+      const { cur, prev } = await versus();
+      return { text: r.say('income', { p, range, amount: r.money(s.income), n: s.n, cmp: change(cur.income, prev.income) }), data: { from: f, to: t, income_cents: s.income } };
     }
     case 'expense': {
       const s = await sums();
-      const top = await one(
-        `select category, sum(amount_cents)::int8 as total from book_entries
-          where shop_id = $1 and kind = 'expense' and entry_date between $2 and $3
-          group by category order by total desc limit 1`,
-        [ctx.shopId, f, t],
-      );
-      const topText = top ? r.say('expense_top', { cat: r.category(top.category), catAmount: r.money(Number(top.total)) }) : '';
-      return { text: r.say('expense', { p, range, amount: r.money(Number(s.expense)), top: topText }), data: { from: f, to: t, expense_cents: Number(s.expense) } };
+      if (!s.expense) return { text: r.say('expense_none', { p, range }), data: { from: f, to: t, expense_cents: 0 } };
+      const { cur, prev } = await versus();
+      return {
+        text: r.say('expense', { p, range, amount: r.money(s.expense), top: await topExpense(s.expense), cmp: change(cur.expense, prev.expense) }),
+        data: { from: f, to: t, expense_cents: s.expense },
+      };
     }
     case 'net': {
       const s = await sums();
-      const net = Number(s.income) - Number(s.expense);
+      const net = s.income - s.expense;
+      const { cur, prev } = await versus();
       return {
-        text: r.say('net', { p, range, income: r.money(Number(s.income)), expense: r.money(Number(s.expense)), net: r.money(net) }),
-        data: { from: f, to: t, income_cents: Number(s.income), expense_cents: Number(s.expense), net_cents: net },
+        text: r.say(net >= 0 ? 'net_pos' : 'net_neg', { p, range, income: r.money(s.income), expense: r.money(s.expense), net: r.money(Math.abs(net)), cmp: change(cur.income - cur.expense, prev.income - prev.expense) }),
+        data: { from: f, to: t, income_cents: s.income, expense_cents: s.expense, net_cents: net },
       };
     }
     case 'payables': {

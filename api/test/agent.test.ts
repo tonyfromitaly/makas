@@ -110,6 +110,9 @@ describe('agent notes', () => {
     closers.push(t.close);
     const s = await t.registerShop('Shop', { language: 'tr' });
     await bankShop(t, s.shopId, 900);
+    // With a bank connected, "kasada ne var" is the real balance.
+    const cash = await t.call('POST', '/assistant', { token: s.token, body: { text: 'kasada ne var', lang: 'tr' } });
+    expect(cash.body.reply).toMatch(/^Bankada şu an \$900 var/);
     const b = await t.call('GET', '/assistant/brief?lang=tr', { token: s.token });
     expect(b.body.reply).toContain('Bu gidişle 1 Kasım günü kasa eksiye düşer.');
     expect(b.body.signal.title).toContain('kasa eksiye düşer');

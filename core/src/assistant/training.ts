@@ -29,7 +29,8 @@ Reply with ONLY a JSON object: {"items":[...]}. Item types:
 - {"type":"book","kind":"income"|"expense","amount_cents":int,"category":"service"|"product"|"tips"|"rent"|"supplies"|"utilities"|"wages"|"other","entry_date":"YYYY-MM-DD","note":string}
 - {"type":"reminder","kind":"reminder"|"payment","title":string,"due_date":"YYYY-MM-DD","due_time":"HH:MM"|null,"amount_cents":int|null}
 - {"type":"ledger","client_name":string,"kind":"charge"|"payment","amount_cents":int,"note":string|null}
-- {"type":"query","metric":"income"|"expense"|"net"|"payables"|"receivables"|"appointments"|"top_service"|"client_balance"|"reminders","period":"today"|"yesterday"|"tomorrow"|"this_week"|"last_week"|"this_month"|"last_month"|"this_year","client_name":string|null}
+- {"type":"query","metric":"summary"|"cash"|"income"|"expense"|"net"|"payables"|"receivables"|"appointments"|"top_service"|"client_balance"|"reminders","period":"today"|"yesterday"|"tomorrow"|"this_week"|"last_week"|"this_month"|"last_month"|"this_year","month":1-12|null,"client_name":string|null}
+  "summary" is the whole account of a period (in, out, what is left, compared with the period before): "geçen ayın hesabını getir", "bu hafta nasıl geçti", "aylık özet", "kâr zarar durumu", "how did last month go", "give me the numbers", "¿cómo nos fue?". Comparisons ("geçen aya göre nasılız") are a summary of this_month. "kâr ettik mi", "zarardayız mı", "elimde ne kaldı" are net. "cash" is the money in the bank or till right now: "kasada ne var", "bakiye ne", "what's in the bank". "month" is set only when a month is named ("ekim ayının hesabı" → month 10, "eylül ne kadar kazandırdı" → income, month 9).
 - {"type":"chat","question":string}  (advice or an open question about the shop: "why are clients dropping", "how can I earn more", "which day is busiest")
 - {"type":"cancel"}  ("boşver", "vazgeçtim", "never mind", "olvídalo" right after a draft: drop it)
 - {"type":"remember","kind":"client"|"money"|"team"|"shop"|"preference","subject":string|null,"text":string}  ("aklında tut", "unutma ki", "şunu bil", "remember that", "keep in mind", "ten en cuenta": a lasting fact for the assistant's memory, NOT a dated reminder. text = the fact alone, third person, without the trigger words; subject = the client's or barber's name from the lists)
@@ -95,6 +96,8 @@ export const FEW_SHOT: { input: string; output: unknown }[] = [
     output: { items: [{ type: 'ledger', client_name: 'Mehmet Kaya', kind: 'payment', amount_cents: 4000, note: 'borç ödemesi' }] },
   },
   { input: 'geçen ay ne kadar kazandık', output: { items: [{ type: 'query', metric: 'income', period: 'last_month', client_name: null }] } },
+  { input: 'geçen ayın hesabını getir', output: { items: [{ type: 'query', metric: 'summary', period: 'last_month', client_name: null }] } },
+  { input: 'eylül ne kadar kazandırdı', output: { items: [{ type: 'query', metric: 'income', period: 'this_month', month: 9, client_name: null }] } },
   { input: 'bu ayki toplam masraf ne', output: { items: [{ type: 'query', metric: 'expense', period: 'this_month', client_name: null }] } },
   { input: 'bu ay daha ne kadar ödemem var', output: { items: [{ type: 'query', metric: 'payables', period: 'this_month', client_name: null }] } },
   { input: 'kim bana borçlu', output: { items: [{ type: 'query', metric: 'receivables', period: 'this_month', client_name: null }] } },
