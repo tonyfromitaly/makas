@@ -19,6 +19,9 @@ export interface Me {
     look?: { skin: string; accent: string | null } | null;
     set_up?: boolean;
     agent_name?: string | null;
+    /** Deleted and waiting out its 30 days; purge_after is when it goes for good. */
+    deleted_at?: string | null;
+    purge_after?: string | null;
   };
   user: { id: string; name: string; email: string; role: 'owner' | 'barber' };
   subscription: { plan_key: string; status: string; current_period_end: string | null };

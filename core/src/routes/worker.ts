@@ -41,7 +41,7 @@ export const workerRoutes: Route[] = [
         `select r.id, r.shop_id, r.appointment_id, r.client_id, r.channel, r.template_key, r.scheduled_at, r.attempts,
                 c.name as client_name, c.phone_e164, c.language, c.consent_status,
                 a.starts_at, a.status as appointment_status, s.name as service_name,
-                sh.name as shop_name, sh.timezone, sub.status as sub_status, sub.current_period_end
+                sh.name as shop_name, sh.timezone, sh.deleted_at as shop_deleted_at, sub.status as sub_status, sub.current_period_end
            from reminder_queue r
            join clients c on c.id = r.client_id
            join appointments a on a.id = r.appointment_id
@@ -58,6 +58,7 @@ export const workerRoutes: Route[] = [
         const reason =
           r.consent_status !== 'granted' ? 'consent_revoked'
           : r.appointment_status !== 'booked' ? `appointment_${r.appointment_status}`
+          : r.shop_deleted_at ? 'shop_deleted'
           : isLocked({ status: r.sub_status, current_period_end: r.current_period_end }, ctx.now) ? 'subscription_inactive'
           : null;
         if (reason) {

@@ -13,6 +13,7 @@ import { Clients } from './screens/Clients';
 import { Books } from './screens/Books';
 import { Settings } from './screens/Settings';
 import { Locked } from './screens/Locked';
+import { Suspended } from './screens/Suspended';
 import { Assistant, forgetConversation } from './screens/Assistant';
 import { DemoPanel } from './components/DemoPanel';
 import { Welcome } from './components/Welcome';
@@ -166,7 +167,7 @@ export function App() {
     reloadMe: () => loadMe(api),
     toast,
     fail: (e: unknown) => {
-      if ((e as any)?.code === 'SUBSCRIPTION_INACTIVE') loadMe(api);
+      if ((e as any)?.code === 'SUBSCRIPTION_INACTIVE' || (e as any)?.code === 'SHOP_DELETED') loadMe(api);
       else toast(errorText(t, e));
     },
     signOut: async () => {
@@ -224,7 +225,9 @@ export function App() {
           {DEMO && !new URLSearchParams(location.search).has('shot') && <DemoPanel />}
         </header>
         <main>
-          {me.locked ? (
+          {me.shop.deleted_at ? (
+            <Suspended />
+          ) : me.locked ? (
             <Locked />
           ) : (
             <>
@@ -236,7 +239,7 @@ export function App() {
             </>
           )}
         </main>
-        {!me.locked && (
+        {!me.locked && !me.shop.deleted_at && (
           <nav className="tabbar">
             {(
               [

@@ -37,3 +37,4 @@ export { plaidBaglanti, type PlaidAyar } from './baglanti/plaid-esitle';
 export { plaidDefter, plaidKasa } from './baglanti/plaid';
 export { isaretleriGuncelle, isaretleriHesapla, type Isaret } from './ajan/isaretler';
 export { nakitTahmini, sabitOdemeler, type NakitTahmini } from './rontgen/tahmin';
+export { purgeDeletedShops, DELETE_GRACE_DAYS } from './routes/shop';

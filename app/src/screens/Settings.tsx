@@ -296,7 +296,7 @@ export function ExportButton() {
 }
 
 function DeleteShop() {
-  const { api, t, fail, signOut } = useApp();
+  const { api, t, fail, reloadMe } = useApp();
   const [open, setOpen] = useState(false);
   const [pw, setPw] = useState('');
   if (!open)
@@ -319,7 +319,8 @@ function DeleteShop() {
           onClick={async () => {
             try {
               await api.del('/shops/me', { password: pw });
-              signOut();
+              // The shop is suspended, not gone: the app now shows the restore screen.
+              await reloadMe();
             } catch (e) {
               fail(e);
             }

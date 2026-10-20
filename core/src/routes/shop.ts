@@ -3,6 +3,15 @@ import { IANAZone } from 'luxon';
 import { audit, badRequest, cents, lang, noContent, notFound, ok, pageQuery, paged, unauthorized, uuid, type Ctx, type Route } from '../http';
 import type { Queryable } from '../db';
 
+/** How long a deleted shop can still be restored. */
+export const DELETE_GRACE_DAYS = 30;
+
+/** Removes shops whose 30 days have passed, everything they own with them (foreign keys cascade). */
+export async function purgeDeletedShops(db: Queryable, now: Date) {
+  const { rows } = await db.query('delete from shops where deleted_at is not null and purge_after < $1 returning id', [now]);
+  return rows.length;
+}
+
 export function isLocked(sub: { status: string; current_period_end: Date | string | null } | undefined, now: Date) {
   if (!sub) return true;
   if (sub.status !== 'trial' && sub.status !== 'active') return true;
@@ -16,7 +25,8 @@ export async function loadSubscription(db: Queryable, shopId: string) {
 }
 
 const SHOP_FIELDS = `id, name, country, timezone, language, currency, status, business_type,
-  reminder_day_before_hour, reminder_hours_before, created_at, modules, look, setup is not null as set_up, setup->>'ajanAdi' as agent_name`;
+  reminder_day_before_hour, reminder_hours_before, created_at, modules, look, setup is not null as set_up, setup->>'ajanAdi' as agent_name,
+  deleted_at, purge_after`;
 
 export const shopRoutes: Route[] = [
   {
@@ -104,8 +114,25 @@ export const shopRoutes: Route[] = [
       ).rows[0];
       if (!user || !(await ctx.deps.verifyPassword(user.password_hash, body.password)))
         throw unauthorized('Password is incorrect');
-      await ctx.db.query('delete from shops where id = $1', [ctx.shopId]);
-      return noContent();
+      // Suspended, not erased: everything stays for 30 days and the owner can take it back.
+      // The hourly purge (purgeDeletedShops) removes it for good once purge_after has passed.
+      const purge = new Date(ctx.now.getTime() + DELETE_GRACE_DAYS * 86_400_000);
+      await ctx.db.query('update shops set deleted_at = $2, purge_after = $3 where id = $1 and deleted_at is null', [ctx.shopId, ctx.now, purge]);
+      await audit(ctx, 'shop.deletion_requested', 'shop', ctx.shopId);
+      return { deleted_at: ctx.now, purge_after: purge };
+    },
+  },
+  {
+    // Changed their mind within the 30 days: the shop is back exactly as it was.
+    method: 'POST',
+    path: '/shops/me/restore',
+    auth: 'user',
+    ownerOnly: true,
+    system: true,
+    async handler(ctx) {
+      const r = await ctx.db.query('update shops set deleted_at = null, purge_after = null where id = $1 and deleted_at is not null returning id', [ctx.shopId]);
+      if (r.rows.length) await audit(ctx, 'shop.restored', 'shop', ctx.shopId);
+      return { restored: r.rows.length > 0 };
     },
   },
   // --- "Bize yaz": the shop's live support thread with us. Open even while the shop is locked. ---

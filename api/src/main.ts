@@ -1,4 +1,4 @@
-import { migrate, plaidBaglanti, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
+import { migrate, plaidBaglanti, purgeDeletedShops, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
 import { env, loadConfig } from './config';
 import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
@@ -93,6 +93,13 @@ const stopSender = channelNames.length ? startSender(app, { prefix: env.apiPrefi
 // The assistant's memory keeps itself up to date: every hour it recomputes notes from the records,
 // reviews conversations that went quiet and drops notes older than 90 days (core/agent/AGENT.md).
 const upkeep = async () => {
+  // Shops deleted more than 30 days ago go for good, everything they own with them.
+  try {
+    const purged = await withSystem(db, (tx) => purgeDeletedShops(tx, new Date()));
+    if (purged) app.log.info({ purged }, 'deleted shops purged');
+  } catch (e) {
+    app.log.error(e, 'purge failed');
+  }
   try {
     const s = await runMemoryUpkeep(db, deps, new Date());
     app.log.info({ memory: s }, 'memory upkeep');
@@ -105,6 +112,7 @@ const syncAll = async () => {
   const shops = await withSystem(db, async (tx) => (
       await tx.query(
         `select c.shop_id, c.provider from connections c join subscriptions s on s.shop_id = c.shop_id
+          join shops sh on sh.id = c.shop_id and sh.deleted_at is null
           where c.status in ('connected', 'error')
             and s.status in ('trial', 'active') and (s.current_period_end is null or s.current_period_end > now())`,
       )

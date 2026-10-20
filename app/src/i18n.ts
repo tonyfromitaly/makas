@@ -1,6 +1,11 @@
 export type Lang = 'tr' | 'en' | 'es';
 
 const tr = {
+  suspendedTitle: 'Dükkân silinmek üzere',
+  suspendedBody: 'Bu dükkânı silme isteği verildi. {date} tarihine kadar her şeyi olduğu gibi geri alabilirsin; o gün tüm veriler kalıcı olarak silinir.',
+  suspendedStaff: 'Dükkân sahibi bu dükkânı silme isteği verdi. {date} tarihine kadar geri alınabilir.',
+  restoreShop: 'Dükkânı geri al',
+  shopRestored: 'Dükkân geri alındı; her şey yerinde.',
   otherIncome: 'Diğer gelir',
   otherExpense: 'Diğer gider',
   actSetReminder: 'Hatırlatma kur',
@@ -216,7 +221,7 @@ const tr = {
   until: 'bitiş',
   exportData: 'Verimi indir (JSON)',
   deleteShop: 'Dükkânı ve tüm verileri sil',
-  deleteConfirm: 'Bu geri alınamaz. Onay için şifreni yaz.',
+  deleteConfirm: 'Dükkân 30 gün askıya alınır; bu sürede tek dokunuşla geri alabilirsin. 30 gün sonra tüm veriler kalıcı olarak silinir. Onay için şifreni yaz.',
   logout: 'Çıkış yap',
   lockedTitle: 'Dükkân kilitli',
   lockedBody: 'Aboneliğin aktif değil. Verilerin güvende. Aboneliği yenileyince kaldığın yerden devam edersin.',
@@ -361,6 +366,11 @@ const tr = {
 type Dict = typeof tr;
 
 const en: Dict = {
+  suspendedTitle: 'This shop is being deleted',
+  suspendedBody: 'Deletion was requested for this shop. Until {date} you can restore everything as it was; on that day all data is erased for good.',
+  suspendedStaff: 'The owner asked to delete this shop. It can be restored until {date}.',
+  restoreShop: 'Restore the shop',
+  shopRestored: 'Shop restored; everything is where it was.',
   otherIncome: 'Other income',
   otherExpense: 'Other expense',
   actSetReminder: 'Set a reminder',
@@ -576,7 +586,7 @@ const en: Dict = {
   until: 'until',
   exportData: 'Download my data (JSON)',
   deleteShop: 'Delete shop and all data',
-  deleteConfirm: 'This cannot be undone. Type your password to confirm.',
+  deleteConfirm: 'The shop is suspended for 30 days; you can restore it with one tap until then. After 30 days all data is erased for good. Type your password to confirm.',
   logout: 'Sign out',
   lockedTitle: 'Shop locked',
   lockedBody: 'Your subscription isn’t active. Your data is safe and will be here when you renew.',
@@ -881,7 +891,7 @@ const es: Dict = {
   until: 'hasta',
   exportData: 'Descargar mis datos (JSON)',
   deleteShop: 'Borrar barbería y todos los datos',
-  deleteConfirm: 'No se puede deshacer. Escribe tu contraseña para confirmar.',
+  deleteConfirm: 'El negocio queda suspendido 30 días; hasta entonces puedes restaurarlo con un toque. Pasados 30 días todos los datos se borran para siempre. Escribe tu contraseña para confirmar.',
   logout: 'Salir',
   lockedTitle: 'Barbería bloqueada',
   lockedBody: 'Tu suscripción no está activa. Tus datos están a salvo hasta que renueves.',

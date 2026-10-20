@@ -61,6 +61,16 @@ const bearer = (h?: string) => (h?.startsWith('Bearer ') ? h.slice(7).trim() : '
  * One request handler for every transport: Fastify on the server, and a direct call in the
  * in-browser demo. Same routes, same SQL, same tenant isolation either way.
  */
+// What a shop waiting out its 30 days after deletion can still do: see that, take it back, take its
+// data with it, talk to us, sign out.
+const SUSPENDED_OK = new Set(['GET /shops/me', 'POST /shops/me/restore', 'GET /shops/me/export', 'GET /support', 'POST /support', 'POST /feedback', 'GET /support/unread', 'POST /auth/logout']);
+
+async function assertNotSuspended(db: Ctx['db'], shopId: string, route: Route) {
+  if (SUSPENDED_OK.has(`${route.method} ${route.path}`)) return;
+  const s = (await db.query('select deleted_at, purge_after from shops where id = $1', [shopId])).rows[0];
+  if (s?.deleted_at) throw new ApiError(410, 'SHOP_DELETED', `This shop is scheduled for deletion on ${new Date(s.purge_after).toISOString().slice(0, 10)}; restore it to continue`);
+}
+
 export function createApi(opts: { db: Database; config: Config; deps: Deps; log?: (e: unknown) => void }) {
   const compiled = routes.map(compile);
 
@@ -105,6 +115,7 @@ export function createApi(opts: { db: Database; config: Config; deps: Deps; log?
             .rows[0];
           if (!user) throw unauthorized('Account no longer exists');
           if (route.ownerOnly && user.role !== 'owner') throw forbidden('Only the shop owner can do this');
+          await assertNotSuspended(db, claims.shop, route);
           if (route.gated && isLocked(await loadSubscription(db, claims.shop), now))
             throw new ApiError(402, 'SUBSCRIPTION_INACTIVE', 'Subscription is not active');
           return route.handler({ ...base, db, shopId: claims.shop, userId: user.id, role: user.role }, input);
@@ -118,6 +129,7 @@ export function createApi(opts: { db: Database; config: Config; deps: Deps; log?
             const user = (await db.query('select id, role from users where id = $1 and shop_id = $2', [claims.sub, shop])).rows[0];
             if (!user) throw unauthorized('Account no longer exists');
             if (route.ownerOnly && user.role !== 'owner') throw forbidden('Only the shop owner can do this');
+            await assertNotSuspended(db, shop, route);
             if (route.gated && isLocked(await loadSubscription(db, shop), now)) throw new ApiError(402, 'SUBSCRIPTION_INACTIVE', 'Subscription is not active');
             checked = user;
           });
