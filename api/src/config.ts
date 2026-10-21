@@ -72,6 +72,9 @@ export const env = {
   connectionSecret: process.env.CONNECTION_SECRET ?? '',
   /** "true": reminders are printed and marked sent, nothing leaves the machine. Never in production. */
   senderDryRun: process.env.SENDER_DRY_RUN === 'true',
+  // Operator alerts (docs/gozetim.md): an e-mail address and/or a Slack or Discord webhook. Empty = log only.
+  alertEmail: process.env.ALERT_EMAIL ?? '',
+  alertWebhookUrl: process.env.ALERT_WEBHOOK_URL ?? '',
 };
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {

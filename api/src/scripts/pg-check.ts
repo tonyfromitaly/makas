@@ -30,7 +30,7 @@ try {
   check(true, 'connected', `${String(v.v).split(',')[0]} · user ${v.u}`);
   const applied = await migrate(db);
   const all = (await q('select id from schema_migrations order by id')).map((r) => r.id);
-  check(all.includes('014_owner_on_team'), 'all migrations applied', `${all.length} applied${applied.length ? ` (${applied.join(', ')} just now)` : ''}`);
+  check(all.includes('015_job_runs'), 'all migrations applied', `${all.length} applied${applied.length ? ` (${applied.join(', ')} just now)` : ''}`);
 
   const me = (await q(`select rolsuper, rolbypassrls, rolcreaterole from pg_roles where rolname = current_user`))[0];
   const tenantRole = (await q(`select 1 from pg_roles where rolname = 'makas_tenant'`)).length > 0;

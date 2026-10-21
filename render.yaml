@@ -9,6 +9,8 @@ services:
     # (starter or above) before real shops rely on reminders.
     plan: free
     region: frankfurt
+    # Hourly jobs take a lease (job_runs), so more copies are safe; one is enough until there are hundreds of shops.
+    numInstances: 1
     buildCommand: npm ci --include=dev
     startCommand: npm start -w api
     healthCheckPath: /api/health
@@ -88,6 +90,11 @@ services:
         sync: false
       - key: PLAID_ENV
         value: sandbox
+      # Operator alerts (docs/gozetim.md): your e-mail and/or a Slack or Discord webhook. Empty = log only.
+      - key: ALERT_EMAIL
+        sync: false
+      - key: ALERT_WEBHOOK_URL
+        sync: false
 
 databases:
   - name: fade-db

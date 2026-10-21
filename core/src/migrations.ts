@@ -696,6 +696,21 @@ update barbers b set user_id = s.owner_user_id
 select set_config('app.system', 'off', true);
 `;
 
+// Hourly jobs (bank and Square sync, upkeep) take a lease here so only one server copy runs each, and the
+// last success and failure are kept for the health checks. System table: no shop data, no tenant access.
+const jobRuns = `
+create table job_runs (
+  name text primary key,
+  holder text,
+  locked_until timestamptz,
+  last_started_at timestamptz,
+  last_ok_at timestamptz,
+  last_error text,
+  last_error_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -711,4 +726,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '012_soft_delete', sql: softDelete },
   { id: '013_team_till', sql: team },
   { id: '014_owner_on_team', sql: ownerOnTeam },
+  { id: '015_job_runs', sql: jobRuns },
 ];

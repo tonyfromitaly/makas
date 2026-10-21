@@ -28,6 +28,8 @@ export interface Deps {
   chat?(input: { question: string; lang: string; shop: string; currency: string; snapshot: unknown; history?: Turn[]; memory?: string[]; soul?: string }): Promise<string>;
   /** LLM that reviews a quiet conversation and edits the long-term notes (core/agent/AGENT.md). Optional. */
   reflect?(input: { lang: string; shop: string; today: string; notes: { id: string; kind: string; subject: string | null; text: string; source: string }[]; turns: Turn[]; soul?: string }): Promise<unknown>;
+  /** What the health checks need from the running server (core/src/watch.ts). Set by the server. */
+  health?(): { sending: boolean; errors5xx: number; jobs: string[] };
   /** Connections to the systems a business already uses. Set by the server when configured. */
   baglanti?: {
     square?: {

@@ -42,7 +42,8 @@ export function BookPage({ slug, api: given, onClose }: { slug: string; api?: Cl
   const [state, setState] = useState<Record<string, unknown>>({});
   const [booked, setBooked] = useState<any>(null);
   const [text, setText] = useState('');
-  const [consent, setConsent] = useState(true);
+  // Unticked until the customer ticks it: US carriers (A2P 10DLC) and the TCPA need an affirmative opt-in.
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const hp = useRef<HTMLInputElement>(null);
 

@@ -13,6 +13,7 @@ import { connectionRoutes } from './routes/connections';
 import { agentRoutes } from './routes/agent';
 import { teamRoutes } from './routes/team';
 import { bookingRoutes } from './routes/booking';
+import { checksIn } from './watch';
 
 export interface ApiRequest {
   method: string;
@@ -42,6 +43,26 @@ export const routes: Route[] = [
   ...workerRoutes,
   ...adminRoutes,
   { method: 'GET', path: '/health', auth: 'public', handler: async () => ({ ok: true }) },
+  {
+    // For an uptime monitor: 503 while something is wrong, with only the names of the failing checks.
+    method: 'GET',
+    path: '/health/ready',
+    auth: 'public',
+    async handler(ctx) {
+      const checks = await checksIn(ctx.db, { now: ctx.now, ...(ctx.deps.health?.() ?? { sending: false }) });
+      const failing = checks.filter((c) => !c.ok).map((c) => c.name);
+      return new Res(failing.length ? 503 : 200, { ok: !failing.length, failing });
+    },
+  },
+  {
+    method: 'GET',
+    path: '/admin/health',
+    auth: 'admin',
+    async handler(ctx) {
+      const checks = await checksIn(ctx.db, { now: ctx.now, ...(ctx.deps.health?.() ?? { sending: false }) });
+      return { ok: checks.every((c) => c.ok), checks };
+    },
+  },
 ];
 
 interface Compiled {

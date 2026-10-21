@@ -1,4 +1,6 @@
-import { migrate, plaidBaglanti, purgeDeletedShops, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
+import { alertPlan, healthChecks, markSent, migrate, plaidBaglanti, purgeDeletedShops, runExclusive, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
+import { hostname } from 'node:os';
+import { randomBytes } from 'node:crypto';
 import { env, loadConfig } from './config';
 import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
@@ -9,6 +11,7 @@ import { consoleMailer, resendMailer } from './email';
 import { fileURLToPath } from 'node:url';
 import { dryRunChannel, twilioSmsChannel, whatsappChannel, type Channel, type ChannelKind } from './messaging';
 import { startSender } from './messaging-routes';
+import { alerter, alertText } from './alerts';
 
 const db = await openDatabase(env.databaseUrl);
 const applied = await migrate(db);
@@ -36,14 +39,25 @@ const square = squareOn
   ? squareBaglanti(db, { env: env.squareEnv, clientId: env.squareAppId, clientSecret: env.squareAppSecret, secret: env.connectionSecret || config.jwtSecret }, () => new Date())
   : undefined;
 console.log(`connections: ${[squareOn ? `square (${env.squareEnv})` : '', plaidOn ? `bank via plaid (${env.plaidEnv})` : ''].filter(Boolean).join(' + ') || 'off (set SQUARE_APP_ID/SECRET or PLAID_CLIENT_ID/SECRET)'}`);
+// What the health checks read from this server: is a reminder channel on, how many 5xx in 15 minutes.
+let sending = false;
+const errors: number[] = [];
+const recentErrors = () => {
+  const since = Date.now() - 15 * 60_000;
+  while (errors.length && errors[0] < since) errors.shift();
+  return errors.length;
+};
+const JOBS = ['sync', 'upkeep'];
 const deps = {
   ...argon2Deps,
+  health: () => ({ sending, errors5xx: recentErrors(), jobs: JOBS }),
   parseNote: parseServiceClient(env.parseServiceUrl, env.parseServiceKey),
   assistant: assistantClient(llm),
   chat: chatClient(llm),
   reflect: reflectClient(llm),
   baglanti: square || plaid ? { square, plaid } : undefined,
 };
+const mailer = env.resendApiKey ? resendMailer(env.resendApiKey, env.mailFrom) : consoleMailer();
 const app = await buildServer({
   db,
   config,
@@ -60,7 +74,7 @@ const app = await buildServer({
     env.stripeSecretKey && env.stripePriceId && env.stripeWebhookSecret
       ? stripeProvider({ secretKey: env.stripeSecretKey, priceId: env.stripePriceId, webhookSecret: env.stripeWebhookSecret })
       : null,
-  mailer: env.resendApiKey ? resendMailer(env.resendApiKey, env.mailFrom) : consoleMailer(),
+  mailer,
   publicUrl: env.publicUrl,
   messaging: {
     whatsapp: env.whatsappAppSecret && env.whatsappVerifyToken ? { appSecret: env.whatsappAppSecret, verifyToken: env.whatsappVerifyToken } : undefined,
@@ -69,6 +83,11 @@ const app = await buildServer({
 });
 const paymentsOn = !!(env.stripeSecretKey && env.stripePriceId && env.stripeWebhookSecret);
 console.log(`billing: ${paymentsOn ? 'stripe' : 'off, website takes applications (set STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET)'} · mail: ${env.resendApiKey ? 'resend' : 'console'} · signup: ${env.allowSignup ? 'open' : 'website only'}`);
+app.addHook('onResponse', async (_req, reply) => {
+  if (reply.statusCode >= 500) errors.push(Date.now());
+});
+const alerts = alerter({ mailer, to: env.alertEmail, webhookUrl: env.alertWebhookUrl, service: 'fade', log: (o, m) => app.log.warn(o, m) });
+console.log(`alerts: ${[env.alertEmail ? 'e-mail' : '', env.alertWebhookUrl ? 'webhook' : ''].filter(Boolean).join(' + ') || 'log only (set ALERT_EMAIL or ALERT_WEBHOOK_URL)'}`);
 await app.listen({ port: env.port, host: env.host });
 
 // Reminders: whichever channels are configured send what is due; nothing configured, nothing is leased
@@ -89,6 +108,7 @@ if (env.senderDryRun && !env.isProd) {
 }
 const channelNames = Object.values(channels).map((c) => c!.name);
 console.log(`reminders: ${channelNames.length ? channelNames.join(' + ') : 'not sending (set WHATSAPP_* or TWILIO_*, or SENDER_DRY_RUN=true locally)'}`);
+sending = channelNames.length > 0;
 const stopSender = channelNames.length ? startSender(app, { prefix: env.apiPrefix, serviceKey: config.serviceApiKey, channels }) : () => {};
 
 // The assistant's memory keeps itself up to date: every hour it recomputes notes from the records,
@@ -128,14 +148,58 @@ const syncAll = async () => {
     }
   }
 };
-const firstUpkeep = setTimeout(upkeep, 60_000);
-const hourlySync = setInterval(syncAll, 3600_000);
-const hourly = setInterval(upkeep, 3600_000);
+// Each hourly job runs on one server copy at a time: a second copy (a deploy overlapping the old one, or
+// more than one instance) finds the lease taken and skips. The lease outlives a slow run, not the next hour.
+const holder = `${process.env.RENDER_INSTANCE_ID ?? hostname()}-${process.pid}-${randomBytes(3).toString('hex')}`;
+const exclusive = (name: string, fn: () => Promise<unknown>, leaseMinutes = 55) => async () => {
+  try {
+    const r = await runExclusive(db, { name, holder, leaseMinutes, now: () => new Date() }, fn);
+    if (!r.ran) app.log.info({ job: name }, 'job skipped: another copy holds it');
+  } catch (e) {
+    app.log.error(e, `job ${name} failed`);
+  }
+};
+const runSync = exclusive('sync', syncAll);
+const runUpkeep = exclusive('upkeep', upkeep);
+
+// Every 15 minutes: run the health checks and tell the operator about new problems, ones still open after
+// 6 hours, and recoveries. Uptime itself is watched from outside (GET /api/health/ready, docs/gozetim.md).
+const alerted = new Map<string, Date>();
+const watch = exclusive(
+  'watch',
+  async () => {
+    const now = new Date();
+    const checks = await healthChecks(db, { now, ...deps.health() });
+    const plan = alertPlan(checks, alerted, now);
+    if (!plan.problems.length && !plan.recovered.length) return;
+    const { subject, lines } = alertText(plan);
+    await alerts.send(subject, lines);
+    markSent(plan, alerted, now);
+  },
+  10,
+);
+
+const firstUpkeep = setTimeout(runUpkeep, 60_000);
+const firstWatch = setTimeout(watch, 5 * 60_000);
+const hourlySync = setInterval(runSync, 3600_000);
+const hourly = setInterval(runUpkeep, 3600_000);
+const watching = setInterval(watch, 15 * 60_000);
+
+// A crash is the one problem the 15-minute round never sees: say so before the process goes.
+const fatal = (kind: string) => (e: unknown) => {
+  app.log.fatal(e, kind);
+  const done = alerts.send(`server stopped: ${kind}`, [String((e as Error)?.stack ?? e).slice(0, 1500)]);
+  Promise.race([done, new Promise((r) => setTimeout(r, 5000))]).finally(() => process.exit(1));
+};
+process.on('uncaughtException', fatal('uncaught exception'));
+process.on('unhandledRejection', fatal('unhandled rejection'));
 
 const shutdown = async () => {
   clearTimeout(firstUpkeep);
+  clearTimeout(firstWatch);
   clearInterval(hourly);
   clearInterval(hourlySync);
+  clearInterval(watching);
   stopSender();
   await app.close();
   await db.close();
