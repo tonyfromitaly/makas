@@ -34,7 +34,7 @@ Hukuki maddeler bir kontrol listesidir, hukuki görüş değildir. Avukata ve ma
 | WhatsApp Business | ✓ | Test numarası | Meta işletme doğrulaması, onaylı mesaj şablonları |
 | Resend (e-posta) | ✓ | Test | Kendi alan adını doğrulama (SPF/DKIM) |
 | Stripe (abonelik) | ✓, kapalı | Kapalı | Bilerek kapalı. Şirket kurulunca açılır. Türkiye'de Stripe yok; TR için iyzico ya da PayTR gerekir |
-| Yapay zekâ (DeepSeek) | ✓ | ✓ | **ABD için sağlayıcı değişmeli.** DeepSeek Çin merkezli; banka verisi tutan bir üründe Plaid incelemesi ve müşteri güveni açısından risk (`docs/legal/README.md`) |
+| Yapay zekâ (Claude) | ✓ | Sahte ağla test edildi | Anthropic API anahtarı ve faturalandırma. DeepSeek yalnızca yerel ve deneme için duruyor (`docs/legal/README.md`) |
 
 Sonuç: bağlantıların teknik işi bitti. Kalan her madde şirket ve evrak işi.
 

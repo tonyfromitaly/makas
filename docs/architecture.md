@@ -60,7 +60,7 @@ Only auth, the message worker and the operator run as the system role, and those
 
 ```
 speech (Web Speech API, in the browser) ─▶ text ─▶ POST /assistant
-   understand:  LLM (AI_API_KEY)  ──or──  local rule engine (tr/en/es)  ─▶  Plan (zod-validated)
+   understand:  LLM (Claude; DeepSeek locally)  ──or──  local rule engine (tr/en/es)  ─▶  Plan (zod-validated)
    resolve:     names → client/service/barber ids, phone → E.164 (shop country), duplicates
    questions:   SQL aggregates → one localized sentence (the model never sees or produces totals)
    writes:      returned as drafts → barber confirms → regular endpoints (validated, audited, RLS)

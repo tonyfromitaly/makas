@@ -11,11 +11,16 @@ Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olar
 
 ---
 
-## AI asistanı DeepSeek'e bağlamak
+## AI asistanı bağlamak
 
-1. Kök klasördeki `.env` dosyasında `AI_API_KEY=` satırına DeepSeek anahtarını yaz (dosya git'e girmez).
+Canlıda asistan Claude (Anthropic) ile çalışır. DeepSeek yerel çalışma ve deneme için seçenek olarak duruyor.
+
+1. Kök klasördeki `.env` dosyasında `ANTHROPIC_API_KEY=` satırına anahtarı yaz (console.anthropic.com → API Keys; dosya git'e girmez).
+   - Denemede DeepSeek kullanmak için `ANTHROPIC_API_KEY`'i boş bırakıp `AI_API_KEY`'e DeepSeek anahtarını yaz.
+   - İkisi de doluyken DeepSeek'i seçmek için `AI_PROVIDER=openai` ekle.
+   - Canlı sunucu (`NODE_ENV=production`), `AI_PROVIDER=openai` açıkça yazılmadıkça DeepSeek anahtarını kullanmaz.
 2. `npm run ai:check`: anahtarı tek bir anlama ve tek bir sohbet çağrısıyla dener.
-3. `npm run ai:eval`: 40 cümlelik eğitim/ölçüm setini hem yerel motora hem DeepSeek'e sorar, isabet oranını yazar.
+3. `npm run ai:eval`: 40 cümlelik eğitim/ölçüm setini hem yerel motora hem modele sorar, isabet oranını yazar.
 4. `npm run dev` → http://localhost:5173 → "Demo · fatihyahyayildizz@gmail.com" düğmesi → Asistan sekmesi.
 
 Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldüğü: [docs/asistan-egitimi.md](docs/asistan-egitimi.md). GitHub Pages'teki canlı demo statik bir sayfa olduğu için anahtar taşıyamaz; orada her zaman yerleşik kural motoru çalışır.
@@ -109,7 +114,7 @@ Temel şemadaki boşluklar kapatıldı, üstüne yenilikler eklendi:
 6. **Geç alınan randevu:** vakti geçmiş hatırlatma `skipped / too_late` olarak yazılır. Zaman çizelgesi dürüst kalır, yaz saati geçişleri doğru hesaplanır.
 7. **İşletme uçları:** `ADMIN_API_KEY` ile geri bildirim okuma, abonelik güncelleme, 90 günlük saklama işi.
 8. **Çift katmanlı kiracı yalıtımı:** her sorgu `shop_id` ile filtrelenir, **ayrıca** Postgres row-level security kısıtlı bir rolle zorlanır. Bileşik yabancı anahtarlar başka dükkânın satırına bağ kurmayı veritabanı seviyesinde engeller.
-9. **AI asistan:** DeepSeek (ya da OpenAI uyumlu herhangi bir model) `AI_API_KEY` ile bağlanır; model yalnızca cümleyi yapılandırılmış bir plana çevirir (`core/src/assistant/plan.ts`). API planı doğrular, isimleri kayıtlara eşler, soruları SQL ile cevaplar; yazma işlemleri berber onayından geçer. Anahtar yoksa (ve canlı demoda) Türkçe/İngilizce/İspanyolca kural motoru (`core/src/assistant/local.ts`) aynı planı üretir.
+9. **AI asistan:** Claude (`ANTHROPIC_API_KEY`) ile, yerelde isteğe bağlı olarak DeepSeek ya da OpenAI uyumlu herhangi bir modelle (`AI_API_KEY`) bağlanır; model yalnızca cümleyi yapılandırılmış bir plana çevirir (`core/src/assistant/plan.ts`). API planı doğrular, isimleri kayıtlara eşler, soruları SQL ile cevaplar; yazma işlemleri berber onayından geçer. Anahtar yoksa (ve canlı demoda) Türkçe/İngilizce/İspanyolca kural motoru (`core/src/assistant/local.ts`) aynı planı üretir.
 10. **Yenilikler:** gelmeme riski, uzun süredir gelmeyen müşteriyi geri çağırma, kasayı kapat raporu, PWA, tarayıcıda çalışan canlı demo, mesaj altyapısı simülatörü, TR/EN/ES.
 
 ## Kabul ölçütleri → testler

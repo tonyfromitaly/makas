@@ -54,7 +54,7 @@ Stripe hazır olduğunda yalnızca üç anahtarı girersin; form kendiliğinden 
 
 1. https://render.com adresinde GitHub hesabınla giriş yap.
 2. **New → Blueprint**'e tıkla, `tonyfromitaly/makas` reposunu seç. Render, repodaki `render.yaml` dosyasını okuyup web servisini ve Postgres veritabanını kendisi kurar. `JWT_SECRET`, `SERVICE_API_KEY` ve `ADMIN_API_KEY` otomatik üretilir.
-3. Senden istenen değerleri gir: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `RESEND_API_KEY`, `MAIL_FROM`, `AI_API_KEY` (DeepSeek). `STRIPE_WEBHOOK_SECRET`'ı şimdilik boş bırak.
+3. Senden istenen değerleri gir: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `RESEND_API_KEY`, `MAIL_FROM`, `ANTHROPIC_API_KEY` (Claude). `STRIPE_WEBHOOK_SECRET`'ı şimdilik boş bırak.
 4. İlk yayın bitince adresin belli olur: `https://fade-xxxx.onrender.com`. Sitenin `/` adresinde, uygulamanın `/app/` adresinde açıldığını kontrol et.
 
 ## 4. Stripe webhook

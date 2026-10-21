@@ -73,7 +73,7 @@ Dükkânın hafızası **DÜKKÂN.md**: kısa notlar, dört kaynaktan gelir:
 | Kaynak | Nasıl | Örnek |
 | --- | --- | --- |
 | Usta söyler | "aklında tut", "unutma ki", "remember that" | "Ahmet sakalını kısa ister" |
-| Konuşmalardan öğrenir | Sohbet 20 dk sessiz kalınca DeepSeek konuşmayı gözden geçirir, not ekler/günceller/siler | "Burak her seferinde ense de ister" |
+| Konuşmalardan öğrenir | Sohbet 20 dk sessiz kalınca model konuşmayı gözden geçirir, not ekler/günceller/siler | "Burak her seferinde ense de ister" |
 | Kayıtlardan çıkarır | Her saat yeniden hesaplanır | "Kira genelde ayın 3'ünde; son ödeme $1.800", "En yoğun gün salı" |
 | Usta yazar | Asistan → Hafıza ekranı | "Pazar günleri kapalıyız" |
 
@@ -86,7 +86,7 @@ Dükkânın hafızası **DÜKKÂN.md**: kısa notlar, dört kaynaktan gelir:
 
 ## İki motor
 
-- **DeepSeek** (`.env` içinde `AI_API_KEY` varsa): eğitim paketiyle çalışır, serbest konuşmayı ve konuşma dilinden metne çeviri hatalarını daha iyi tolere eder, açık sorulara doğal cevap verir.
+- **Model:** canlıda Claude (`ANTHROPIC_API_KEY`), yerelde ve denemede isteğe bağlı olarak DeepSeek (`AI_API_KEY`). Eğitim paketiyle çalışır, serbest konuşmayı ve konuşma dilinden metne çeviri hatalarını daha iyi tolere eder, açık sorulara doğal cevap verir.
 - **Yerleşik kural motoru** (anahtar yoksa ya da model hata verirse, canlı demoda her zaman): aynı planı Türkçe, İngilizce ve İspanyolca kurallarla üretir, açık sorulara veriden kural tabanlı tavsiye çıkarır. Model cevap vermezse otomatik olarak buna düşülür, berber hiçbir şey fark etmez.
 
 ## Ölçüm

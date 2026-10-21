@@ -1,14 +1,14 @@
 // Checks the AI key in .env: one understanding call and one chat call against the model.
-import { env } from '../config';
+import { llmEnv, llmName } from '../config';
 import { assistantClient, chatClient } from '../assistant-llm';
 
-if (!env.aiApiKey) {
-  console.log('AI_API_KEY boş. .env dosyasına DeepSeek anahtarını yaz ve tekrar dene.');
+const cfg = llmEnv();
+if (!cfg.key) {
+  console.log('Model anahtarı yok. .env dosyasına ANTHROPIC_API_KEY (ya da denemede DeepSeek için AI_API_KEY) yaz ve tekrar dene.');
   process.exit(1);
 }
-const cfg = { url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel };
 const today = new Date().toISOString().slice(0, 10);
-console.log(`Model: ${env.aiModel} @ ${env.aiBaseUrl}\n`);
+console.log(`Model: ${llmName(cfg)}\n`);
 try {
   const plan = await assistantClient(cfg)!({
     text: 'bugün 100 dolar kazandım, 300 dolar kira ödedim, 20 dolar bahşiş',

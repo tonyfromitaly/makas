@@ -18,7 +18,6 @@ Bu klasördeki dört metin, avukatla konuşmayı hızlandırmak için yazılmı�
 - `[EFFECTIVE DATE]`;
 - `[REGION]`: Render bölgesi;
 - `[BACKUP RETENTION]`: ücretli Postgres planının yedek süresi;
-- `[AI PROVIDER]`.
 
 ## Avukata sorulacaklar
 
@@ -42,10 +41,11 @@ Bu klasördeki dört metin, avukatla konuşmayı hızlandırmak için yazılmı�
 - ☐ **Twilio'da Messaging Service ve Advanced Opt-Out.**
   - `TWILIO_FROM`'a numara yerine Messaging Service kimliği (`MG…`) yazılmalı. Kod bunu destekliyor.
   - HELP ve START cevapları `sms-terms.md`'deki metinlerle Twilio konsolunda ayarlanmalı. HELP cevabı bizim kodumuzda yok, Twilio veriyor.
-- ☐ **Yapay zekâ sağlayıcısı: önemli karar.**
-  - Asistan bugün DeepSeek'e bağlı. DeepSeek Çin merkezli bir şirket.
-  - ABD'de birçok eyalet ve federal kurum DeepSeek'i devlet cihazlarında yasakladı. Banka verisi tutan bir ürünün işletme verisini oraya göndermesi Plaid incelemesinde ve müşteri güveninde ciddi sorun çıkarır.
-  - Canlıdan önce ABD'de barındırılan bir sağlayıcıya geçilmesi öneriliyor (ör. Anthropic Claude). Kod OpenAI uyumlu adresle çalıştığı için bu bir ayar ve küçük bir adaptör işi.
-  - `[AI PROVIDER]` o zaman doldurulur.
+- ✓ **Yapay zekâ sağlayıcısı Claude oldu.**
+  - Asistan canlıda Anthropic Claude ile çalışıyor (`ANTHROPIC_API_KEY`).
+  - DeepSeek (Çin merkezli) yalnızca yerel çalışma ve deneme için seçenek olarak duruyor.
+  - Canlı sunucu, `AI_PROVIDER=openai` açıkça yazılmadıkça DeepSeek anahtarını kullanmaz.
+  - Defter notu ayrıştırma servisi (`PARSE_SERVICE_URL`) ayrı bir yol ve arkasında DeepSeek var. Canlıda boş kalmalı; boşken yerel ayrıştırıcı çalışır. `render.yaml`'da tanımlı değil.
+  - Gizlilik politikasında alt işleyici olarak Anthropic yazıyor. Avukat, Anthropic'in ticari şartlarını ve veri işleme ekini (DPA) bizim DPA'mızla birlikte gözden geçirmeli.
 - ☐ **Metinleri siteye koymak.** Avukat onayından sonra `site/` altında `/terms`, `/privacy`, `/dpa`, `/sms-terms` sayfaları yapılır ve kayıt, ödeme ve randevu sayfalarından bağlanır.
 - ☐ **Sağlayıcı hesaplarında iki adımlı doğrulama.** DPA'da taahhüt ediliyor: Render, Netlify, Twilio, Square, Plaid, Stripe, Resend ve GitHub hesaplarının hepsinde açık olmalı.

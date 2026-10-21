@@ -53,7 +53,7 @@ We share personal information only with service providers that process it for us
 | Twilio / Meta (WhatsApp) | Sending reminders and receiving STOP replies | Client name, phone number, message text |
 | Resend | Account e-mails | Owner and staff e-mail addresses |
 | Stripe | Subscription billing | Business billing details (card data goes directly to Stripe) |
-| [AI PROVIDER] | Understanding assistant requests and answering questions | The user's message and the summary of business records needed to answer it |
+| Anthropic (Claude) | Understanding assistant requests and answering questions | The user's message and the summary of business records needed to answer it. Under Anthropic's commercial terms, API data is not used to train its models |
 | Square, Plaid | Only when the business connects them | As described in section 1 |
 
 We may also disclose information:

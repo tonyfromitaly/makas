@@ -1,11 +1,12 @@
 // Runs the assistant eval set (api/test/assistant-eval.json) against the local engine and, when
-// AI_API_KEY is set, against the model. Prints accuracy and every miss. Each model call costs a little.
+// a model key is set (ANTHROPIC_API_KEY, or AI_API_KEY locally), against the model. Prints accuracy and every miss. Each model call costs a little.
 import { planSchema } from '@makas/core';
-import { env } from '../config';
+import { llmEnv, llmName } from '../config';
 import { assistantClient } from '../assistant-llm';
 import { evalContext, evalSet, runLocal, score } from '../eval-lib';
 
-const model = assistantClient({ url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel });
+const llm = llmEnv();
+const model = assistantClient(llm);
 const results = { local: 0, ai: 0 };
 for (const c of evalSet.cases) {
   const localMiss = score(runLocal(c.text, c.lang), c.expect);
@@ -32,4 +33,4 @@ for (const c of evalSet.cases) {
 }
 const n = evalSet.cases.length;
 console.log(`\nlocal engine: ${results.local}/${n}`);
-console.log(model ? `${env.aiModel}: ${results.ai}/${n}` : 'model: skipped (AI_API_KEY is empty)');
+console.log(model ? `${llmName(llm)}: ${results.ai}/${n}` : 'model: skipped (no ANTHROPIC_API_KEY or AI_API_KEY)');

@@ -2,14 +2,14 @@
 //   1. every dialogue in api/test/assistant-dialogues.json, each in a fresh conversation;
 //   2. one long conversation (STRESS_TURNS, default 120) that never clears, to see whether
 //      understanding holds up as the conversation grows.
-// Uses the model when AI_API_KEY is set (each turn is one or two model calls), otherwise the local engine.
-import { env } from '../config';
+// Uses the model when a key is set (ANTHROPIC_API_KEY, or AI_API_KEY locally) (each turn is one or two model calls), otherwise the local engine.
+import { llmEnv } from '../config';
 import { assistantClient, chatClient } from '../assistant-llm';
 import { setup } from '../../test/helpers';
 import { dialogueSet, prepareShop, resetDay, runDialogue, type TurnResult } from '../dialogue-lib';
 
 const turnsWanted = Number(process.env.STRESS_TURNS ?? 120);
-const llm = { url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel };
+const llm = llmEnv();
 const model = assistantClient(llm);
 const sizes: number[] = [];
 const modelMs: number[] = [];
@@ -34,7 +34,7 @@ const deps = model
 
 const t = await setup(dialogueSet.start, deps);
 const session = await prepareShop(t);
-const engineName = model ? env.aiModel : 'local engine';
+const engineName = model ? llm.model : 'local engine';
 const pct = (a: number, b: number) => `${a}/${b} (${Math.round((a / Math.max(b, 1)) * 100)}%)`;
 const q = (xs: number[], p: number) => (xs.length ? Math.round([...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(xs.length * p))]) : 0);
 const show = (r: TurnResult) => {

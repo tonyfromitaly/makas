@@ -34,7 +34,11 @@ export const env = {
   trustProxy: process.env.TRUST_PROXY === 'true',
   parseServiceUrl: process.env.PARSE_SERVICE_URL ?? '',
   parseServiceKey: process.env.PARSE_SERVICE_KEY ?? '',
-  // OpenAI-compatible chat API for the assistant (DeepSeek by default). Empty key = local engine only.
+  // The assistant's model (see llmEnv below). Claude in production; DeepSeek or any OpenAI-compatible API
+  // for local work and trials. No key = the built-in rule engine.
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
+  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
+  aiProvider: process.env.AI_PROVIDER ?? '',
   aiBaseUrl: process.env.AI_BASE_URL || 'https://api.deepseek.com',
   aiApiKey: process.env.AI_API_KEY ?? '',
   aiModel: process.env.AI_MODEL || 'deepseek-chat',
@@ -76,6 +80,27 @@ export const env = {
   alertEmail: process.env.ALERT_EMAIL ?? '',
   alertWebhookUrl: process.env.ALERT_WEBHOOK_URL ?? '',
 };
+
+/**
+ * Which model the assistant uses:
+ *   AI_PROVIDER=openai      → the OpenAI-compatible API (DeepSeek), wherever it runs, when asked for by name
+ *   ANTHROPIC_API_KEY set   → Claude
+ *   AI_API_KEY set, not production → DeepSeek, for local work and trials
+ * A production server with only a DeepSeek key runs the rule engine: shop data does not go to it unasked.
+ */
+export function llmEnv(e: typeof env = env): { provider: 'anthropic' | 'openai'; key: string; model: string; url?: string } {
+  const compat = { provider: 'openai' as const, key: e.aiApiKey, model: e.aiModel, url: e.aiBaseUrl };
+  if (e.aiProvider === 'openai') return compat;
+  if (e.anthropicApiKey) return { provider: 'anthropic', key: e.anthropicApiKey, model: e.anthropicModel };
+  if (e.aiApiKey && !e.isProd) return compat;
+  return { provider: 'anthropic', key: '', model: e.anthropicModel };
+}
+
+/** One line for the start-up log and the scripts. */
+export function llmName(l = llmEnv(), e: typeof env = env) {
+  if (!l.key) return e.aiApiKey && e.isProd ? 'built-in rule engine (AI_API_KEY is ignored in production; set ANTHROPIC_API_KEY, or AI_PROVIDER=openai to use it)' : 'built-in rule engine (set ANTHROPIC_API_KEY in .env)';
+  return l.provider === 'anthropic' ? `${l.model} (Anthropic)` : `${l.model} via ${l.url}`;
+}
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
   return {

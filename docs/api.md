@@ -107,7 +107,7 @@ Categories: `service, product, tips, rent, supplies, utilities, wages, other`.
 Question metrics: `income, expense, net, payables` (open payment tasks due in the period, overdue included),
 `receivables` (client tabs), `appointments, top_service, client_balance, reminders`; periods `today … this_year`.
 
-LLM (optional): any OpenAI-compatible chat API (`AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`; DeepSeek by default)
+LLM (optional): Claude (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`) in production; for local work any OpenAI-compatible chat API (`AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`; DeepSeek)
 returns the plan described in `core/src/assistant/plan.ts`. Output is validated; on any failure the local engine is used.
 
 ## Message infrastructure (service key)

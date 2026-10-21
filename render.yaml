@@ -52,13 +52,12 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
-      # DeepSeek for the assistant (optional; without it the built-in engine runs).
-      - key: AI_API_KEY
+      # Claude for the assistant (console.anthropic.com → API keys). Empty = the built-in rule engine.
+      # A DeepSeek AI_API_KEY is ignored here unless AI_PROVIDER=openai is set on purpose.
+      - key: ANTHROPIC_API_KEY
         sync: false
-      - key: AI_BASE_URL
-        value: https://api.deepseek.com
-      - key: AI_MODEL
-        value: deepseek-chat
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-5-5
       # Reminder sending (docs/hatirlatma-gonderimi.md). Any pair left empty = that channel is off.
       - key: WHATSAPP_TOKEN
         sync: false

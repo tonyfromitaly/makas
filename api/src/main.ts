@@ -1,7 +1,7 @@
 import { alertPlan, healthChecks, markSent, migrate, plaidBaglanti, purgeDeletedShops, runExclusive, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
 import { hostname } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { env, loadConfig } from './config';
+import { env, llmEnv, llmName, loadConfig } from './config';
 import { openDatabase } from './db';
 import { parseServiceClient } from './parse-service';
 import { assistantClient, chatClient, reflectClient } from './assistant-llm';
@@ -26,8 +26,8 @@ const config = loadConfig();
 if (!env.isProd) {
   console.log('dev mode: service and admin keys are random per boot unless set in .env');
 }
-console.log(env.aiApiKey ? `assistant: ${env.aiModel} via ${env.aiBaseUrl}` : 'assistant: built-in rule engine (set AI_API_KEY in .env for DeepSeek)');
-const llm = { url: env.aiBaseUrl, key: env.aiApiKey, model: env.aiModel };
+const llm = llmEnv();
+console.log(`assistant: ${llmName(llm)}`);
 // Square: on when the app id and secret are set. Stored tokens are encrypted with CONNECTION_SECRET.
 const squareOn = !!(env.squareAppId && env.squareAppSecret);
 const plaidOn = !!(env.plaidClientId && env.plaidSecret);
