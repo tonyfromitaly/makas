@@ -7,7 +7,7 @@ Netlify'ın yaptığı işi artık Cloudflare Pages yapıyor. Böylece alan adı
 | Derleme | `npm run build:pages` → `web-dist/` (`scripts/build-netlify.mjs`, `WEB_HOST=cloudflare`) |
 | `/api/*` | `functions/api/[[path]].js`. İsteği `API_ORIGIN`'deki sunucuya (Render) aynen iletir: ziyaretçi adresi `X-Forwarded-For`'da, HTTPS bilgisi `X-Forwarded-Proto`'da gider |
 | Güvenlik başlıkları | `web-dist/_headers`. Kaynağı hâlâ `netlify.toml`'daki `[[headers]]` blokları |
-| Tek sayfa yedekleri | `web-dist/_redirects`: `/app/*`, `/demo/*`, `/book/*` kendi klasörlerine gider |
+| Tek sayfa yedekleri | `functions/{app,demo,book}/[[path]].js` (`functions-lib/spa.js`): önce dosya sunulur; dosya yoksa ve tarayıcı bir sayfa istiyorsa uygulamanın `index.html`'i verilir. `_redirects` kullanılmıyor, çünkü Pages yönlendirme kurallarını dosyalardan önce uygular ve `/app/assets/*.js`'i de sayfaya çevirirdi. `_routes.json` asset klasörlerini fonksiyonların dışında tutar |
 | Bilinmeyen adres | `404.html`. Bu dosya olmasa Pages her adrese ana sayfayı başlıksız sunar |
 | Demo formu | `POST /api/public/demo-requests`. Kayıt `demo_requests` tablosuna yazılır, operatöre `ALERT_EMAIL` ya da `ALERT_WEBHOOK_URL` ile haber gider, kayıtlar 12 ay sonra silinir. Operatör listesi: `GET /api/admin/demo-requests` |
 

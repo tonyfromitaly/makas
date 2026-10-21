@@ -26,13 +26,18 @@ cpSync('app/dist-netlify/app', `${out}/app`, { recursive: true });
 
 // Routing. Proxy rules come first; single-page fallbacks last.
 const api = (process.env.API_ORIGIN ?? '').replace(/\/$/, '');
-// On Cloudflare /api/* is handled by functions/api/[[path]].js (Pages redirects cannot proxy to another host).
-const redirects = [
-  ...(cloudflare ? [] : [api ? `/api/*  ${api}/api/:splat  200` : '/api/*  /api-offline.json  503']),
-  // Single-page fallbacks. Cloudflare redirects /x/index.html to /x/, so there the target is the folder.
-  ...['app', 'demo', 'book'].map((d) => `/${d}/*  /${d}/${cloudflare ? '' : 'index.html'}  200`),
-];
-writeFileSync(`${out}/_redirects`, redirects.join('\n') + '\n');
+// Netlify: proxy and single-page fallbacks as rewrite rules. Cloudflare Pages applies _redirects before it
+// looks for a file, so there both are Pages Functions instead (functions/api, functions/{app,demo,book}),
+// and _routes.json sends only those paths, minus their asset folders, to the functions.
+const spas = ['app', 'demo', 'book'];
+if (cloudflare) {
+  const files = ['assets', 'media'].flatMap((f) => spas.map((d) => `/${d}/${f}/*`));
+  const own = ['embed.js', 'icon.svg', 'manifest.webmanifest', 'sw.js'].flatMap((f) => spas.map((d) => `/${d}/${f}`));
+  writeFileSync(`${out}/_routes.json`, JSON.stringify({ version: 1, include: ['/api/*', ...spas.map((d) => `/${d}/*`)], exclude: [...files, ...own] }, null, 2) + '\n');
+} else {
+  const redirects = [api ? `/api/*  ${api}/api/:splat  200` : '/api/*  /api-offline.json  503', ...spas.map((d) => `/${d}/*  /${d}/index.html  200`)];
+  writeFileSync(`${out}/_redirects`, redirects.join('\n') + '\n');
+}
 // A real 404 for unknown paths: without one, Cloudflare Pages treats the site as a single-page app and serves
 // the home page (without its headers) for any address.
 const brand = JSON.parse(readFileSync('site/brand.json', 'utf8'));
