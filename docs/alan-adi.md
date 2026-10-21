@@ -1,11 +1,11 @@
 # monacount.com: alan adı, site ve e-posta
 
-> Site Cloudflare Pages'e taşınıyor. Taşıma adımları `docs/cloudflare-pages.md`'de. Aşağıdaki 1. ve 2. bölümler Netlify'daki geçici kurulumu anlatıyor.
+> Site 21 Ekim 2026'da Cloudflare Pages'e taşındı (`docs/cloudflare-pages.md`). Aşağıdaki 1. ve 2. bölümler artık geçersiz: Netlify'daki geçici kurulumu anlatıyorlar ve yalnızca kayıt olarak duruyorlar. `monacount.com` ve `www` kayıtlarını artık Pages yönetiyor.
 
 | Ne | Nerede |
 |---|---|
 | Alan adı | Cloudflare'da kayıtlı. DNS de Cloudflare'da |
-| Site, demo, uygulama, randevu sayfaları | Cloudflare Pages (`docs/cloudflare-pages.md`). Geçiş bitene kadar Netlify (`usta-fade`) |
+| Site, demo, uygulama, randevu sayfaları | Cloudflare Pages, proje `monacount` (`docs/cloudflare-pages.md`) |
 | API | Render. `/api/*` isteklerini Pages Function (önceden Netlify) oraya iletir |
 | Giden e-posta | Resend, `send.monacount.com` alt alanı üzerinden |
 | Gelen e-posta (`support@`) | Cloudflare Email Routing, Gmail'e yönlendirir |
@@ -59,7 +59,6 @@
   - `PUBLIC_URL=https://monacount.com`. `render.yaml` güncel; elle girilmişse panelde de değiştir.
   - `MAIL_FROM=Monacount <hello@monacount.com>`.
   - `ALERT_EMAIL` istenirse `support@monacount.com`.
-- **Netlify:** `usta-fade.netlify.app` adresinden `monacount.com`'a kalıcı yönlendirme kuralı `netlify.toml`'a eklenir. Bu kural ancak alan adı çalıştıktan sonra eklenmeli; önce eklenirse site açılmaz.
 - **Square:** Redirect URL `https://monacount.com/app/`.
 - **Plaid:** izinli alan adı ve redirect URI `https://monacount.com/app/`.
 - **Twilio:** gelen mesaj webhook'u `https://monacount.com/api/webhooks/twilio`. İmza bu adresle hesaplanıyor, bu yüzden `PUBLIC_URL` ile aynı olmalı.

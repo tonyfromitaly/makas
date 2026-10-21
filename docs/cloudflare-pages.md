@@ -21,7 +21,18 @@ npm run build:pages
 npx wrangler@4 pages dev web-dist --binding API_ORIGIN=http://127.0.0.1:3100
 ```
 
-## Kurulum (bir kez)
+## Durum (21 Ekim 2026)
+
+- Pages projesi `monacount`, `tonyfromitaly/makas` deposunun `main` dalına bağlı. Her push otomatik derlenip yayınlanır. Önizleme adresi: `monacount.pages.dev`.
+- `monacount.com` ve `www.monacount.com` Pages'e bağlı. Sertifikayı Cloudflare veriyor (Google Trust Services).
+- `www` adresi, bir yönlendirme kuralıyla (Rules → Redirect Rules) `monacount.com`'a 301 ile gider; sorgu parametreleri korunur.
+- Netlify'dan alan adı kaldırıldı. Depo zaten bağlı değildi. Netlify Forms'ta kayıtlı talep yoktu.
+- `API_ORIGIN` henüz boş, çünkü API Render'da canlı değil. Bu sürece kadar:
+  - `/api` 503 `API_OFFLINE` döner;
+  - uygulamaya giriş ve sitedeki demo formu çalışmaz; form hata mesajı gösterir, sayfadaki e-posta bağlantısı çalışır.
+  - Render açılınca: Pages → Settings → Variables and Secrets → `API_ORIGIN` = Render adresi → yeniden yayınla (Deployments → Retry).
+
+## Kurulum (bir kez, yapıldı)
 
 1. **Projeyi oluştur.** Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
    - GitHub'a izin ver ve `tonyfromitaly/makas` deposunu seç.
