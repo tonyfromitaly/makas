@@ -157,11 +157,14 @@ export function assistantClient(env: Env): Deps['assistant'] {
   };
 }
 
+/** The app shows replies as plain text: markdown emphasis the model slips in would show as asterisks. */
+export const plainText = (s: string) => s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/^#{1,6}\s+/gm, '').trim();
+
 export function chatClient(env: Env): Deps['chat'] {
   const model = modelFor(env);
   if (!model) return undefined;
-  return async (input) =>
-    model({
+  return async (input) => {
+    const reply = await model({
       json: false,
       // Claude's budget includes any thinking; the reply itself stays short (CHAT_SYSTEM).
       maxTokens: env.provider === 'anthropic' ? 2000 : 400,
@@ -174,6 +177,8 @@ export function chatClient(env: Env): Deps['chat'] {
         { role: 'user', content: JSON.stringify({ language: input.lang, shop: input.shop, currency: input.currency, snapshot: input.snapshot, memory: input.memory ?? [], question: input.question }) },
       ],
     });
+    return plainText(reply);
+  };
 }
 
 /** Reviews a quiet conversation and returns edits to the long-term notes (core/agent/AGENT.md). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alternate, assistantClient, chatClient, jsonIn, reflectClient, type Env } from '../src/assistant-llm';
+import { alternate, assistantClient, chatClient, jsonIn, plainText, reflectClient, type Env } from '../src/assistant-llm';
 import { env, llmEnv, llmName } from '../src/config';
 
 // A stand-in for the network: records each request and answers like the provider would.
@@ -138,6 +138,10 @@ describe('helpers', () => {
       { role: 'user', content: 'a\n\nb' },
       { role: 'assistant', content: 'c' },
     ]);
+  });
+  it('strips markdown the app would show as symbols', () => {
+    expect(plainText('**4 düzenli müşterin** var. __Önce__ şunu yap.\n## Başlık\nTamam.')).toBe('4 düzenli müşterin var. Önce şunu yap.\nBaşlık\nTamam.');
+    expect(plainText('3 * 4 = 12, *tek yıldız* kalır')).toBe('3 * 4 = 12, *tek yıldız* kalır');
   });
   it('finds the JSON object in a reply', () => {
     expect(jsonIn('Here you go: {"ops":[1]} thanks', '{}')).toEqual({ ops: [1] });
