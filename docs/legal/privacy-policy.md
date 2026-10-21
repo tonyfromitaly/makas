@@ -1,12 +1,12 @@
 > **DRAFT. Not reviewed by counsel. Do not publish.** Bracketed items are placeholders. See `docs/legal/README.md`.
 
-# Fade Privacy Policy (United States)
+# Monacount Privacy Policy (United States)
 
 **Effective date:** [EFFECTIVE DATE]
 
-This policy explains how [COMPANY LEGAL NAME] ("we", "us") handles personal information in connection with Fade. It covers three groups of people:
+This policy explains how [COMPANY LEGAL NAME] ("we", "us") handles personal information in connection with Monacount. It covers three groups of people:
 
-1. **Business customers:** owners and staff who use Fade.
+1. **Business customers:** owners and staff who use Monacount.
 2. **Clients of those businesses:** people who book an appointment or receive a reminder.
 3. **Website visitors.**
 
@@ -72,9 +72,9 @@ We may also disclose information:
 | Demo and application requests | Deleted within 12 months of the conversation ending |
 | Backups | Roll off within [BACKUP RETENTION] days |
 
-## 5. Clients of businesses that use Fade
+## 5. Clients of businesses that use Monacount
 
-If you booked with, or received a reminder from, a business that uses Fade:
+If you booked with, or received a reminder from, a business that uses Monacount:
 
 - That business decides what is collected and how it is used.
 - We process your information on its behalf.
@@ -121,7 +121,7 @@ If you booked with, or received a reminder from, a business that uses Fade:
 
 ## 8. Children
 
-Fade is for businesses and is not directed to children under 13. We do not knowingly collect their information.
+Monacount is for businesses and is not directed to children under 13. We do not knowingly collect their information.
 
 ## 9. International transfers
 

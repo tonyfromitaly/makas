@@ -2,7 +2,7 @@
   "name": "makas",
   "private": true,
   "version": "0.1.0",
-  "description": "Fade: berber d\u00fckk\u00e2nlar\u0131 i\u00e7in randevu defteri, g\u00fcn kazanc\u0131, bor\u00e7 defteri ve otomatik hat\u0131rlatmalar.",
+  "description": "Monacount: berber d\u00fckk\u00e2nlar\u0131 i\u00e7in randevu defteri, g\u00fcn kazanc\u0131, bor\u00e7 defteri ve otomatik hat\u0131rlatmalar.",
   "workspaces": [
     "core",
     "api",

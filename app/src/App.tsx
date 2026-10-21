@@ -108,7 +108,7 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // Replies from the Fade team show as a badge on Settings, checked every 20 seconds.
+  // Replies from the Monacount team show as a badge on Settings, checked every 20 seconds.
   useEffect(() => {
     if (phase !== 'in' || !api) return;
     const check = () => api.get<{ unread: number }>('/support/unread').then((r) => setUnread(r.unread)).catch(() => {});

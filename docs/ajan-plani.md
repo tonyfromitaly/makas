@@ -31,7 +31,7 @@ Her bulgu **kanıtlı** olur: hangi aylar, hangi kayıtlar, hangi hesap. Rakamla
 
 ## 3. Veriyi nereden alırız (mevcut sisteme entegrasyon)
 
-İşletmeyi sistemini değiştirmeye zorlamıyoruz. **Fade, mevcut sistemin üstüne oturan akıl katmanı.** İsteyen tamamen geçer, isteyen Logo ve Paraşüt'te kalır.
+İşletmeyi sistemini değiştirmeye zorlamıyoruz. **Monacount, mevcut sistemin üstüne oturan akıl katmanı.** İsteyen tamamen geçer, isteyen Logo ve Paraşüt'te kalır.
 
 | Kaynak | Nasıl alınır | Tek seferlik / sürekli |
 |---|---|---|
@@ -45,7 +45,7 @@ Her bulgu **kanıtlı** olur: hangi aylar, hangi kayıtlar, hangi hesap. Rakamla
 
 Veri **bizim veritabanımızda** tek bir şemaya oturur: gelir, gider, kategori, karşı taraf, belge, tarih. Kaynağın kimliği korunur, aynı kayıt iki kez sayılmaz.
 
-**Geri yazma ("onun sistemine entegre etmek"):** Önerilen değişiklikler önce Fade'de uygulanır: fiyat listesi, bütçe, hatırlatma, modül. Müşterinin ana programına geri yazma iki yolla olur: (1) o programın içe aktarabileceği dosya hazırlarız; (2) API olan programlarda onayla doğrudan yazarız. Mali müşavire her ay temiz bir paket gider.
+**Geri yazma ("onun sistemine entegre etmek"):** Önerilen değişiklikler önce Monacount'ta uygulanır: fiyat listesi, bütçe, hatırlatma, modül. Müşterinin ana programına geri yazma iki yolla olur: (1) o programın içe aktarabileceği dosya hazırlarız; (2) API olan programlarda onayla doğrudan yazarız. Mali müşavire her ay temiz bir paket gider.
 
 ## 4. Ajan ekibi
 
@@ -57,7 +57,7 @@ Her ajan **tek bir işte** uzman; birbirine iş devreder. Asistandaki SOUL.md ve
 | **Düzenleyici** | Kayıtları sınıflar; bankayı faturayla eşleştirir; olağan dışı kayıtları işaretler | Temiz defter |
 | **Analist** | Bulguları kodla hesaplar; enflasyon, fiyat erimesi, gider sürünmesi, nakit takvimi, kârlılık | Kanıtlı bulgu listesi |
 | **Danışman** | Bulguları önceliklendirilmiş eyleme çevirir; her birinin beklenen TL etkisini yazar | Reçete (en fazla 5 eylem) |
-| **Kurucu** | Onaylanan eylemleri uygulamada kurar: modül, fiyat, bütçe, hatırlatma | Ayarlanmış Fade |
+| **Kurucu** | Onaylanan eylemleri uygulamada kurar: modül, fiyat, bütçe, hatırlatma | Ayarlanmış Monacount |
 | **Takipçi** | Her ay çalışır; eylemlerin etkisini başlangıçla karşılaştırır | Aylık karne |
 | **Koç** | Uygulamayı ve parayı kişinin kendi rakamlarıyla öğretir | Haftalık ders, cevaplar |
 | **Saha yardımcısı** | Ziyaret öncesi bizim saha ekibine özet ve soru listesi hazırlar | Ziyaret notu |

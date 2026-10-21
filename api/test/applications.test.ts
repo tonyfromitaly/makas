@@ -60,7 +60,7 @@ describe('applications (payments off)', () => {
     expect(mails).toHaveLength(1);
     expect(mails[0].to).toBe('selim@example.com');
     expect(mails[0].text).toContain('30 günlük deneme');
-    const key = mails[0].text.match(/FADE-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)![0];
+    const key = mails[0].text.match(/MONA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)![0];
     expect(mails[0].text).toContain(`https://fade.test/app/#key=${key}`);
     expect((await call('POST', `/api/admin/signups/${id}/approve`, { token: ADMIN, body: {} })).body.error.code).toBe('NOT_PENDING');
 
@@ -87,7 +87,7 @@ describe('applications (payments off)', () => {
     expect(r.body.emailed).toBe(true);
     const mail = mails[mails.length - 1];
     expect(mail.to).toBe('elif@example.com');
-    const key = mail.text.match(/FADE-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)![0];
+    const key = mail.text.match(/MONA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)![0];
     const k = await call('POST', '/api/auth/key', { body: { key, password: 'elif-secret-12' } });
     const me = await call('GET', '/api/shops/me', { token: k.body.access_token });
     expect(me.body.shop.business_type).toBe('salon');

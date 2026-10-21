@@ -47,7 +47,7 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      # Resend: API key and a sender on a verified domain, e.g. "Fade <hello@yourdomain.com>".
+      # Resend: API key and a sender on a verified domain, e.g. "Monacount <hello@monacount.com>".
       - key: RESEND_API_KEY
         sync: false
       - key: MAIL_FROM

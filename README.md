@@ -1,4 +1,4 @@
-# Fade ✂️
+# Monacount
 
 **Berber dükkânı sahibinin telefonunda tek ekran: randevu defteri, gün kazancı, müşteri veresiye defteri ve otomatik WhatsApp/SMS hatırlatmaları.**
 
@@ -25,7 +25,7 @@ Canlıda asistan Claude (Anthropic) ile çalışır. DeepSeek yerel çalışma v
 
 Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldüğü: [docs/asistan-egitimi.md](docs/asistan-egitimi.md). GitHub Pages'teki canlı demo statik bir sayfa olduğu için anahtar taşıyamaz; orada her zaman yerleşik kural motoru çalışır.
 
-## Web sitesi (Usta · Fade)
+## Web sitesi (Mona Mile Lab · Monacount)
 
 `site/` tek sayfalık tanıtım sitesi: buğulu ayna (silince uygulama görünür), "Kimin için" sekmeleri (berber, kuaför, güzellik, sırada ne var), kaydırınca değişen telefon anlatımı, nasıl başlarız, güvenlik, hakkında ve **Demo talep et** formu (Netlify Forms). Marka adı, ürün adı ve e-posta tek dosyada: `site/brand.json`.
 
@@ -39,7 +39,7 @@ Asistanın neyi bildiği, hangi kurallara bağlı olduğu ve nasıl ölçüldü�
 Gerçek uygulama kilitlidir: içeri yalnızca hesabı ya da **erişim anahtarı** olan girer, herkese açık "dükkân aç" kapalıdır.
 
 1. Kişi web sitesindeki (`/`) **Abone ol** formunu doldurur ve Stripe'ın güvenli sayfasında öder.
-2. Stripe ödemeyi onaylayınca sistem dükkânı açar ve tek kullanımlık bir anahtar (`FADE-XXXX-XXXX-XXXX`) üretir.
+2. Stripe ödemeyi onaylayınca sistem dükkânı açar ve tek kullanımlık bir anahtar (`MONA-XXXX-XXXX-XXXX`) üretir.
 3. Resend, kişinin dilinde, uygulama linki ve anahtar içeren bir hoş geldin e-postası gönderir.
 4. Kişi linke dokunur, anahtar otomatik dolar, şifresini belirler ve içeri girer.
 5. Ödeme durursa kilit ekranı açılır; "Aboneliği yenile" Stripe portalına götürür, ödeme düzelince kilit kendiliğinden kalkar.

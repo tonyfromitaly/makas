@@ -35,37 +35,37 @@ type L = 'tr' | 'en' | 'es';
 
 const COPY: Record<L, { subject: string; hello: string; ready: string; readyTrial: string; step1: string; step2: string; button: string; keyLabel: string; expires: string; help: string }> = {
   tr: {
-    subject: 'Fade hazır: {shop} için giriş anahtarın',
+    subject: 'Monacount hazır: {shop} için giriş anahtarın',
     hello: 'Merhaba {name},',
-    ready: 'Aboneliğin başladı ve {shop} Fade’de hazır. Defterin, bağlantıların, Röntgen’in ve AI asistanın seni bekliyor.',
-    readyTrial: 'Başvurun onaylandı: {shop} Fade’de hazır ve {days} günlük deneme sürün başladı. Defterin, bağlantıların, Röntgen’in ve AI asistanın seni bekliyor.',
+    ready: 'Aboneliğin başladı ve {shop} Monacount’ta hazır. Defterin, bağlantıların, Röntgen’in ve AI asistanın Mona seni bekliyor.',
+    readyTrial: 'Başvurun onaylandı: {shop} Monacount’ta hazır ve {days} günlük deneme sürün başladı. Defterin, bağlantıların, Röntgen’in ve AI asistanın Mona seni bekliyor.',
     step1: 'Aşağıdaki düğmeye bas; anahtarın otomatik dolar.',
     step2: 'Kendine bir şifre belirle. Hepsi bu: dükkânın açık.',
-    button: 'Fade’i aç',
+    button: 'Monacount’u aç',
     keyLabel: 'Erişim anahtarın',
     expires: 'Anahtar tek kullanımlıktır ve 14 gün geçerlidir. Bu e-postayı kimseyle paylaşma.',
     help: 'Bir sorun olursa uygulamadaki Ayarlar > Bize yaz’dan bize ulaş.',
   },
   en: {
-    subject: 'Fade is ready: your access key for {shop}',
+    subject: 'Monacount is ready: your access key for {shop}',
     hello: 'Hi {name},',
-    ready: 'Your subscription is active and {shop} is ready on Fade. Your books, connections, X-ray and AI assistant are waiting.',
-    readyTrial: 'You’re approved: {shop} is ready on Fade and your {days}-day trial has started. Your books, connections, X-ray and AI assistant are waiting.',
+    ready: 'Your subscription is active and {shop} is ready on Monacount. Your books, connections, X-ray and Mona, your AI assistant, are waiting.',
+    readyTrial: 'You’re approved: {shop} is ready on Monacount and your {days}-day trial has started. Your books, connections, X-ray and Mona, your AI assistant, are waiting.',
     step1: 'Tap the button below; your key is filled in for you.',
     step2: 'Choose a password. That’s it: your shop is open.',
-    button: 'Open Fade',
+    button: 'Open Monacount',
     keyLabel: 'Your access key',
     expires: 'The key works once and expires in 14 days. Don’t share this e-mail.',
     help: 'If anything goes wrong, reach us from Settings > Tell us in the app.',
   },
   es: {
-    subject: 'Fade está listo: tu clave de acceso para {shop}',
+    subject: 'Monacount está listo: tu clave de acceso para {shop}',
     hello: 'Hola {name}:',
-    ready: 'Tu suscripción está activa y {shop} ya está en Fade. Tus libros, tus conexiones, la radiografía y tu asistente de IA te esperan.',
-    readyTrial: 'Tu solicitud fue aprobada: {shop} ya está en Fade y empezó tu prueba de {days} días. Tus libros, tus conexiones, la radiografía y tu asistente de IA te esperan.',
+    ready: 'Tu suscripción está activa y {shop} ya está en Monacount. Tus libros, tus conexiones, la radiografía y Mona, tu asistente de IA, te esperan.',
+    readyTrial: 'Tu solicitud fue aprobada: {shop} ya está en Monacount y empezó tu prueba de {days} días. Tus libros, tus conexiones, la radiografía y Mona, tu asistente de IA, te esperan.',
     step1: 'Pulsa el botón de abajo; tu clave se rellena sola.',
     step2: 'Elige una contraseña. Listo: tu barbería está abierta.',
-    button: 'Abrir Fade',
+    button: 'Abrir Monacount',
     keyLabel: 'Tu clave de acceso',
     expires: 'La clave sirve una sola vez y caduca en 14 días. No compartas este correo.',
     help: 'Si algo falla, escríbenos desde Ajustes > Escríbenos en la app.',
@@ -85,7 +85,7 @@ export function welcomeEmail(p: { to: string; name: string; shop: string; key: s
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fffdf8;border:1px solid #e2d9c7;border-radius:20px;overflow:hidden">
 <tr><td style="height:8px;background:repeating-linear-gradient(-45deg,#b8322a 0 10px,#f4efe4 10px 16px,#2c4f7c 16px 26px,#f4efe4 26px 32px)"></td></tr>
-<tr><td style="padding:28px 28px 8px"><div style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#a8741c">✂ Fade</div></td></tr>
+<tr><td style="padding:28px 28px 8px"><div style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#a8741c">Monacount</div></td></tr>
 <tr><td style="padding:8px 28px 0;font-size:16px;line-height:1.55">
 <p style="margin:0 0 12px">${esc(fill(c.hello))}</p>
 <p style="margin:0 0 18px">${esc(fill(ready))}</p>

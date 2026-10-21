@@ -106,7 +106,7 @@ export function squareSimulasyon(o: { now: Date; gun?: number; seed?: number } =
     ...URUN.map((u) => ({ type: 'ITEM', id: u.id.slice(4), item_data: { name: u.ad, product_type: 'REGULAR', variations: [{ id: u.id }] } })),
   ];
   return {
-    ad: 'Fade Studio (simülasyon)',
-    ham: { locations: [{ id: 'LSIM', name: 'Fade Studio', timezone: tz, status: 'ACTIVE' }], orders, payments, refunds, customers, items, bookings },
+    ad: 'Northside Studio (simülasyon)',
+    ham: { locations: [{ id: 'LSIM', name: 'Northside Studio', timezone: tz, status: 'ACTIVE' }], orders, payments, refunds, customers, items, bookings },
   };
 }

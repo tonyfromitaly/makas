@@ -20,7 +20,7 @@ Her modelde ortak olanlar:
 - **Kartla ödeme**: POS komisyonu kimden düşülecek, dükkândan dükkâna değişiyor.
 - **Nakit ağırlıklı**: akşam kasa sayımı ve "kasada olması gereken" ile "kasada olan" farkı en büyük derttir.
 
-Not: Türkiye'de 2026 itibarıyla büyükşehirlerdeki birçok basit usul esnafı gerçek usule geçti. Defter yükümlülüğü ve kalfanın SGK durumu bir mali müşavirle netleşmeli. Fade **muhasebe programının yerine geçmiyor**; mali müşavire verilecek temiz bir özet üretiyor.
+Not: Türkiye'de 2026 itibarıyla büyükşehirlerdeki birçok basit usul esnafı gerçek usule geçti. Defter yükümlülüğü ve kalfanın SGK durumu bir mali müşavirle netleşmeli. Monacount **muhasebe programının yerine geçmiyor**; mali müşavire verilecek temiz bir özet üretiyor.
 
 ## Önerilen ürün
 

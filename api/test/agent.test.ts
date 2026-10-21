@@ -35,12 +35,12 @@ describe('setup applied to the shop', () => {
     const s = await t.registerShop('Lale Kafe');
     const r = await t.call('POST', '/shops/me/setup', { token: s.token, body: kafe });
     expect(r.status).toBe(200);
-    expect(r.body.agent_name).toBe('Lale Kafe asistanı');
+    expect(r.body.agent_name).toBe('Mona · Lale Kafe');
     expect(r.body.modules).toEqual(expect.arrayContaining(['defter', 'satis', 'stok', 'personel', 'rontgen']));
     expect(r.body.modules).not.toContain('veresiye');
     expect(r.body.modules).not.toContain('randevu');
     const me = (await t.call('GET', '/shops/me', { token: s.token })).body.shop;
-    expect(me).toMatchObject({ set_up: true, agent_name: 'Lale Kafe asistanı', look: { skin: 'cini' } });
+    expect(me).toMatchObject({ set_up: true, agent_name: 'Mona · Lale Kafe', look: { skin: 'cini' } });
     const agent = (await t.call('GET', '/shops/me/agent', { token: s.token })).body;
     expect(agent.soul).toContain('Lale Kafe için çalışan asistanım');
     expect(agent.md).toContain('Stok uyarısı');

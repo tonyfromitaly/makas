@@ -135,10 +135,10 @@ export function generateAccessKey() {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
   const chars = Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join('');
-  return `FADE-${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8, 12)}`;
+  return `MONA-${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8, 12)}`;
 }
 
-/** "fade xxxx-xxxx xxxx" and "FADE-XXXX-XXXX-XXXX" are the same key. */
+/** "mona xxxx-xxxx xxxx" and "MONA-XXXX-XXXX-XXXX" are the same key. */
 export const normalizeKey = (key: string) => key.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 /** Issues a one-time access key for the owner; only its hash is stored. */

@@ -11,7 +11,7 @@ interface Msg {
 
 const POLL_MS = 5000;
 
-/** "Bize yaz": the shop's live thread with the Fade team. Polls while open, so replies land within seconds. */
+/** "Bize yaz": the shop's live thread with the Monacount team. Polls while open, so replies land within seconds. */
 export function SupportChat() {
   const { api, t, lang, fail, markSupportRead } = useApp();
   const [msgs, setMsgs] = useState<Msg[] | null>(null);

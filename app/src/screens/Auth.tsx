@@ -16,7 +16,7 @@ interface Meta {
   site_url: string | null;
 }
 
-/** "#key=FADE-…" from the welcome e-mail opens straight into the access-key form. */
+/** "#key=MONA-…" from the welcome e-mail opens straight into the access-key form. */
 function keyFromHash() {
   const m = location.hash.match(/^#key=(.+)$/);
   return m ? decodeURIComponent(m[1]) : '';
@@ -88,7 +88,7 @@ export function Auth({ api, t, lang, setLang, onIn }: { api: Client; t: T; lang:
           <>
             <p className="muted small">{t('keyHint')}</p>
             <Field label={t('accessKey')}>
-              <input value={f.key} onChange={set('key')} required placeholder="FADE-XXXX-XXXX-XXXX" autoCapitalize="characters" spellCheck={false} className="key-input" />
+              <input value={f.key} onChange={set('key')} required placeholder="MONA-XXXX-XXXX-XXXX" autoCapitalize="characters" spellCheck={false} className="key-input" />
             </Field>
           </>
         ) : (

@@ -1,4 +1,4 @@
-# Fade AI asistanının eğitimi
+# Monacount asistanı Mona’nın eğitimi
 
 Asistan, berberin gün içinde söylediği ya da yazdığı her şeyi doğru yere işleyen ve dükkânın rakamlarını soran berbere cevap veren yardımcıdır. Bu doküman ona ne öğrettiğimizi, hangi kurallara bağlı olduğunu ve nasıl ölçtüğümüzü anlatır.
 

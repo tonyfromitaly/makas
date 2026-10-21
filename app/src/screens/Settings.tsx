@@ -134,7 +134,7 @@ export function Settings() {
         </button>
         {isOwner && <DeleteShop />}
       </section>
-      <p className="muted small center">Fade v0.2 · {me.user.email}</p>
+      <p className="muted small center">Monacount v0.2 · {me.user.email}</p>
     </div>
   );
 }

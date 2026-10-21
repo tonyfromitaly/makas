@@ -13,7 +13,8 @@ Bu klasördeki dört metin, avukatla konuşmayı hızlandırmak için yazılmı�
 
 Şirket kurulunca doldurulacaklar:
 
-- `[COMPANY LEGAL NAME]`, `[STATE]`, `[ADDRESS]`;
+- `[COMPANY LEGAL NAME]`: kurulacak şirket (çalışma adı Mona Mile Lab, ör. "Mona Mile Lab LLC"). Ürün adı Monacount, asistanın adı Mona; şirket adı ürün adından ayrı tutuluyor;
+- `[STATE]`, `[ADDRESS]`;
 - `[SUPPORT EMAIL]`, `[PRIVACY EMAIL]`;
 - `[EFFECTIVE DATE]`;
 - `[REGION]`: Render bölgesi;
@@ -31,6 +32,18 @@ Bu klasördeki dört metin, avukatla konuşmayı hızlandırmak için yazılmı�
 5. **Eyalet gizlilik yasaları.** Küçük bir şirket olarak çoğu eyaletin eşiğinin altında kalırız. Yine de işleyici olarak DPA şart. Metin yeterli mi?
 6. **Yurt dışı.** Kurucu Türkiye'de. Veriye Türkiye'den erişim "uluslararası aktarım" sayılır mı, gizlilik politikasında nasıl yazılmalı?
 7. **Sigorta.** Siber sorumluluk ve E&O poliçesi hangi limitte olmalı?
+8. **MONACOUNT marka başvurusu.**
+   - USPTO'da 21 Ekim 2026'da "MONACOUNT" için hiç kayıt yoktu: ne canlı ne ölü.
+   - Kısa bir ön araştırma (clearance search) yapılsın.
+   - Sınıf 42 (SaaS) ve gerekirse sınıf 9 (yazılım) için "intent-to-use" başvurusu yapılsın. Domain alındı: monacount.com.
+9. **"MONA" adı ve biyoteknoloji başvurusu.**
+   - Asistanın adı Mona. "MONA" kelimesi USPTO'da çok kalabalık (186 kayıt).
+   - Bize en yakın olan: seri no **99057790**, sahibi Stämm Vegh Corporation (San Francisco). Şubat 2025'te "intent-to-use" olarak yapılmış, sınıf 9, şu an askıda.
+   - Kapsamı biyoteknolojide veri yönetimi ve yapay zekâ yazılımı, ama bazı ifadeleri geniş ("data management", "AI software").
+   - Sorular:
+     - "Mona"yı yalnızca ürün içindeki asistan adı olarak ("Ask Mona", MONACOUNT markasının parçası) kullanmak bu başvuruyla çakışır mı?
+     - "MONA"yı tek başına tescile çalışmamak doğru mu?
+   - Finans, muhasebe, randevu ya da kasa yazılımında "MONA" kaydı çıkmadı.
 
 ## Kodda ve hesaplarda yapılanlar, yapılacaklar
 

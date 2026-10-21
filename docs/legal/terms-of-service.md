@@ -1,16 +1,16 @@
 > **DRAFT. Not reviewed by counsel. Do not publish.** Bracketed items are placeholders. See `docs/legal/README.md` for the open questions.
 
-# Fade Terms of Service
+# Monacount Terms of Service
 
 **Effective date:** [EFFECTIVE DATE]
 
-These Terms of Service ("Terms") are an agreement between [COMPANY LEGAL NAME], a [STATE] limited liability company ("we", "us"), and the business that signs up for Fade ("you", "Customer"). They cover the Fade website, web app, staff app, online booking page and assistant (together, the "Service").
+These Terms of Service ("Terms") are an agreement between [COMPANY LEGAL NAME], a [STATE] limited liability company ("we", "us"), and the business that signs up for Monacount ("you", "Customer"). They cover the Monacount website, web app, staff app, online booking page and assistant (together, the "Service").
 
 By creating an account, or by clicking to accept, you agree to these Terms on behalf of your business. You confirm that you have authority to do so.
 
 ## 1. The Service
 
-Fade is software for small service businesses. It provides:
+Monacount is software for small service businesses. It provides:
 
 - appointments and online booking;
 - a client list and appointment reminders;
@@ -18,7 +18,7 @@ Fade is software for small service businesses. It provides:
 - books of income and expenses;
 - connections to tools you already use, such as Square and your bank through Plaid;
 - the X-ray (Röntgen) business report;
-- an AI assistant.
+- an AI assistant called Mona.
 
 We may change, add or remove features. If we remove a feature you materially rely on, we will tell you in advance where we reasonably can.
 
@@ -44,10 +44,10 @@ We may change, add or remove features. If we remove a feature you materially rel
 
 ## 4. Messages to your clients
 
-Fade can send appointment reminders to your clients by SMS or WhatsApp. You agree to the following:
+Monacount can send appointment reminders to your clients by SMS or WhatsApp. You agree to the following:
 
-1. **Consent.** You will send messages only to clients who have given you consent to receive them, and you will record that consent in Fade. Clients who book through your Fade booking page give consent by ticking the reminder box.
-2. **Message type.** You will use reminders for transactional messages about the client's own appointments, not for marketing. Marketing messages, such as promotions or "we miss you" messages, require separate, prior express written consent. Do not send them through Fade unless and until we offer a feature built for that.
+1. **Consent.** You will send messages only to clients who have given you consent to receive them, and you will record that consent in Monacount. Clients who book through your Monacount booking page give consent by ticking the reminder box.
+2. **Message type.** You will use reminders for transactional messages about the client's own appointments, not for marketing. Marketing messages, such as promotions or "we miss you" messages, require separate, prior express written consent. Do not send them through Monacount unless and until we offer a feature built for that.
 3. **Compliance.** You will comply with:
    - the Telephone Consumer Protection Act (TCPA);
    - the CTIA Messaging Principles and Best Practices;
@@ -66,7 +66,7 @@ You are the sender of these messages and are responsible for having consent. We 
 
 ## 6. AI assistant and reports
 
-- The assistant, the X-ray report and cash forecasts are aids to your own judgment. They can be wrong.
+- Mona (the assistant), the X-ray report and cash forecasts are aids to your own judgment. They can be wrong.
 - Totals and balances are calculated from your records, not invented by the AI. Even so, verify anything important before you act on it.
 - Nothing in the Service is tax, legal, accounting or investment advice.
 - The assistant drafts records, such as appointments and book entries. It writes them only after you confirm.

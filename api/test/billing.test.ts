@@ -99,7 +99,7 @@ describe('billing: website subscription → shop → e-mail → access key', () 
     const mail = mails[0];
     expect(mail.to).toBe('kemal@example.com');
     expect(mail.subject).toContain('Berber Kemal');
-    key = mail.text.match(/FADE-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)![0];
+    key = mail.text.match(/MONA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)![0];
     expect(mail.text).toContain(`https://fade.test/app/#key=${key}`);
 
     // Stripe retries the same webhook: nothing is created twice.
@@ -147,6 +147,6 @@ describe('billing: website subscription → shop → e-mail → access key', () 
   it('the operator can issue a fresh key for a lost e-mail', async () => {
     const shop = (await db.query(`select id from shops where name = 'Berber Kemal'`)).rows[0];
     const r = await call('POST', `/api/admin/shops/${shop.id}/access-key`, { token: 'test-admin-key' });
-    expect(r.body.key).toMatch(/^FADE-/);
+    expect(r.body.key).toMatch(/^MONA-/);
   });
 });

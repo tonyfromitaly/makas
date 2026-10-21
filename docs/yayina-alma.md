@@ -1,4 +1,4 @@
-# Fade'i yayına almak: Netlify + Render (+ Resend, sonra Stripe)
+# Monacount'u yayına almak: Netlify + Render (+ Resend, sonra Stripe)
 
 **Güncel düzen:** web sitesi, demo ve uygulama Netlify'da (`https://usta-fade.netlify.app`); API ve veritabanı Render'da. Netlify, `/api/*` isteklerini Render'a yönlendirir; kullanıcı tek adres görür.
 
@@ -19,7 +19,7 @@ web sitesi (/)  →  "Abone ol" formu  →  Stripe ödeme sayfası
                Stripe webhook  →  /api/billing/webhook  →  dükkân + sahip hesabı + erişim anahtarı
                                                                      │
                                                                      ▼
-                                     Resend  →  "Fade hazır" e-postası (link + FADE-XXXX-XXXX-XXXX)
+                                     Resend  →  "Monacount hazır" e-postası (link + MONA-XXXX-XXXX-XXXX)
                                                                      │
                                                                      ▼
                                      /app/#key=…  →  şifre belirle  →  dükkân açık
@@ -39,7 +39,7 @@ Stripe hazır olduğunda yalnızca üç anahtarı girersin; form kendiliğinden 
 ## 1. Stripe (ödeme)
 
 1. https://dashboard.stripe.com adresinde hesap aç. Önce **Test modu**nda çalış (sağ üstteki anahtar).
-2. **Ürün kataloğu → Ürün ekle**: ad `Fade Pro`, fiyat örneğin `29 USD`, **Yinelenen / Aylık**. Kaydettikten sonra fiyatın kimliğini kopyala (`price_...`). Bu `STRIPE_PRICE_ID` olacak.
+2. **Ürün kataloğu → Ürün ekle**: ad `Monacount Pro`, fiyat örneğin `29 USD`, **Yinelenen / Aylık**. Kaydettikten sonra fiyatın kimliğini kopyala (`price_...`). Bu `STRIPE_PRICE_ID` olacak.
 3. **Geliştiriciler → API anahtarları**: gizli anahtarı kopyala (`sk_test_...`). Bu `STRIPE_SECRET_KEY` olacak.
 4. **Ayarlar → Faturalandırma → Müşteri portalı**: portalı etkinleştir (kart değişikliği, fatura geçmişi, iptal). Uygulamadaki "Aboneliği yönet" düğmesi bu portala gider.
 5. Webhook'u 3. adımdan sonra, Render adresin belli olunca kuracağız.
@@ -48,7 +48,7 @@ Stripe hazır olduğunda yalnızca üç anahtarı girersin; form kendiliğinden 
 
 1. https://resend.com adresinde hesap aç ve **API Keys → Create** ile bir anahtar al (`re_...`). Bu `RESEND_API_KEY` olacak.
 2. **Domains → Add domain** ile kendi alan adını ekle ve DNS kayıtlarını gir. Alan adı doğrulanmadan Resend yalnızca senin hesap e-postana gönderim yapar; müşterilere göndermek için doğrulanmış alan adı şart.
-3. `MAIL_FROM` değerini `Fade <merhaba@alanadin.com>` gibi ayarla.
+3. `MAIL_FROM` değerini `Monacount <merhaba@alanadin.com>` gibi ayarla.
 
 ## 3. Render (sunucu ve veritabanı)
 
@@ -75,7 +75,7 @@ Alan adı doğrulanmadan Resend yalnızca hesabını açtığın e-postaya gönd
 ## 6. Dene
 
 1. Siteyi aç, formu doldur, Stripe test kartıyla öde: `4242 4242 4242 4242`, ileri bir tarih, herhangi bir CVC.
-2. E-postana "Fade hazır" gelir (alan adı doğrulanmadıysa yalnızca Resend hesabının e-postasına). Linke dokun, şifreni belirle, içeridesin.
+2. E-postana "Monacount hazır" gelir (alan adı doğrulanmadıysa yalnızca Resend hesabının e-postasına). Linke dokun, şifreni belirle, içeridesin.
 3. Stripe'ta aboneliği iptal et ya da ödemeyi başarısız yap: uygulama kilit ekranına düşer. Ödeme düzelince kilit kendiliğinden açılır.
 4. Gerçek ödemeye geçmek için Stripe'ı **Canlı mod**a al; canlı moddaki fiyat kimliği, gizli anahtar ve webhook sırrıyla Render'daki değerleri değiştir.
 

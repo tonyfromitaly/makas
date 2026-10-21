@@ -57,7 +57,7 @@ const T = {
     soulTitle: (a: string) => `# SOUL.md — ${a}`,
     soulNote: '> Bu dosya ajanın karakteridir. Kurulum sihirbazı cevaplarına göre yazdı; istediğin zaman düzenleyebilirsin.',
     who: '## Kim olduğum',
-    whoTail: 'Patron değilim, muhasebeci de değilim. İşin yanında duran, her şeyi hatırlayan, az konuşan bir yardımcıyım.',
+    whoTail: 'Adım Mona. Patron değilim, muhasebeci de değilim. İşin yanında duran, her şeyi hatırlayan, az konuşan bir yardımcıyım.',
     how: '## Nasıl konuşurum',
     howSamimi: (s: string) => [`${s} ile kısa ve sıcak konuşurum: "Yazdım, bir bak", "Bu hafta kira daha ödenmedi."`, 'Bir cevapta tek bir iş yaparım. Sorulmadan uzun tavsiye vermem.'],
     howResmi: (s: string) => [`${s} ile kısa, açık ve saygılı konuşurum. Gereksiz ayrıntı vermem.`, 'Bir cevapta tek bir iş yaparım. Sorulmadan uzun tavsiye vermem.'],
@@ -111,13 +111,13 @@ const T = {
     warnNoBank: 'Banka bağlı değil: kasa ve nakit tahminleri yalnızca girilen kayıtlara dayanır.',
     warnYerel: 'Yerel model için bilgisayarda en az 16 GB bellek önerilir.',
     because: { her: 'Her kurulumda var', sablon: 'İşletme türün için', dert: (d: string) => `"${d}" için`, ekip: 'Ekibin var', kapali: 'Kapalı; istersen açarsın' },
-    agentName: (i: string) => `${i} asistanı`,
+    agentName: (i: string) => `Mona · ${i}`,
   },
   en: {
     soulTitle: (a: string) => `# SOUL.md — ${a}`,
     soulNote: '> This file is the agent’s character. The setup wizard wrote it from your answers; edit it any time.',
     who: '## Who I am',
-    whoTail: 'I’m not the boss and not the accountant. I’m the helper who stands next to the work, remembers everything and says little.',
+    whoTail: 'My name is Mona. I’m not the boss and not the accountant. I’m the helper who stands next to the work, remembers everything and says little.',
     how: '## How I talk',
     howSamimi: (s: string) => [`I talk with ${s} briefly and warmly: "Done, have a look", "Rent isn’t paid yet this week."`, 'One job per answer. No long advice unless asked.'],
     howResmi: (s: string) => [`I talk with ${s} briefly, clearly and politely. No needless detail.`, 'One job per answer. No long advice unless asked.'],
@@ -171,7 +171,7 @@ const T = {
     warnNoBank: 'No bank connected: cash forecasts rest only on the records entered.',
     warnYerel: 'For the local model, at least 16 GB of memory is recommended.',
     because: { her: 'In every setup', sablon: 'For your kind of business', dert: (d: string) => `For "${d}"`, ekip: 'You have a team', kapali: 'Off; switch it on if you like' },
-    agentName: (i: string) => `${i} assistant`,
+    agentName: (i: string) => `Mona · ${i}`,
   },
 };
 

@@ -1,8 +1,8 @@
 > **DRAFT. Not reviewed by counsel. Do not publish.** Bracketed items are placeholders. This page is also what the A2P 10DLC campaign registration links to as the "terms" URL.
 
-# Fade Appointment Reminders: SMS Terms
+# Monacount Appointment Reminders: SMS Terms
 
-**Program.** Appointment reminders from the business you booked with, sent through Fade by [COMPANY LEGAL NAME].
+**Program.** Appointment reminders from the business you booked with, sent through Monacount by [COMPANY LEGAL NAME].
 
 **What you'll get.**
 
@@ -27,7 +27,7 @@ Consent is not a condition of booking or of any purchase.
 - Reply **HELP** to any message, or contact the business directly.
 - For questions about the program, write to [SUPPORT EMAIL].
 
-**Costs.** Message and data rates may apply. Fade does not charge you for reminders.
+**Costs.** Message and data rates may apply. Monacount does not charge you for reminders.
 
 **Carriers.** Carriers are not liable for delayed or undelivered messages.
 
@@ -45,7 +45,7 @@ Consent is not a condition of booking or of any purchase.
 | Keyword | Reply |
 |---|---|
 | STOP, CANCEL, END, QUIT, UNSUBSCRIBE, STOPALL | "You're unsubscribed from appointment reminders and won't receive more messages. To get them again, ask the business you booked with." |
-| HELP, INFO | "Fade appointment reminders for the business you booked with. Up to 2 msgs per appointment. Msg & data rates may apply. Reply STOP to opt out. Help: [SUPPORT EMAIL]" |
+| HELP, INFO | "Monacount appointment reminders for the business you booked with. Up to 2 msgs per appointment. Msg & data rates may apply. Reply STOP to opt out. Help: [SUPPORT EMAIL]" |
 | START, YES, UNSTOP | "To get reminders again, ask the business you booked with. Reply HELP for help." |
 
-Fade revokes consent on STOP. START only lifts the carrier-side block; it does not turn reminders back on. That needs new consent recorded by the business, so the reply says so.
+Monacount revokes consent on STOP. START only lifts the carrier-side block; it does not turn reminders back on. That needs new consent recorded by the business, so the reply says so.

@@ -15,7 +15,7 @@ export function Hero({ t, children }: { t: T; children: ReactNode }) {
       <div className="hero-inner">
         <section className="hero-copy">
           <span className="hero-mark">
-            <Icon name="scissors" size={22} /> Fade
+            <Icon name="scissors" size={22} /> Monacount
           </span>
           <h1 className="hero-title">
             {t('heroA')}

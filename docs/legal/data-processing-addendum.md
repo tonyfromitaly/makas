@@ -1,12 +1,12 @@
 > **DRAFT. Not reviewed by counsel. Do not publish.** Bracketed items are placeholders. See `docs/legal/README.md`.
 
-# Fade Data Processing Addendum
+# Monacount Data Processing Addendum
 
-This Data Processing Addendum ("DPA") forms part of the Fade Terms of Service between [COMPANY LEGAL NAME] ("Processor", "we") and the Customer ("Business", "you"). It applies when we process personal information on your behalf.
+This Data Processing Addendum ("DPA") forms part of the Monacount Terms of Service between [COMPANY LEGAL NAME] ("Processor", "we") and the Customer ("Business", "you"). It applies when we process personal information on your behalf.
 
 ## 1. Roles
 
-- You are the business (controller) for personal information about your clients and staff that you put into Fade or bring in through a connection ("Client Personal Information").
+- You are the business (controller) for personal information about your clients and staff that you put into Monacount or bring in through a connection ("Client Personal Information").
 - We are your service provider, also called processor or contractor (the terms used in the CCPA/CPRA and other U.S. state privacy laws).
 
 ## 2. What we process

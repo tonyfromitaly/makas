@@ -53,7 +53,7 @@ export const env = {
   stripePriceId: process.env.STRIPE_PRICE_ID ?? '',
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
   resendApiKey: process.env.RESEND_API_KEY ?? '',
-  mailFrom: process.env.MAIL_FROM || 'Fade <onboarding@resend.dev>',
+  mailFrom: process.env.MAIL_FROM || 'Monacount <onboarding@resend.dev>',
   // Reminder sending (docs/hatirlatma-gonderimi.md). WhatsApp: Meta Cloud API; SMS: Twilio.
   whatsappToken: process.env.WHATSAPP_TOKEN ?? '',
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? '',
