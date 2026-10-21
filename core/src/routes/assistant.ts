@@ -233,8 +233,8 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
       );
       if (svc) parts.push(r.say('summary_service', { name: svc.name, n: svc.n }));
       if (running) parts.push(r.say(`summary_running_${unit}`));
-      // The owner also hears the agent's most important note (written in Turkish for now).
-      if (ctx.role === 'owner' && l === 'tr') {
+      // The owner also hears the agent's most important note, when it is written in the language asked in.
+      if (ctx.role === 'owner' && l === shop.language) {
         const sig = await one(
           `select title from agent_signals where shop_id = $1 and dismissed_at is null and resolved_at is null and severity = 'yuksek'
             order by effect desc nulls last limit 1`,
@@ -724,7 +724,7 @@ export const assistantRoutes: Route[] = [
           ).rows;
       const today = day.toISODate()!;
       const parts = [r.say('brief_hello', { name: user?.name?.split(' ')[0] ?? '' })];
-      parts.push(a.n ? r.say('brief_appts', { n: a.n, left: a.left }) : r.say('brief_no_appts'));
+      parts.push(a.n ? r.say(a.n === 1 ? 'brief_appts_one' : 'brief_appts', { n: a.n, left: a.left }) : r.say('brief_no_appts'));
       if (Number(till)) parts.push(r.say('brief_till', { amount: r.money(Number(till)) }));
       if (tasks.length)
         parts.push(
@@ -734,8 +734,8 @@ export const assistantRoutes: Route[] = [
               .join('; '),
           }),
         );
-      // The owner also hears the agent's most important note (Röntgen and the cash forecast write them
-      // in Turkish for now, so the English and Spanish briefs leave it to the Today screen).
+      // The owner also hears the agent's most important note (Röntgen and the cash forecast write them in
+      // the shop's language).
       let signal = null;
       if (ctx.role === 'owner') {
         if (await isaretlerEskiMi(ctx.db, ctx.shopId, ctx.now)) await isaretleriGuncelle(ctx.db, ctx.shopId, ctx.now);
@@ -746,7 +746,8 @@ export const assistantRoutes: Route[] = [
             [ctx.shopId],
           )
         ).rows[0] ?? null;
-        if (signal && l === 'tr') parts.push(`${signal.title}.`);
+        // Notes are written in the shop's language; a brief asked in another leaves it to the Today screen.
+        if (signal && l === shop.language) parts.push(`${signal.title}.`);
       }
       return { reply: parts.join(' '), tasks, signal };
     },

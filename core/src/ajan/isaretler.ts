@@ -4,9 +4,9 @@
 // whose cause is gone is marked resolved.
 import type { Queryable } from '../db';
 import { rontgenVerisi } from '../baglanti/esitle';
-import { rontgen, paraBicim, ayAdi } from '../rontgen/motor';
+import { rontgen, ayAdi } from '../rontgen/motor';
 import { nakitTahmini } from '../rontgen/tahmin';
-import { ek } from '../rontgen/ek';
+import { metin } from '../rontgen/metin';
 
 export interface Isaret {
   key: string;
@@ -33,15 +33,15 @@ const ACTION: Record<string, Isaret['action']> = {
   'pos': { type: 'open', tab: 'books', filter: 'expense' },
 };
 
-const TR_AY = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-const gunAdi = (iso: string) => `${Number(iso.slice(8, 10))} ${TR_AY[Number(iso.slice(5, 7)) - 1]}`;
-
 /** Computes the notes from everything we hold for the shop. */
 export async function isaretleriHesapla(tx: Queryable, shopId: string, now: Date): Promise<Isaret[]> {
   const v = await rontgenVerisi(tx, shopId);
   if (!v.kayitlar.length) return [];
   const out: Isaret[] = [];
-  const tl = paraBicim(v.para);
+  // The notes are written in the shop's own language.
+  const M = metin(v.dil, v.para);
+  const { tl } = M;
+  const N = M.nakit;
 
   // 1. The cash forecast, when today's balance is known (a connected bank).
   const bank = (await tx.query(`select meta->'kasa' as kasa from connections where shop_id = $1 and provider = 'plaid' and status <> 'disconnected'`, [shopId])).rows[0];
@@ -49,23 +49,23 @@ export async function isaretleriHesapla(tx: Queryable, shopId: string, now: Date
     const bugun = now.toISOString().slice(0, 10);
     const f = nakitTahmini(v.kayitlar, Number(bank.kasa.tutar), bugun);
     const kanit = [
-      { etiket: 'Bugün kasada', deger: tl(f.kasa) },
-      { etiket: 'Günlük ortalama (son 8 hafta)', deger: `${f.gunlukNet >= 0 ? '+' : ''}${tl(f.gunlukNet)}` },
-      ...f.sabit.slice(0, 4).map((s) => ({ etiket: `${s.karsi} · her ayın ${s.gun}${ek(s.gun, 'i')}`, deger: tl(s.tutar) })),
+      { etiket: N.bugunKasada, deger: tl(f.kasa) },
+      { etiket: N.gunlukOrtalama, deger: `${f.gunlukNet >= 0 ? '+' : ''}${tl(f.gunlukNet)}` },
+      ...f.sabit.slice(0, 4).map((s) => ({ etiket: N.sabitEtiket(s.karsi, s.gun), deger: tl(s.tutar) })),
     ];
     if (f.eksiGun) {
       out.push({
         key: 'nakit-tahmin',
         severity: 'yuksek',
-        title: `Bu gidişle ${gunAdi(f.eksiGun.tarih)} günü kasa eksiye düşer`,
-        body: `Bugün kasada ${tl(f.kasa)} var.${f.eksiGun.sebep ? ` O gün ${f.eksiGun.sebep} ödemesi çıkıyor.` : ''} Önümüzdeki 4 haftanın en düşük noktası ${gunAdi(f.enDusuk.tarih)}: ${tl(f.enDusuk.tutar)}.`,
-        advice: 'Ödemeden önce bekleyen tahsilatları iste, ertelenebilecek bir ödemeyi kaydır ya da o hafta için kısa vadeli bir tampon ayarla.',
+        title: N.eksiBaslik(f.eksiGun.tarih),
+        body: N.eksiOzet(f.kasa, f.eksiGun.sebep ?? null, f.enDusuk.tarih, f.enDusuk.tutar),
+        advice: N.eksiOneri,
         evidence: kanit,
         effect: -f.enDusuk.tutar,
         // A reminder three days ahead of the day the money runs out (today if that is sooner).
         action: {
           type: 'task',
-          title: `Tahsilatları iste: ${gunAdi(f.eksiGun.tarih)} kasa sıkışıyor`,
+          title: N.eksiGorev(f.eksiGun.tarih),
           due_date: [new Date(Date.parse(f.eksiGun.tarih) - 3 * 86_400_000).toISOString().slice(0, 10), bugun].sort().reverse()[0],
         },
       });
@@ -76,20 +76,16 @@ export async function isaretleriHesapla(tx: Queryable, shopId: string, now: Date
       out.push({
         key: 'nakit-tahmin',
         severity: 'orta',
-        title: bugunEnDusuk
-          ? `Kasada aylık sabit ödemelerin dörtte birinden az para var`
-          : `Kasa ${gunAdi(f.enDusuk.tarih)} civarı ${tl(f.enDusuk.tutar)}${ek(Math.round(f.enDusuk.tutar), 'e')} kadar iner`,
-        body: bugunEnDusuk
-          ? `Bugün kasada ${tl(f.kasa)} var; her ay ${tl(aylikSabit)} sabit ödeme çıkıyor. Önümüzdeki 4 hafta eksiye düşmüyor ama tampon ince.`
-          : `Eksiye düşmüyor ama sabit ödemelerin dörtte birinin altına iniyor.${f.enDusuk.sebep ? ` Sebep: ${f.enDusuk.sebep} ödemesi.` : ''}`,
-        advice: bugunEnDusuk ? 'Her hafta küçük bir miktarı kenara ayır; hedef bir aylık sabit ödeme kadar tampon.' : 'O haftaya denk gelen büyük alımları sonraya bırak.',
+        title: bugunEnDusuk ? N.inceBaslikBugun : N.inceBaslik(f.enDusuk.tarih, f.enDusuk.tutar),
+        body: bugunEnDusuk ? N.inceOzetBugun(f.kasa, aylikSabit) : N.inceOzet(f.enDusuk.sebep ?? null),
+        advice: bugunEnDusuk ? N.inceOneriBugun : N.inceOneri,
         evidence: kanit,
       });
     }
   }
 
   // 2. Röntgen's findings, as they stand today.
-  const r = rontgen(v.kayitlar, { ad: v.ad, para: v.para, randevular: v.randevular, acilisKasa: v.acilisKasa });
+  const r = rontgen(v.kayitlar, { ad: v.ad, para: v.para, randevular: v.randevular, acilisKasa: v.acilisKasa, dil: v.dil });
   for (const b of r.bulgular) {
     if (b.id === 'nakit-omru' && out.some((x) => x.key === 'nakit-tahmin')) continue; // the forecast says it better
     out.push({ key: `rontgen:${b.id}`, severity: b.ciddiyet, title: b.baslik, body: b.ozet, advice: b.oneri, evidence: b.kanit.slice(0, 6), effect: b.aylikEtki || undefined, action: ACTION[b.id] });

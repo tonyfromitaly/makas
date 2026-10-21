@@ -3,7 +3,7 @@
 // for the second, the bookings themselves. Without them the report says so instead of guessing.
 import type { Bulgu } from './motor';
 import type { Kayit } from './kayit';
-import { yuzdeEk } from './ek';
+import type { Metin } from './metin';
 
 export interface RandevuKaydi {
   tarih: string; // YYYY-MM-DD
@@ -17,7 +17,7 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
 };
 
-export function musteriBulgulari(kayitlar: Kayit[], randevular: RandevuKaydi[] | undefined, tl: (n: number) => string): { bulgular: Bulgu[]; yapilamayan: string[] } {
+export function musteriBulgulari(kayitlar: Kayit[], randevular: RandevuKaydi[] | undefined, M: Metin): { bulgular: Bulgu[]; yapilamayan: string[] } {
   const bulgular: Bulgu[] = [];
   const yapilamayan: string[] = [];
   const gelir = kayitlar.filter((k) => k.tur === 'gelir' && k.tutar > 0 && k.kategori !== 'bahsis');
@@ -35,7 +35,7 @@ export function musteriBulgulari(kayitlar: Kayit[], randevular: RandevuKaydi[] |
   let ortalamaSepet = 0;
 
   if (ziyaret.size < 10 || musteriliPay < 0.3) {
-    yapilamayan.push('Gelir kayıtlarının çoğunda müşteri yok: kayıp müşteri takibi yapılamadı.');
+    yapilamayan.push(M.yapilamayan.musteriYok);
   } else {
     const kayip: { ad: string; aralik: number; gecen: number; aylik: number }[] = [];
     let sepetTop = 0;
@@ -58,18 +58,18 @@ export function musteriBulgulari(kayitlar: Kayit[], randevular: RandevuKaydi[] |
       bulgular.push({
         id: 'musteri-kaybi',
         toplamaDahil: false,
-        baslik: `${kayip.length} düzenli müşteri gelmeyi bıraktı`,
-        ozet: `Bu müşteriler her ${Math.round(median(kayip.map((x) => x.aralik)))} günde bir gelirdi; şimdi her biri olağan aralığının bir buçuk katından uzun süredir uğramıyor. Gelmeye devam etselerdi ayda yaklaşık ${tl(aylik)} getirirlerdi.`,
+        baslik: M.musteriKaybi.baslik(kayip.length),
+        ozet: M.musteriKaybi.ozet(Math.round(median(kayip.map((x) => x.aralik))), aylik),
         aylikEtki: aylik,
-        oneri: 'Bu hafta listedekilere kısa bir "sizi özledik" mesajı gönder (yalnızca mesaj izni olanlara). Dönenleri ve dönmeyenleri gelecek ay yeniden bakarız.',
+        oneri: M.musteriKaybi.oneri,
         ciddiyet: kayip.length >= 10 ? 'yuksek' : 'orta',
-        kanit: kayip.slice(0, 6).map((x) => ({ etiket: x.ad, deger: `her ${Math.round(x.aralik)} günde bir · ${x.gecen} gündür yok` })),
+        kanit: kayip.slice(0, 6).map((x) => ({ etiket: x.ad, deger: M.musteriKaybi.kanit(Math.round(x.aralik), x.gecen) })),
       });
     }
   }
 
   if (!randevular?.length) {
-    yapilamayan.push('Randevu kaydı yok: gelmeyen randevu oranı hesaplanmadı.');
+    yapilamayan.push(M.yapilamayan.randevuYok);
   } else {
     const son90 = randevular.filter((r) => r.durum !== 'bekliyor' && r.durum !== 'iptal-isletme' && gun(r.tarih, bugun || r.tarih) <= 90 && gun(r.tarih, bugun || r.tarih) >= 0);
     const kayipR = son90.filter((r) => r.durum === 'gelmedi' || r.durum === 'iptal-musteri');
@@ -80,15 +80,15 @@ export function musteriBulgulari(kayitlar: Kayit[], randevular: RandevuKaydi[] |
       bulgular.push({
         id: 'randevu-kaybi',
         toplamaDahil: false,
-        baslik: `Randevuların ${yuzdeEk(oran, 'i')} boşa gidiyor`,
-        ozet: `Son 90 günde ${son90.length} randevudan ${gelmedi} tanesine müşteri gelmedi, ${kayipR.length - gelmedi} tanesi müşteri tarafından iptal edildi.${ortalamaSepet ? ` Ortalama sepetle ayda yaklaşık ${tl(aylik)}.` : ''}`,
+        baslik: M.randevuKaybi.baslik(oran),
+        ozet: M.randevuKaybi.ozet(son90.length, gelmedi, kayipR.length - gelmedi, ortalamaSepet ? aylik : null),
         aylikEtki: aylik,
-        oneri: 'Randevudan bir gün önce ve birkaç saat önce hatırlatma gönder. Sık gelmeyenlerden kapora almayı düşün.',
+        oneri: M.randevuKaybi.oneri,
         ciddiyet: oran >= 0.15 ? 'yuksek' : 'orta',
         kanit: [
-          { etiket: 'Randevu (son 90 gün)', deger: String(son90.length) },
-          { etiket: 'Gelmedi', deger: String(gelmedi) },
-          { etiket: 'Müşteri iptali', deger: String(kayipR.length - gelmedi) },
+          { etiket: M.etiket.randevu90, deger: String(son90.length) },
+          { etiket: M.etiket.gelmedi, deger: String(gelmedi) },
+          { etiket: M.etiket.musteriIptal, deger: String(kayipR.length - gelmedi) },
         ],
       });
     }

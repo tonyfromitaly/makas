@@ -79,6 +79,23 @@ describe('cash forecast', () => {
 });
 
 describe('agent notes', () => {
+  it('are written in Turkish and Spanish for Turkish and Spanish shops', async () => {
+    const t = await setup('2026-10-20T12:00:00Z');
+    closers.push(t.close);
+    const tr = await t.registerShop('Dükkân', { language: 'tr' });
+    await bankShop(t, tr.shopId, 900);
+    const trNote = (await t.call('GET', '/signals', { token: tr.token })).body.data.find((x: any) => x.key === 'nakit-tahmin');
+    expect(trNote.title).toBe('Bu gidişle 1 Kasım günü kasa eksiye düşer');
+    expect(trNote.body).toContain('Oak Properties ödemesi');
+    expect(trNote.evidence.map((e: any) => e.etiket)).toContain("Oak Properties · her ayın 1'i");
+    expect(trNote.action.title).toBe('Tahsilatları iste: 1 Kasım kasa sıkışıyor');
+    const es = await t.registerShop('Tienda', { language: 'es' });
+    await bankShop(t, es.shopId, 900);
+    const esNote = (await t.call('GET', '/signals', { token: es.token })).body.data.find((x: any) => x.key === 'nakit-tahmin');
+    expect(esNote.title).toBe('A este ritmo el banco queda en negativo el 1 de noviembre');
+    expect(esNote.evidence.map((e: any) => e.etiket)).toContain('Oak Properties · el día 1 de cada mes');
+  });
+
   it('the forecast becomes an urgent note; dismissed stays dismissed; a cured cause resolves', async () => {
     const t = await setup('2026-10-20T12:00:00Z');
     closers.push(t.close);
@@ -87,12 +104,13 @@ describe('agent notes', () => {
     const r = await t.call('GET', '/signals', { token: s.token });
     expect(r.status).toBe(200);
     const nakit = r.body.data.find((x: any) => x.key === 'nakit-tahmin');
-    expect(nakit).toMatchObject({ severity: 'yuksek', title: 'Bu gidişle 1 Kasım günü kasa eksiye düşer' });
-    expect(nakit.body).toContain('Oak Properties ödemesi');
-    expect(nakit.evidence.map((e: any) => e.etiket)).toContain("Oak Properties · her ayın 1'i");
+    // The notes are written in the shop's language (English here).
+    expect(nakit).toMatchObject({ severity: 'yuksek', title: 'At this pace the bank goes below zero on November 1' });
+    expect(nakit.body).toContain('Oak Properties is due that day');
+    expect(nakit.evidence.map((e: any) => e.etiket)).toContain('Oak Properties · every month on the 1st');
     expect(r.body.data[0].key).toBe('nakit-tahmin'); // the most urgent first
     // One tap: a reminder three days before the day the money runs out.
-    expect(nakit.action).toEqual({ type: 'task', title: 'Tahsilatları iste: 1 Kasım kasa sıkışıyor', due_date: '2026-10-29' });
+    expect(nakit.action).toEqual({ type: 'task', title: 'Collect what you are owed: cash is tight on November 1', due_date: '2026-10-29' });
 
     expect((await t.call('POST', `/signals/${nakit.id}/dismiss`, { token: s.token })).status).toBe(204);
     // Recomputed with the same content: still dismissed.

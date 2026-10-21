@@ -7,6 +7,7 @@
 // - book_entries: one line per day and category ("Square · 23 sales"), so the app's books show the takings.
 // Tokens are stored encrypted (AES-GCM, key from the connection secret).
 import { withTenant, type Database, type Queryable } from '../db';
+import { dilOf, type Dil } from '../rontgen/metin';
 import { squareAuthorizeUrl, squareCek, squareClient, squareDefter, squareToken, SquareError, type SquareEnv } from './square';
 import type { Kayit } from '../rontgen/kayit';
 import type { RandevuKaydi } from '../rontgen/musteri';
@@ -216,8 +217,8 @@ const GERI: Record<string, string> = { service: 'hizmet', product: 'urun', tips:
  * Everything Röntgen can read for a shop: imported lines (all providers) plus the app's own books and
  * appointments. The books' import summaries are skipped, so nothing is counted twice.
  */
-export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ kayitlar: Kayit[]; randevular: RandevuKaydi[]; para: string; ad: string; acilisKasa?: number }> {
-  const shop = (await tx.query('select name, currency from shops where id = $1', [shopId])).rows[0];
+export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ kayitlar: Kayit[]; randevular: RandevuKaydi[]; para: string; ad: string; dil: Dil; acilisKasa?: number }> {
+  const shop = (await tx.query('select name, currency, language from shops where id = $1', [shopId])).rows[0];
   const imported = (await tx.query(`select provider, kind, data from import_rows where shop_id = $1 and kind in ('kayit', 'randevu') order by happened_on`, [shopId])).rows;
   const bank = (await tx.query(`select meta->'kasa' as kasa from connections where shop_id = $1 and provider = 'plaid' and status <> 'disconnected'`, [shopId])).rows[0];
   const books = (
@@ -258,5 +259,5 @@ export async function rontgenVerisi(tx: Queryable, shopId: string): Promise<{ ka
     const net = kayitlar.reduce((s, k) => s + (k.tur === 'gelir' ? k.tutar : -k.tutar), 0);
     acilisKasa = Math.round((Number(bank.kasa.tutar) - net) * 100) / 100;
   }
-  return { kayitlar, randevular, para: shop.currency, ad: shop.name, acilisKasa };
+  return { kayitlar, randevular, para: shop.currency, ad: shop.name, dil: dilOf(shop.language), acilisKasa };
 }

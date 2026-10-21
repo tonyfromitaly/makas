@@ -1,13 +1,13 @@
 // The X-ray as one printable page, in the app's Adisyon language: a till receipt with stamps.
 // Standalone HTML (inline CSS and SVG), so it can be e-mailed, printed or opened offline.
-import { ayAdi, paraBicim, type Rontgen } from './motor';
-import { yuzdeEk } from './ek';
+import type { Rontgen } from './motor';
 import type { IceAktarim } from './ice-aktar';
+import { metin, type Metin } from './metin';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-const yuzde = (n: number | null) => (n === null ? '—' : `${n < 0 ? '−' : '+'}%${Math.abs(Math.round(n * 100))}`);
+const yuzde = (M: Metin, n: number | null) => (n === null ? '—' : `${n < 0 ? '−' : '+'}${M.pct(Math.abs(n))}`);
 
-function grafik(r: Rontgen) {
+function grafik(r: Rontgen, M: Metin) {
   const W = 720;
   const H = 230;
   const P = { l: 64, r: 16, t: 18, b: 34 };
@@ -15,7 +15,8 @@ function grafik(r: Rontgen) {
   const gelirli = r.ozet.toplamGelir > 0;
   const xs = r.aylik.map((a) => (gelirli ? a : { ...a, gelir: a.gider, gelirReel: a.giderReel }));
   const max = Math.max(...xs.map((a) => Math.max(a.gelir, a.gelirReel))) * 1.08 || 1;
-  const kisa = (v: number) => (v >= 1e9 ? `${Math.round(v / 1e9)}mr` : v >= 1e6 ? `${Math.round(v / 1e6)}m` : `${Math.round(v / 1000)}b`);
+  const R = M.rapor;
+  const kisa = (v: number) => (v >= 1e9 ? `${Math.round(v / 1e9)}${R.milyar}` : v >= 1e6 ? `${Math.round(v / 1e6)}${R.milyon}` : `${Math.round(v / 1000)}${R.bin}`);
   const x = (i: number) => P.l + (i * (W - P.l - P.r)) / Math.max(1, xs.length - 1);
   const y = (v: number) => H - P.b - (v / max) * (H - P.t - P.b);
   // Whole months are one line; a part month at either end joins it with a dotted stub, labelled.
@@ -28,21 +29,20 @@ function grafik(r: Rontgen) {
       .map(({ a, i }) => {
         const k = i === 0 ? 1 : i - 1;
         if (!xs[k] || xs[k].eksik) return '';
-        return `<path d="M${x(k).toFixed(1)},${y(f(xs[k])).toFixed(1)} L${x(i).toFixed(1)},${y(f(a)).toFixed(1)}" class="eksik"/><text x="${x(i)}" y="${y(f(a)) - 8}" class="ax" text-anchor="${i === 0 ? 'start' : 'end'}">eksik ay</text>`;
+        return `<path d="M${x(k).toFixed(1)},${y(f(xs[k])).toFixed(1)} L${x(i).toFixed(1)},${y(f(a)).toFixed(1)}" class="eksik"/><text x="${x(i)}" y="${y(f(a)) - 8}" class="ax" text-anchor="${i === 0 ? 'start' : 'end'}">${R.eksikAy}</text>`;
       })
       .join('');
-  const AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
   const kisaDonem = xs.length <= 12 && r.donemTipi === 'ay';
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => max * t);
   const yillik = r.donemTipi === 'yil';
   const yearMarks = xs
     .map((a, i) => ({ a, i }))
     .filter(({ a, i }) => (yillik ? true : a.ay.endsWith('-01') || (i === 0 && !xs.slice(1, 4).some((x) => x.ay.endsWith('-01')))));
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Aylık ciro: o günkü fiyatlarla ve bugünün parasıyla">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(R.grafikEtiket)}">
     ${ticks.map((v) => `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" class="g"/><text x="${P.l - 8}" y="${y(v) + 4}" class="ax" text-anchor="end">${kisa(v)}</text>`).join('')}
     ${
       kisaDonem
-        ? xs.map((a, i) => `<text x="${x(i)}" y="${H - 12}" class="ax" text-anchor="middle">${AY[Number(a.ay.slice(5)) - 1]}</text>`).join('')
+        ? xs.map((a, i) => `<text x="${x(i)}" y="${H - 12}" class="ax" text-anchor="middle">${M.ayKisa(Number(a.ay.slice(5)))}</text>`).join('')
         : yearMarks.map(({ a, i }) => `<line x1="${x(i)}" x2="${x(i)}" y1="${P.t}" y2="${H - P.b}" class="g y"/><text x="${x(i)}" y="${H - 12}" class="ax" text-anchor="middle">${a.ay.slice(0, 4)}</text>`).join('')
     }
     ${r.kaynak ? `<path d="${path((a) => a.gelirReel)}" class="real"/>` : ''}
@@ -53,27 +53,30 @@ function grafik(r: Rontgen) {
 
 export function raporHtml(r: Rontgen, ice?: IceAktarim['rapor']) {
   const o = r.ozet;
-  const tl = paraBicim(r.para);
-  const birim = r.donemTipi === 'yil' ? 'yıl' : 'ay';
+  const dil = r.dil ?? 'tr';
+  const M = metin(dil, r.para);
+  const R = M.rapor;
+  const { tl } = M;
+  const ayda = r.donemTipi !== 'yil';
   const gelirli = o.toplamGelir > 0;
   const acil = r.bulgular.filter((b) => b.ciddiyet === 'yuksek').length;
   const dahil = r.bulgular.filter((b) => b.toplamaDahil !== false && b.aylikEtki > 0);
   const hero = r.geriKazanilabilir > 0
-    ? { lbl: `${birim === 'ay' ? 'Ayda' : 'Yılda'} geri kazanılabilecek para`, big: `~${tl(r.geriKazanilabilir)}`, alt: `Aşağıdaki ${dahil.length} düzeltmenin toplamı.${r.kaynak ? ` Tutarlar ${ayAdi(r.donem.fiyatAyi)} parasıyla.` : ''}` }
-    : { lbl: 'En önemli bulgu', big: r.bulgular[0] ? esc(r.bulgular[0].baslik) : 'Belirgin bir sorun bulunmadı', alt: r.bulgular[0] ? esc(r.bulgular[0].ozet) : '' };
+    ? { lbl: R.geriKazan(ayda), big: `~${tl(r.geriKazanilabilir)}`, alt: R.geriKazanAlt(dahil.length, r.kaynak ? r.donem.fiyatAyi : null) }
+    : { lbl: R.enOnemli, big: r.bulgular[0] ? esc(r.bulgular[0].baslik) : R.sorunYok, alt: r.bulgular[0] ? esc(r.bulgular[0].ozet) : '' };
   const tiles: string[] = [];
   const tamAylar = r.aylik.filter((a) => !a.eksik);
   if (gelirli && o.reelBuyume === null && o.nominalBuyume === null && tamAylar.length)
-    tiles.push(`<div class="tile"><span class="lbl">Aylık gelir</span><b>${tl(tamAylar.reduce((s, a) => s + a.gelir, 0) / tamAylar.length)}</b><small>tam ${tamAylar.length} ayın ortalaması</small></div>`);
-  else if (gelirli) tiles.push(`<div class="tile"><span class="lbl">${r.kaynak ? 'Gerçek büyüme' : 'Büyüme'}</span><b class="${(o.reelBuyume ?? o.nominalBuyume ?? 0) < 0 ? 'neg' : 'pos'}">${yuzde(o.reelBuyume ?? o.nominalBuyume)}</b><small>${r.kaynak && o.nominalBuyume !== null ? `görünen ${yuzde(o.nominalBuyume)}` : r.donemTipi === 'yil' ? `${r.donem.bas.slice(0, 4)} → ${r.donem.son.slice(0, 4)}` : 'son 12 ay'}</small></div>`);
-  tiles.push(`<div class="tile"><span class="lbl">${gelirli ? 'Toplam gelir' : 'Toplam gider'}</span><b>${tl(gelirli ? o.toplamGelir : o.toplamGider)}</b><small>${r.donem.ay} ${birim === 'ay' ? 'ay' : 'kayıt ayı'}</small></div>`);
-  if (o.kasa !== null) tiles.push(`<div class="tile"><span class="lbl">Kasa</span><b>${tl(o.kasa)}</b><small>${o.nakitOmruGun !== null ? `${o.nakitOmruGun} gün dayanır` : ''}</small></div>`);
-  if (o.basabasCiro !== null) tiles.push(`<div class="tile"><span class="lbl">Başabaş</span><b>${tl(o.basabasCiro)}</b><small>ayın ${o.basabasGunu}. gününde</small></div>`);
-  if (o.enBuyukGider) tiles.push(`<div class="tile"><span class="lbl">En büyük gider</span><b class="small-b">${esc(o.enBuyukGider.kategori)}</b><small>giderlerin ${yuzdeEk(o.enBuyukGider.pay, 'i')}</small></div>`);
-  const ciddi = { yuksek: 'Acil', orta: 'Önemli', bilgi: 'Not' } as const;
+    tiles.push(`<div class="tile"><span class="lbl">${R.aylikGelir}</span><b>${tl(tamAylar.reduce((s, a) => s + a.gelir, 0) / tamAylar.length)}</b><small>${R.tamAyOrt(tamAylar.length)}</small></div>`);
+  else if (gelirli) tiles.push(`<div class="tile"><span class="lbl">${r.kaynak ? R.gercekBuyume : R.buyume}</span><b class="${(o.reelBuyume ?? o.nominalBuyume ?? 0) < 0 ? 'neg' : 'pos'}">${yuzde(M, o.reelBuyume ?? o.nominalBuyume)}</b><small>${r.kaynak && o.nominalBuyume !== null ? R.gorunen(yuzde(M, o.nominalBuyume)) : r.donemTipi === 'yil' ? `${r.donem.bas.slice(0, 4)} → ${r.donem.son.slice(0, 4)}` : R.son12ay}</small></div>`);
+  tiles.push(`<div class="tile"><span class="lbl">${gelirli ? R.toplamGelir : R.toplamGider}</span><b>${tl(gelirli ? o.toplamGelir : o.toplamGider)}</b><small>${R.aySayisi(r.donem.ay, ayda)}</small></div>`);
+  if (o.kasa !== null) tiles.push(`<div class="tile"><span class="lbl">${R.kasa}</span><b>${tl(o.kasa)}</b><small>${o.nakitOmruGun !== null ? R.dayanir(o.nakitOmruGun) : ''}</small></div>`);
+  if (o.basabasCiro !== null) tiles.push(`<div class="tile"><span class="lbl">${R.basabas}</span><b>${tl(o.basabasCiro)}</b><small>${R.basabasGun(o.basabasGunu ?? 0)}</small></div>`);
+  if (o.enBuyukGider) tiles.push(`<div class="tile"><span class="lbl">${R.enBuyukGider}</span><b class="small-b">${esc(o.enBuyukGider.kategori)}</b><small>${R.giderPay(o.enBuyukGider.pay)}</small></div>`);
+  const ciddi = R.ciddiyet;
   return `<!doctype html>
-<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>İşletme Röntgeni · ${esc(r.ad)}</title>
+<html lang="${dil}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(R.baslik)} · ${esc(r.ad)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@700&family=JetBrains+Mono:wght@400;600;800&family=Hanken+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -118,41 +121,41 @@ ul.eksik{margin:10px 0 0;padding-left:20px;color:var(--ink2)}ul.eksik li{margin:
 @media print{body{background:#fff;padding:0}.roll{box-shadow:none}}
 </style></head><body>
 <main class="roll">
-  <h1>İşletme Röntgeni</h1>
-  <div class="meta">${esc(r.ad)} · ${r.donemTipi === 'yil' ? `${r.donem.bas.slice(0, 4)} – ${r.donem.son.slice(0, 4)}` : `${ayAdi(r.donem.bas)} – ${ayAdi(r.donem.son)}`} · ${r.para}${ice ? ` · ${ice.okunan.toLocaleString('tr-TR')} kayıt` : ''}</div>
+  <h1>${esc(R.baslik)}</h1>
+  <div class="meta">${esc(r.ad)} · ${r.donemTipi === 'yil' ? `${r.donem.bas.slice(0, 4)} – ${r.donem.son.slice(0, 4)}` : `${M.ay(r.donem.bas)} – ${M.ay(r.donem.son)}`} · ${r.para}${ice ? ` · ${R.kayit(ice.okunan)}` : ''}</div>
   <hr>
   <section class="hero">
     <div class="lbl">${hero.lbl}</div>
     <div class="big${r.geriKazanilabilir > 0 ? '' : ' txt'}">${hero.big}</div>
     <p>${hero.alt}</p>
-    ${acil ? `<span class="stamp" style="right:-6px;top:-8px">${acil} acil bulgu</span>` : ''}
+    ${acil ? `<span class="stamp" style="right:-6px;top:-8px">${R.acil(acil)}</span>` : ''}
   </section>
   <hr>
   <section class="tiles" style="grid-template-columns:repeat(${Math.min(4, tiles.length)},1fr)">${tiles.join('')}</section>
   <section>
-    ${grafik(r)}
-    <div class="legend">${r.kaynak ? `<span><i></i>${gelirli ? 'Gelir' : 'Gider'}, bugünün parasıyla</span><span><i class="n"></i>O günkü fiyatlarla</span>` : `<span><i></i>${gelirli ? 'Gelir' : 'Gider'} (o günkü fiyatlarla)</span>`}</div>
+    ${grafik(r, M)}
+    <div class="legend">${r.kaynak ? `<span><i></i>${R.lejantReel(gelirli)}</span><span><i class="n"></i>${R.lejantNom}</span>` : `<span><i></i>${R.lejantTek(gelirli)}</span>`}</div>
   </section>
   <hr>
-  <h2>Bulgular ve yapılacaklar</h2>
+  <h2>${R.bulgular}</h2>
   ${r.bulgular
     .map(
       (b) => `<article class="find">
     <span class="stamp ${b.ciddiyet}">${ciddi[b.ciddiyet]}</span>
     <h3>${esc(b.baslik)}</h3>
-    ${b.aylikEtki > 0 ? `<div class="etki ${b.ciddiyet === 'yuksek' ? 'neg' : ''}">${b.toplamaDahil === false ? `${tl(b.aylikEtki)} / ${birim} fark` : `${birim === 'ay' ? 'Ayda' : 'Yılda'} ${tl(b.aylikEtki)}`}</div>` : ''}
+    ${b.aylikEtki > 0 ? `<div class="etki ${b.ciddiyet === 'yuksek' ? 'neg' : ''}">${b.toplamaDahil === false ? `${tl(b.aylikEtki)} ${R.fark(ayda)}` : `${ayda ? R.ayda : R.yilda} ${tl(b.aylikEtki)}`}</div>` : ''}
     <p>${esc(b.ozet)}</p>
-    <div class="oneri"><b>Yapılacak</b>${esc(b.oneri)}</div>
+    <div class="oneri"><b>${R.yapilacak}</b>${esc(b.oneri)}</div>
     <table>${b.kanit.map((k) => `<tr><td>${esc(k.etiket)}</td><td>${esc(k.deger)}</td></tr>`).join('')}</table>
   </article>`,
     )
     .join('')}
   <hr>
-  ${r.yapilamayan.length ? `<h2>Bu veriyle yapılamayanlar</h2><ul class="eksik">${r.yapilamayan.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><hr>` : ''}
+  ${r.yapilamayan.length ? `<h2>${R.yapilamayanlar}</h2><ul class="eksik">${r.yapilamayan.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><hr>` : ''}
   <section class="foot">
-    <p><b>Nasıl hesaplandı.</b> Bütün rakamlar işletmenin kendi kayıtlarından hesaplandı; yapay zekâ rakam üretmedi. ${r.kaynak ? `Enflasyon düzeltmesi: ${esc(r.kaynak)}. "Bugünün parası", her ayın tutarının ${ayAdi(r.donem.fiyatAyi)} fiyatlarına çevrilmiş hâlidir.` : 'Enflasyon düzeltmesi yapılmadı.'}</p>
-    ${ice ? `<p><b>Veri.</b> ${ice.satir.toLocaleString('tr-TR')} satır okundu, ${ice.okunan.toLocaleString('tr-TR')} kayıt alındı${ice.atlananSayi ? `, ${ice.atlananSayi.toLocaleString('tr-TR')} satır okunamadı` : ''}${r.donemTipi === 'yil' ? '' : ice.eksikAylar.length ? `; kaydı olmayan aylar: ${ice.eksikAylar.length > 6 ? `${ice.eksikAylar.length} ay` : ice.eksikAylar.join(', ')}` : '; eksik ay yok'}.</p>` : ''}
-    <p>Bu rapor bir ön teşhistir; vergi ve hukuki konular için mali müşavirinize danışın.</p>
+    <p><b>${R.nasil}</b> ${esc(R.nasilMetin(r.kaynak, r.donem.fiyatAyi))}</p>
+    ${ice ? `<p><b>${R.veri}</b> ${R.veriMetin(ice.satir, ice.okunan, ice.atlananSayi, r.donemTipi === 'yil' ? '' : R.eksikAylar(ice.eksikAylar))}</p>` : ''}
+    <p>${R.uyari}</p>
   </section>
 </main>
 </body></html>`;

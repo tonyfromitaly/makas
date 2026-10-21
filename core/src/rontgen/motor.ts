@@ -2,10 +2,10 @@
 // Every number is computed here from the records and an official inflation series; a language model
 // may later word the findings, but it never produces a figure. One pass over the records builds the
 // totals, so a million lines take seconds. What the data cannot support is listed, not guessed.
-import { DEGISKEN, KATEGORI_ADI, SABIT, type Kayit } from './kayit';
+import { DEGISKEN, SABIT, type Kayit } from './kayit';
 import { enflasyon } from './enflasyon';
-import { ek, yuzdeEk } from './ek';
 import { musteriBulgulari, type RandevuKaydi } from './musteri';
+import { metin, KATEGORI, type Dil } from './metin';
 
 export interface Bulgu {
   id: string;
@@ -23,6 +23,8 @@ export interface Bulgu {
 export interface Rontgen {
   ad: string;
   para: string;
+  /** The language the findings are written in. */
+  dil: Dil;
   donemTipi: 'ay' | 'yil';
   donem: { bas: string; son: string; ay: number; fiyatAyi: string; eksikSonAy: boolean };
   /** Inflation source, or null when the data falls outside every series we have (then nominal). */
@@ -88,29 +90,32 @@ export function paraBicim(para: string) {
     return `${n < 0 ? '−' : ''}${para === 'TRY' ? `${t} ${s}` : `${s}${t}`}`;
   };
 }
-const pct = (n: number) => `%${Math.round(n * 100).toLocaleString('tr-TR')}`;
-const pct1 = (n: number) => `%${(n * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`;
-
-export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; para?: string; randevular?: RandevuKaydi[] }): Rontgen {
+export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; para?: string; randevular?: RandevuKaydi[]; dil?: Dil }): Rontgen {
   // One currency per X-ray: the most common one unless told.
   const sayim = new Map<string, number>();
   for (const k of tum) sayim.set(k.para ?? 'TRY', (sayim.get(k.para ?? 'TRY') ?? 0) + 1);
   const para = opts.para ?? [...sayim.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'TRY';
   const kayitlar = tum.filter((k) => (k.para ?? 'TRY') === para);
-  const tl = paraBicim(para);
+  const dil: Dil = opts.dil ?? 'tr';
+  // Every sentence below comes from metin.ts in the shop's language; this file only computes.
+  const M = metin(dil, para);
+  const { tl, pct, pct1, n } = M;
+  const Y = M.yapilamayan;
+  const E = M.etiket;
+  const katAdi = (k: string) => KATEGORI[dil][k] ?? k;
   const yapilamayan: string[] = [];
-  if (kayitlar.length < tum.length) yapilamayan.push(`${(tum.length - kayitlar.length).toLocaleString('tr-TR')} kayıt başka para biriminde olduğu için ayrı tutuldu.`);
+  if (kayitlar.length < tum.length) yapilamayan.push(Y.baskaPara(tum.length - kayitlar.length));
 
   // ---- one pass
-  const M = new Map<string, MonthAgg>();
+  const AYM = new Map<string, MonthAgg>();
   const items = new Map<string, Map<string, ItemMonth>>();
   const vendors = new Map<string, Map<string, number>>();
   const dup = new Map<string, { n: number; tutar: number; karsi: string; tarih: string }>();
   const subs = new Map<string, Set<string>>();
   for (const k of kayitlar) {
     const m = k.tarih.slice(0, 7);
-    let a = M.get(m);
-    if (!a) M.set(m, (a = { gelir: 0, gider: 0, cekis: 0, kart: 0, adet: 0, pos: 0, ilkGun: 31, sonGun: 0, kat: new Map(), katAdi: new Map() }));
+    let a = AYM.get(m);
+    if (!a) AYM.set(m, (a = { gelir: 0, gider: 0, cekis: 0, kart: 0, adet: 0, pos: 0, ilkGun: 31, sonGun: 0, kat: new Map(), katAdi: new Map() }));
     a.sonGun = Math.max(a.sonGun, Number(k.tarih.slice(8, 10)));
     a.ilkGun = Math.min(a.ilkGun, Number(k.tarih.slice(8, 10)));
     if (k.tur === 'gelir') {
@@ -130,7 +135,7 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     } else if (k.tur === 'gider') {
       a.gider += k.tutar;
       a.kat.set(k.kategori, (a.kat.get(k.kategori) ?? 0) + k.tutar);
-      const ad = k.kategoriAdi ?? KATEGORI_ADI[k.kategori] ?? k.kategori;
+      const ad = k.kategoriAdi ?? katAdi(k.kategori);
       a.katAdi.set(ad, (a.katAdi.get(ad) ?? 0) + k.tutar);
       if (k.kategori === 'pos') a.pos += k.tutar;
       if (k.kategori === 'abonelik' && k.aciklama) {
@@ -151,8 +156,8 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       }
     } else a.cekis += k.tutar;
   }
-  const months = [...M.keys()].sort();
-  const g = (m: string) => M.get(m)!;
+  const months = [...AYM.keys()].sort();
+  const g = (m: string) => AYM.get(m)!;
   const son = months[months.length - 1];
 
   // ---- time shape: monthly, or one figure a year (annual reports)
@@ -165,7 +170,7 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   const fiyatAyi = e && son > e.son ? e.son : son;
   const reelVar = !!e && months[0] >= e.ilk && fiyatAyi <= e.son && !!e.endeks(fiyatAyi);
   if (!reelVar)
-    yapilamayan.push(e ? `Enflasyon serisi (${e.kaynak}) bu dönemi kapsamıyor; tutarlar o günkü fiyatlarla.` : `${para} için resmî enflasyon serisi eklenmedi; tutarlar o günkü fiyatlarla.`);
+    yapilamayan.push(e ? Y.enflasyonKapsamaz(e.kaynak) : Y.enflasyonYok(para));
   const real = (n: number, m: string) => {
     if (!reelVar) return n;
     const a = e!.endeks(m);
@@ -192,19 +197,18 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   const bulgular: Bulgu[] = [];
   const ciddiyetSira = { yuksek: 0, orta: 1, bilgi: 2 };
 
-  if (!gelirVar) yapilamayan.push('Gelir kaydı yok: ciro, fiyat, başabaş ve kâr bulguları çalışmadı.');
-  if (!giderVar) yapilamayan.push('Gider kaydı yok: gider, başabaş ve nakit takvimi bulguları çalışmadı.');
-  else if (kayitlar.every((k) => k.tur !== 'gider' || k.kategori === 'pos'))
-    yapilamayan.push('Giderlerin tamamı kart işlem ücretleri: kira, maaş, malzeme gibi giderler için banka hesabını ya da muhasebe programını bağla; başabaş ve nakit takvimi ancak o zaman çalışır.');
-  if (!kasaBilinir && donemTipi === 'ay') yapilamayan.push('Kasa ve banka bakiyesi verilmedi: nakit ömrü hesaplanmadı.');
-  if (!cekisVar && gelirVar && giderVar && donemTipi === 'ay') yapilamayan.push('Sahibin çektiği para ayrı kayıtlı değil: "kazandığından fazla çekiyorsun" bulgusu test edilemedi.');
+  if (!gelirVar) yapilamayan.push(Y.gelirYok);
+  if (!giderVar) yapilamayan.push(Y.giderYok);
+  else if (kayitlar.every((k) => k.tur !== 'gider' || k.kategori === 'pos')) yapilamayan.push(Y.sadecePos);
+  if (!kasaBilinir && donemTipi === 'ay') yapilamayan.push(Y.kasaYok);
+  if (!cekisVar && gelirVar && giderVar && donemTipi === 'ay') yapilamayan.push(Y.cekisYok);
 
   if (donemTipi === 'yil') return yillik();
 
   // ---- monthly analysis windows; a last month with only a few days is left out of comparisons
   const eksikSonAy = months.length > 13 && g(son).sonGun < 25;
   const ms = eksikSonAy ? months.slice(0, -1) : months;
-  if (eksikSonAy) yapilamayan.push(`${ayAdi(son)} eksik (son kayıt: ${g(son).sonGun} ${AY_ADI[Number(son.slice(5)) - 1]}); karşılaştırmalara katılmadı.`);
+  if (eksikSonAy) yapilamayan.push(Y.eksikSonAy(son, g(son).sonGun));
   const last12 = ms.slice(-12);
   const prev12 = ms.length >= 24 ? ms.slice(-24, -12) : [];
   const first12 = ms.length >= 36 ? ms.slice(-36, -24) : [];
@@ -212,14 +216,14 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   const ciro = (w: string[]) => S(w, (a) => a.gelir);
   const ciroR = (w: string[]) => S(w, (a) => a.gelir, true);
   const adet = (w: string[]) => S(w, (a) => a.adet);
-  if (!prev12.length) yapilamayan.push('24 aydan kısa veri: yıllık karşılaştırmalar yapılmadı.');
+  if (!prev12.length) yapilamayan.push(Y.kisaVeri);
 
   // Growth needs takings in both years; a year with none (records that start late) gives no ratio.
   const buyumeVar = prev12.length > 0 && gelirVar && ciro(prev12) > 0 && ciro(last12) > 0;
   const reelBuyume = buyumeVar ? ciroR(last12) / ciroR(prev12) - 1 : null;
   const nominalBuyume = buyumeVar ? ciro(last12) / ciro(prev12) - 1 : null;
-  if (prev12.length && gelirVar && !buyumeVar) yapilamayan.push('Gelir kayıtları iki yılın ikisini de kapsamıyor: yıllık büyüme hesaplanmadı.');
-  const fiyatEtiketi = reelVar ? ` (${ayAdi(fiyatAyi)} parasıyla)` : '';
+  if (prev12.length && gelirVar && !buyumeVar) yapilamayan.push(Y.buyumeYok);
+  const fiyatEtiketi = reelVar ? E.fiyatAyi(fiyatAyi) : '';
 
   // 1. Growth: nominal versus real, and how much is volume versus price.
   if (reelBuyume !== null && nominalBuyume !== null) {
@@ -230,23 +234,16 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     bulgular.push({
       id: 'reel-buyume',
       toplamaDahil: false,
-      baslik: reelVar ? (kucul ? (nominalBuyume > 0 ? 'Ciro büyüyor görünüyor, gerçekte küçülüyor' : 'Ciro küçülüyor') : 'Ciro enflasyonun üstünde büyüyor') : kucul ? 'Ciro küçülüyor' : 'Ciro büyüyor',
-      ozet:
-        `Son 12 ayda ciro ${nominalBuyume >= 0 ? `${pct(nominalBuyume)} arttı` : `${pct(-nominalBuyume)} azaldı`}` +
-        (reelVar ? `; enflasyondan arındırınca ${kucul ? `${pct(-reelBuyume)} küçüldü` : `${pct(reelBuyume)} büyüdü`}.` : '.') +
-        (ayrim ? ` Satılan adet ${ayrim.adet >= 0 ? `${pct(ayrim.adet)} arttı` : `${pct(-ayrim.adet)} azaldı`}, adet başına gelir${reelVar ? ' (gerçek)' : ''} ${ayrim.fiyat >= 0 ? `${pct(ayrim.fiyat)} arttı` : `${pct(-ayrim.fiyat)} azaldı`}.` : ''),
+      baslik: M.reelBuyume.baslik(reelVar, kucul, nominalBuyume > 0),
+      ozet: M.reelBuyume.ozet(nominalBuyume, reelBuyume, reelVar, ayrim),
       aylikEtki: Math.max(0, (ciroR(prev12) - ciroR(last12)) / 12),
-      oneri: kucul
-        ? ayrim && ayrim.adet < ayrim.fiyat
-          ? 'Düşüşün asıl kaynağı daha az satış: kaybedilen müşterileri ve terk edilen ürünleri aşağıdaki bulgularda incele.'
-          : 'Düşüşün asıl kaynağı fiyat: fiyat listesini enflasyon ve rakiplerle karşılaştır.'
-        : 'Bu hızı korumak için fiyatları her çeyrek enflasyonla karşılaştır.',
+      oneri: kucul ? (ayrim && ayrim.adet < ayrim.fiyat ? M.reelBuyume.oneriAdet : M.reelBuyume.oneriFiyat) : M.reelBuyume.oneriBuyu,
       ciddiyet: kucul && reelBuyume < -0.03 ? 'yuksek' : 'bilgi',
       kanit: [
-        { etiket: `Önceki 12 ay${fiyatEtiketi}`, deger: tl(ciroR(prev12)) },
-        { etiket: `Son 12 ay${fiyatEtiketi}`, deger: tl(ciroR(last12)) },
-        ...(reelVar ? [{ etiket: 'Önceki 12 ay (o günkü fiyatlarla)', deger: tl(ciro(prev12)) }, { etiket: 'Son 12 ay (o günkü fiyatlarla)', deger: tl(ciro(last12)) }] : []),
-        ...(ayrim ? [{ etiket: 'Satılan adet (önceki → son)', deger: `${Math.round(a1).toLocaleString('tr-TR')} → ${Math.round(a2).toLocaleString('tr-TR')}` }] : []),
+        { etiket: `${E.onceki12}${fiyatEtiketi}`, deger: tl(ciroR(prev12)) },
+        { etiket: `${E.son12}${fiyatEtiketi}`, deger: tl(ciroR(last12)) },
+        ...(reelVar ? [{ etiket: E.onceki12Nom, deger: tl(ciro(prev12)) }, { etiket: E.son12Nom, deger: tl(ciro(last12)) }] : []),
+        ...(ayrim ? [{ etiket: E.adet, deger: `${n(Math.round(a1))} → ${n(Math.round(a2))}` }] : []),
       ],
     });
   }
@@ -284,25 +281,27 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       const t = eriyen[0];
       bulgular.push({
         id: 'fiyat-erimesi',
-        baslik: 'Fiyatların enflasyona eriyor',
-        ozet: `${t.kalem} fiyatı ${ayAdi(t.sonZam)}${ek(Number(t.sonZam.slice(0, 4)), 'den')} beri ${tl(t.fiyat)}; o günden bu yana enflasyon ${pct(t.erime!)}. ${top.length > 5 ? `En çok satan ${top.length} üründen ${eriyen.length} tanesinde` : `${eriyen.length} kalemde`} aynı durum var.`,
+        baslik: M.fiyatErimesi.baslik,
+        ozet: M.fiyatErimesi.ozet(t.kalem, t.fiyat, t.sonZam, t.erime!, top.length, eriyen.length),
         aylikEtki: etki,
-        oneri: `Zammı iki adımda yap: önce erimenin yarısı, üç ay sonra kalanı. İlk sıradakiler: ${eriyen
-          .slice(0, 3)
-          .map((x) => `${x.kalem} ${tl(x.fiyat)} → ${tl(x.fiyat * (1 + x.erime! / 2))}`)
-          .join(', ')}.`,
+        oneri: M.fiyatErimesi.oneri(
+          eriyen
+            .slice(0, 3)
+            .map((x) => `${x.kalem} ${tl(x.fiyat)} → ${tl(x.fiyat * (1 + x.erime! / 2))}`)
+            .join(', '),
+        ),
         ciddiyet: etki > (ciro(last12) / 12) * 0.02 ? 'yuksek' : 'orta',
-        kanit: eriyen.slice(0, 8).map((x) => ({ etiket: `${x.kalem} · son zam ${ayAdi(x.sonZam)}`, deger: `${tl(x.fiyat)} → olması gereken ${tl(x.fiyat * (1 + x.erime!))} · ayda ~${Math.round(x.aylikAdet).toLocaleString('tr-TR')} adet` })),
+        kanit: eriyen.slice(0, 8).map((x) => ({ etiket: M.fiyatErimesi.kanitEtiket(x.kalem, x.sonZam), deger: M.fiyatErimesi.kanitDeger(x.fiyat, x.fiyat * (1 + x.erime!), x.aylikAdet) })),
       });
-    } else if (!reelVar) yapilamayan.push('Enflasyon serisi olmadığı için fiyat erimesi hesaplanmadı.');
+    } else if (!reelVar) yapilamayan.push(Y.erimeYok);
     const dusen = top.filter((x) => x.fiyat < x.ilk * 0.95);
     if (top.length >= 10 && dusen.length >= Math.max(3, top.length * 0.2)) {
       bulgular.push({
         id: 'fiyat-indirim',
-        baslik: 'Çok satan ürünlerde fiyat düşmüş',
-        ozet: `En çok satan ${top.length} ürünün ${dusen.length} tanesi bugün ilk satıldığı fiyatın altında satılıyor${reelVar ? '; enflasyon da eklenince gerçek kayıp daha büyük' : ''}.`,
+        baslik: M.fiyatIndirim.baslik,
+        ozet: M.fiyatIndirim.ozet(top.length, dusen.length, reelVar),
         aylikEtki: sum(dusen.map((x) => (x.ilk - x.fiyat) * x.aylikAdet)),
-        oneri: 'İndirimler bilinçli mi (stok eritme, kampanya) yoksa unutulmuş mu? Bilinçli değilse eski fiyata dön; toptan ve perakende fiyatı ayrı listelerde tut.',
+        oneri: M.fiyatIndirim.oneri,
         ciddiyet: 'orta',
         kanit: dusen.slice(0, 8).map((x) => ({ etiket: x.kalem, deger: `${tl(x.ilk)} → ${tl(x.fiyat)}` })),
       });
@@ -325,12 +324,12 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
           id: 'urun-terk',
           // Much of this is seasonal or deliberate; shown, but not counted as money to win back.
           toplamaDahil: false,
-          baslik: 'Satışı tamamen duran ürünler',
-          ozet: `Önceki yıl satılıp son 12 ayda hiç satılmayan ${terk.length.toLocaleString('tr-TR')} ürün var; önceki yıl cironun ${yuzdeEk(pay, 'ini')} getiriyorlardı.`,
+          baslik: M.urunTerk.baslik,
+          ozet: M.urunTerk.ozet(terk.length, pay),
           aylikEtki: sum(terk.map((x) => x.once)) / 12,
-          oneri: 'Bir kısmı mevsimlik ya da bilerek kaldırılmış olabilir. İlk 10 ürüne tek tek bak: tedarik mi bitti, yoksa unutuldu mu? Kâr bırakanları geri getir.',
+          oneri: M.urunTerk.oneri,
           ciddiyet: pay > 0.08 ? 'yuksek' : 'orta',
-          kanit: terk.slice(0, 8).map((x) => ({ etiket: x.kalem, deger: `önceki yıl ${tl(x.once)}` })),
+          kanit: terk.slice(0, 8).map((x) => ({ etiket: x.kalem, deger: M.urunTerk.kanit(x.once) })),
         });
       }
     }
@@ -340,10 +339,10 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     if (items.size > 30 && ciroR(last12) > 0 && sum(ilk10.map((x) => x.ciro12)) / ciroR(last12) > 0.3) {
       bulgular.push({
         id: 'urun-yogunlasma',
-        baslik: 'Ciro birkaç ürüne dayanıyor',
-        ozet: `${items.size.toLocaleString('tr-TR')} üründen en çok satan 10 tanesi cironun ${yuzdeEk(sum(ilk10.map((x) => x.ciro12)) / ciroR(last12), 'ini')} getiriyor.`,
+        baslik: M.urunYogunlasma.baslik,
+        ozet: M.urunYogunlasma.ozet(items.size, sum(ilk10.map((x) => x.ciro12)) / ciroR(last12)),
         aylikEtki: 0,
-        oneri: 'Bu 10 ürünün tedarikini garantiye al (ikinci tedarikçi, güvenlik stoğu); fiyatlarını her ay kontrol et.',
+        oneri: M.urunYogunlasma.oneri,
         ciddiyet: 'bilgi',
         kanit: ilk10.map((x) => ({ etiket: x.kalem, deger: tl(x.ciro12) })),
       });
@@ -358,14 +357,14 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       if (reel && (reelBuyume ?? 0) < 0) reel.ciddiyet = 'yuksek';
       bulgular.push({
         id: 'is-adedi',
-        baslik: 'Daha az satış yapılıyor',
-        ozet: `Son 12 ayda satılan adet ${pct(-ch)} azaldı (${Math.round(adet(prev12)).toLocaleString('tr-TR')} → ${Math.round(adet(last12)).toLocaleString('tr-TR')}).`,
+        baslik: M.isAdedi.baslik,
+        ozet: M.isAdedi.ozet(ch, adet(prev12), adet(last12)),
         aylikEtki: ((adet(prev12) - adet(last12)) / 12) * (ciroR(last12) / Math.max(1, adet(last12))),
-        oneri: 'Düzenli müşterilere hatırlatma gönder; en çok satan ürünlerin stokta olduğundan emin ol.',
+        oneri: M.isAdedi.oneri,
         ciddiyet: ch < -0.06 ? 'yuksek' : 'orta',
         kanit: [
-          { etiket: 'Önceki 12 ay adet', deger: Math.round(adet(prev12)).toLocaleString('tr-TR') },
-          { etiket: 'Son 12 ay adet', deger: Math.round(adet(last12)).toLocaleString('tr-TR') },
+          { etiket: E.onceki12Adet, deger: n(Math.round(adet(prev12))) },
+          { etiket: E.son12Adet, deger: n(Math.round(adet(last12))) },
         ],
       });
     }
@@ -380,12 +379,12 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       const zayif = sirali.slice(-3);
       bulgular.push({
         id: 'mevsim',
-        baslik: 'Yılın parasının büyük kısmı üç ayda geliyor',
-        ozet: `Son 12 ayın cirosunun ${yuzdeEk(pay, 'i')} ${sirali.slice(0, 3).map((m) => AY_ADI[Number(m.slice(5)) - 1]).join(', ')} aylarında geldi. En zayıf aylar: ${zayif.map((m) => AY_ADI[Number(m.slice(5)) - 1]).join(', ')}.`,
+        baslik: M.mevsim.baslik,
+        ozet: M.mevsim.ozet(pay, sirali.slice(0, 3).map((m) => Number(m.slice(5))), zayif.map((m) => Number(m.slice(5)))),
         aylikEtki: 0,
-        oneri: 'Güçlü aylarda gelirin bir kısmını zayıf aylar için ayır; stok alımını ve izinleri bu takvime göre planla.',
+        oneri: M.mevsim.oneri,
         ciddiyet: 'orta',
-        kanit: sirali.slice(0, 3).concat(zayif).map((m) => ({ etiket: ayAdi(m), deger: tl(g(m).gelir) })),
+        kanit: sirali.slice(0, 3).concat(zayif).map((m) => ({ etiket: M.ay(m), deger: tl(g(m).gelir) })),
       });
     }
   }
@@ -414,14 +413,14 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
         if (perA > 0 && perB / perA - 1 > 0.1) {
           bulgular.push({
             id: 'gider-malzeme',
-            baslik: 'Malzeme maliyeti enflasyondan hızlı artıyor',
-            ozet: `Satılan her birim için malzeme maliyeti${reelVar ? ' bugünün parasıyla' : ''} ${pct(perB / perA - 1)} arttı.`,
+            baslik: M.giderMalzeme.baslik,
+            ozet: M.giderMalzeme.ozet(perB / perA - 1, reelVar),
             aylikEtki: (perB - perA) * (adet(last12) / 12),
-            oneri: 'Toptancıdan toplu alım ve ikinci bir tedarikçi teklifi iste; en çok harcanan üç kalemi karşılaştır.',
+            oneri: M.giderMalzeme.oneri,
             ciddiyet: 'orta',
             kanit: [
-              { etiket: 'Önceki 12 ay (birim başına)', deger: tl(perA) },
-              { etiket: 'Son 12 ay (birim başına)', deger: tl(perB) },
+              { etiket: E.onceki12Birim, deger: tl(perA) },
+              { etiket: E.son12Birim, deger: tl(perB) },
             ],
           });
         }
@@ -429,7 +428,7 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       }
       if (a > 0 && b / a - 1 > 0.15 && b - a > toplam12 * 0.005) artan.push({ k, a, b });
     }
-    if (yatirimAtlandi) yapilamayan.push(`${yatirimAtlandi} yatırım ve borç anaparası kalemi (inşaat, araç, sistem, tahvil gibi) gider artışı analizine katılmadı; bunlar israf değil, yatırım kararıdır.`);
+    if (yatirimAtlandi) yapilamayan.push(Y.yatirim(yatirimAtlandi));
     artan.sort((x, y) => y.b - y.a - (x.b - x.a));
     if (artan.length) {
       const fark = sum(artan.map((x) => x.b - x.a));
@@ -437,12 +436,12 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
         id: 'gider-artis',
         // A cost that grew is a question, not money found: shown, not added to the total.
         toplamaDahil: false,
-        baslik: artan.length === 1 ? `${KATEGORI_ADI[artan[0].k] ?? artan[0].k} enflasyondan hızlı artıyor` : `${artan.length} gider kalemi enflasyondan hızlı artıyor`,
-        ozet: `${artan.length} gider kalemi${reelVar ? ' enflasyondan arındırılmış olarak' : ''} %15'ten fazla arttı; toplam fark yılda ${tl(fark)}.`,
+        baslik: M.giderArtis.baslik(artan.length, artan[0].k),
+        ozet: M.giderArtis.ozet(artan.length, reelVar, fark),
         aylikEtki: fark / 12,
-        oneri: 'İlk üç kalem için sebebi bul: fiyat mı arttı, miktar mı? Fiyatsa yeni teklif al; miktarsa kullanımı gözden geçir.',
+        oneri: M.giderArtis.oneri,
         ciddiyet: fark > toplam12 * 0.05 ? 'yuksek' : 'orta',
-        kanit: artan.slice(0, 8).map((x) => ({ etiket: KATEGORI_ADI[x.k] ?? x.k, deger: `${tl(x.a)} → ${tl(x.b)} (${pct(x.b / x.a - 1)})` })),
+        kanit: artan.slice(0, 8).map((x) => ({ etiket: katAdi(x.k), deger: `${tl(x.a)} → ${tl(x.b)} (${pct(x.b / x.a - 1)})` })),
       });
     }
 
@@ -455,15 +454,15 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
         const kartAylik = kart(last12.slice(-3)) / 3;
         bulgular.push({
           id: 'pos',
-          baslik: 'Kart komisyonu sessizce arttı',
-          ozet: `POS komisyon oranı ${pct1(r1)} → ${pct1(r2)}. Kartla ödeme payı da büyüdüğü için bu kalem hızla şişiyor.`,
+          baslik: M.pos.baslik,
+          ozet: M.pos.ozet(r1, r2),
           aylikEtki: kartAylik * Math.max(0, r2 - 0.022),
-          oneri: 'Bankandan oranı yazılı iste; iki farklı bankadan teklif al. %2,2 pazarlıkla ulaşılabilir bir hedef.',
+          oneri: M.pos.oneri,
           ciddiyet: 'orta',
           kanit: [
-            { etiket: 'Önceki 12 ay oran', deger: pct1(r1) },
-            { etiket: 'Son 12 ay oran', deger: pct1(r2) },
-            { etiket: 'Aylık kart cirosu (son 3 ay)', deger: tl(kartAylik) },
+            { etiket: E.onceki12Oran, deger: pct1(r1) },
+            { etiket: E.son12Oran, deger: pct1(r2) },
+            { etiket: E.kartAylik, deger: tl(kartAylik) },
           ],
         });
       }
@@ -476,14 +475,14 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     if (ab(prev12) > 0 && ab(last12) / ab(prev12) - 1 > 0.15) {
       bulgular.push({
         id: 'gider-abonelik',
-        baslik: 'Abonelik gideri büyüdü',
-        ozet: `Abonelikler${reelVar ? ' bugünün parasıyla' : ''} ${pct(ab(last12) / ab(prev12) - 1)} arttı.${yeniAbonelik.length ? ` Yeni eklenen: ${yeniAbonelik.slice(0, 3).join(', ')}${yeniAbonelik.length > 3 ? ` ve ${yeniAbonelik.length - 3} tane daha` : ''}.` : ''}`,
+        baslik: M.abonelik.baslik,
+        ozet: M.abonelik.ozet(ab(last12) / ab(prev12) - 1, reelVar, yeniAbonelik),
         aylikEtki: (ab(last12) - ab(prev12)) / 12,
-        oneri: `Kullanılmayan aboneliği iptal et${yeniAbonelik.length ? ` (${yeniAbonelik[0]})` : ''}.`,
+        oneri: M.abonelik.oneri(yeniAbonelik[0] ?? null),
         ciddiyet: 'bilgi',
         kanit: [
-          { etiket: 'Önceki 12 ay', deger: tl(ab(prev12)) },
-          { etiket: 'Son 12 ay', deger: tl(ab(last12)) },
+          { etiket: E.onceki12, deger: tl(ab(prev12)) },
+          { etiket: E.son12, deger: tl(ab(last12)) },
         ],
       });
     }
@@ -501,10 +500,10 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     if (tum12 > 0 && v12.length >= 5 && (v12[0].t / tum12 > 0.2 || top / tum12 > 0.5)) {
       bulgular.push({
         id: 'tedarikci',
-        baslik: 'Giderler birkaç tedarikçide toplanıyor',
-        ozet: `Son ${Math.min(12, last12.length)} ayda ${v12.length.toLocaleString('tr-TR')} tedarikçiye ödeme yapıldı; ilk 5'i giderlerin ${yuzdeEk(top / tum12, 'ini')}, en büyüğü tek başına ${yuzdeEk(v12[0].t / tum12, 'ini')} alıyor.`,
+        baslik: M.tedarikci.baslik,
+        ozet: M.tedarikci.ozet(Math.min(12, last12.length), v12.length, top / tum12, v12[0].t / tum12),
         aylikEtki: 0,
-        oneri: 'En büyük beş tedarikçi için sözleşme bitiş tarihlerini ve fiyat maddelerini çıkar; her biri için en az bir alternatif teklif al.',
+        oneri: M.tedarikci.oneri,
         ciddiyet: 'orta',
         kanit: v12.slice(0, 5).map((x) => ({ etiket: x.ad, deger: `${tl(x.t)} (${pct(x.t / tum12)})` })),
       });
@@ -514,12 +513,12 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       const fazla = sum(supheli.map((d) => (d.n - 1) * d.tutar));
       bulgular.push({
         id: 'mukerrer',
-        baslik: 'Kontrol edilmesi gereken olası mükerrer ödemeler',
-        ozet: `Aynı gün, aynı tedarikçiye, aynı açıklamayla, kuruşu kuruşuna aynı tutarda birden fazla ödeme: ${supheli.length.toLocaleString('tr-TR')} grup, fazladan ödenmiş olabilecek toplam ${tl(fazla)}.`,
+        baslik: M.mukerrer.baslik,
+        ozet: M.mukerrer.ozet(supheli.length, fazla),
         aylikEtki: 0,
-        oneri: 'Bir kısmı meşru olabilir (taksit, aynı gün birden çok fatura). En büyük 10 grubu faturalarla karşılaştır; hatalı olanlar için tedarikçiden iade iste.',
+        oneri: M.mukerrer.oneri,
         ciddiyet: fazla > toplamGider * 0.001 ? 'orta' : 'bilgi',
-        kanit: supheli.slice(0, 8).map((d) => ({ etiket: `${d.karsi} · ${d.tarih.split('-').reverse().join('.')}`, deger: `${d.n} × ${tl(d.tutar)}` })),
+        kanit: supheli.slice(0, 8).map((d) => ({ etiket: `${d.karsi} · ${M.tarih(d.tarih)}`, deger: `${d.n} × ${tl(d.tutar)}` })),
       });
     }
   }
@@ -536,12 +535,12 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     if (sikisan.length && sikisan.length < 12) {
       bulgular.push({
         id: 'nakit-takvimi',
-        baslik: 'Kasanın sıkıştığı aylar belli',
-        ozet: `Geçmiş yıllarda ${sikisan.map((x) => AY_ADI[x.ay - 1]).join(', ')} aylarında giren para, çıkanı karşılamadı.`,
+        baslik: M.nakitTakvimi.baslik,
+        ozet: M.nakitTakvimi.ozet(sikisan.map((x) => x.ay)),
         aylikEtki: 0,
-        oneri: `Diğer aylarda her hafta ${tl(-sum(sikisan.map((x) => x.net)) / Math.max(1, 12 - sikisan.length) / 4.3)} kenara ayır; bu aylar geldiğinde kasa açık vermez.`,
+        oneri: M.nakitTakvimi.oneri(-sum(sikisan.map((x) => x.net)) / Math.max(1, 12 - sikisan.length) / 4.3),
         ciddiyet: 'orta',
-        kanit: sikisan.map((x) => ({ etiket: AY_ADI[x.ay - 1], deger: `${tl(x.net)} (ortalama${reelVar ? ', bugünün parasıyla' : ''})` })),
+        kanit: sikisan.map((x) => ({ etiket: M.ayAdi(x.ay), deger: M.nakitTakvimi.kanit(x.net, reelVar) })),
       });
     }
   }
@@ -555,7 +554,7 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   const cekis3 = avg3((a) => a.cekis);
   const sabitBilinir = sabit > 0;
   const yalnizPos = kayitlar.every((k) => k.tur !== 'gider' || k.kategori === 'pos');
-  if (gelirVar && giderVar && !sabitBilinir && !yalnizPos) yapilamayan.push('Giderler sabit ve değişken diye ayrılamadı (kategori eşleştirmesi gerekiyor): başabaş hesaplanmadı.');
+  if (gelirVar && giderVar && !sabitBilinir && !yalnizPos) yapilamayan.push(Y.sabitDegisken);
   const basabasCiro = gelirVar && sabitBilinir ? sabit / Math.max(0.05, 1 - degisken / Math.max(1, gelir3)) : null;
   const basabasGunu = basabasCiro !== null ? Math.min(31, Math.ceil((basabasCiro / Math.max(1, gelir3)) * 30)) : null;
   const kasaSon = kasaBilinir ? aylik[aylik.length - 1].kasa! : null;
@@ -569,16 +568,16 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       bulgular.push({
         id: 'cekis',
         toplamaDahil: false,
-        baslik: 'Kasadan kazandığından fazlasını çekiyorsun',
-        ozet: `Son 3 ayda işletme ayda ortalama ${tl(kar3)} kazandı, ${tl(cekis3)} çekildi. Kasa ${ayAdi(tepe.ay)}${ek(Number(tepe.ay.slice(0, 4)), 'den')} bu yana ${tl(tepe.kasa! - kasaSon)} azaldı.`,
+        baslik: M.cekis.baslik,
+        ozet: M.cekis.ozet(kar3, cekis3, tepe.ay, tepe.kasa! - kasaSon),
         aylikEtki: cekis3 - kar3,
-        oneri: `Kendine sabit bir maaş belirle: ayda ${tl(Math.floor((kar3 * 0.9) / 1000) * 1000)}. Fazlası kasada kalsın; zam ve geri çağırma işe yarayınca maaşını yükseltirsin.`,
+        oneri: M.cekis.oneri(Math.floor((kar3 * 0.9) / 1000) * 1000),
         ciddiyet: 'yuksek',
         kanit: [
-          { etiket: 'Aylık kâr (son 3 ay)', deger: tl(kar3) },
-          { etiket: 'Aylık çekilen (son 3 ay)', deger: tl(cekis3) },
-          { etiket: `Kasa · ${ayAdi(tepe.ay)}`, deger: tl(tepe.kasa!) },
-          { etiket: `Kasa · ${ayAdi(son)}`, deger: tl(kasaSon) },
+          { etiket: E.karAylik, deger: tl(kar3) },
+          { etiket: E.cekisAylik, deger: tl(cekis3) },
+          { etiket: E.kasaAy(tepe.ay), deger: tl(tepe.kasa!) },
+          { etiket: E.kasaAy(son), deger: tl(kasaSon) },
         ],
       });
     }
@@ -587,19 +586,19 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
     bulgular.push({
       id: 'nakit-omru',
       toplamaDahil: false,
-      baslik: 'Kasa bir aydan kısa dayanır',
-      ozet: `Bugün kasada ${tl(kasaSon!)} var. Hiç gelir olmasa sabit giderler ve çekilen parayla ${nakitOmruGun} gün dayanır.`,
+      baslik: M.nakitOmru.baslik,
+      ozet: M.nakitOmru.ozet(kasaSon!, nakitOmruGun),
       aylikEtki: 0,
-      oneri: 'Hedef en az 60 gün: altı ay boyunca her ay bir miktar kenara ayır.',
+      oneri: M.nakitOmru.oneri,
       ciddiyet: nakitOmruGun < 21 ? 'yuksek' : 'orta',
       kanit: [
-        { etiket: 'Kasa', deger: tl(kasaSon!) },
-        { etiket: 'Aylık sabit gider', deger: tl(sabit) },
+        { etiket: E.kasa, deger: tl(kasaSon!) },
+        { etiket: E.sabitAylik, deger: tl(sabit) },
       ],
     });
   }
 
-  const insan = musteriBulgulari(kayitlar, opts.randevular, tl);
+  const insan = musteriBulgulari(kayitlar, opts.randevular, M);
   bulgular.push(...insan.bulgular);
   yapilamayan.push(...insan.yapilamayan);
   bulgular.sort((a, b) => ciddiyetSira[a.ciddiyet] - ciddiyetSira[b.ciddiyet] || b.aylikEtki - a.aylikEtki);
@@ -611,6 +610,7 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   return {
     ad: opts.ad,
     para,
+    dil,
     donemTipi,
     donem: { bas: months[0], son, ay: months.length, fiyatAyi, eksikSonAy },
     kaynak: reelVar ? e!.kaynak : null,
@@ -638,7 +638,7 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
   // ---- yearly figures (annual reports): margins, overheads, interest, operating result
   function yillik(): Rontgen {
     const ys = [...yillar.keys()].sort();
-    const Y = ys.map((y) => {
+    const YS = ys.map((y) => {
       const xs = yillar.get(y)!;
       const at = (f: (a: MonthAgg) => number) => sum(xs.map((m) => real(f(g(m)), m)));
       const katT = (k: string) => at((a) => a.kat.get(k) ?? 0);
@@ -648,22 +648,22 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       const faiz = katT('finansman');
       return { y, satis, nominal: sum(xs.map((m) => g(m).gelir)), malzeme, genel, faiz, faaliyet: satis - malzeme - genel };
     });
-    const a = Y[0];
-    const z = Y[Y.length - 1];
-    const n = Y.length - 1;
-    const cagr = Math.pow(z.satis / a.satis, 1 / n) - 1;
-    const dususYili = Y.slice(1).filter((x, i) => x.satis < Y[i].satis).length;
-    const etiket = reelVar ? ` (${ayAdi(fiyatAyi)} parasıyla)` : '';
+    const a = YS[0];
+    const z = YS[YS.length - 1];
+    const yilSay = YS.length - 1;
+    const cagr = Math.pow(z.satis / a.satis, 1 / yilSay) - 1;
+    const dususYili = YS.slice(1).filter((x, i) => x.satis < YS[i].satis).length;
+    const etiket = reelVar ? E.fiyatAyi(fiyatAyi) : '';
     if (a.satis > 0 && z.satis < a.satis) {
       bulgular.push({
         id: 'yillik-dusus',
         toplamaDahil: false,
-        baslik: 'Satışlar yıllardır düşüyor',
-        ozet: `${a.y}${ek(Number(a.y), 'den')} ${z.y}${ek(Number(z.y), 'e')} satışlar ${pct(1 - z.nominal / a.nominal)} azaldı${reelVar ? `; enflasyondan arındırınca ${pct(1 - z.satis / a.satis)}` : ''}. ${dususYili === n ? `${n} yılın hepsinde` : `${n} yıldan ${dususYili} tanesinde`} düşüş var; yılda ortalama ${pct(-cagr)} küçülme.`,
+        baslik: M.yillikDusus.baslik,
+        ozet: M.yillikDusus.ozet(a.y, z.y, 1 - z.nominal / a.nominal, reelVar ? 1 - z.satis / a.satis : null, dususYili === yilSay, yilSay, dususYili, -cagr),
         aylikEtki: a.satis - z.satis,
-        oneri: 'Küçülen bir satış hacminde sabit giderler aynı hızda küçülmezse zarar kaçınılmazdır. Mağaza, kadro ve kira yapısı satışla birlikte küçültülmeli.',
+        oneri: M.yillikDusus.oneri,
         ciddiyet: 'yuksek',
-        kanit: Y.map((x) => ({ etiket: x.y, deger: `${tl(x.satis)}${etiket}` })),
+        kanit: YS.map((x) => ({ etiket: x.y, deger: `${tl(x.satis)}${etiket}` })),
       });
     }
     if (a.malzeme > 0 && z.malzeme > 0) {
@@ -672,12 +672,12 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       if (m2 < m1 - 0.01) {
         bulgular.push({
           id: 'brut-marj',
-          baslik: 'Brüt kâr marjı daralıyor',
-          ozet: `Satılan malın maliyeti düşüldükten sonra kalan pay ${pct1(m1)} → ${pct1(m2)}. Her 100 birimlik satıştan ${((m1 - m2) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} birim daha az kalıyor.`,
+          baslik: M.brutMarj.baslik,
+          ozet: M.brutMarj.ozet(m1, m2),
           aylikEtki: (m1 - m2) * z.satis,
-          oneri: 'Fiyat, indirim ve ürün karışımını incele: marjı düşük ürünler satışın içinde büyüyor mu, alış fiyatları satışa yansıtılıyor mu?',
+          oneri: M.brutMarj.oneri,
           ciddiyet: 'yuksek',
-          kanit: Y.map((x) => ({ etiket: x.y, deger: pct1(1 - x.malzeme / x.satis) })),
+          kanit: YS.map((x) => ({ etiket: x.y, deger: pct1(1 - x.malzeme / x.satis) })),
         });
       }
     }
@@ -687,44 +687,45 @@ export function rontgen(tum: Kayit[], opts: { ad: string; acilisKasa?: number; p
       if (o2 > o1 * 1.08) {
         bulgular.push({
           id: 'genel-oran',
-          baslik: 'Genel giderler satıştan yavaş küçülüyor',
-          ozet: `Genel giderlerin satışa oranı ${pct1(o1)} → ${pct1(o2)}. Satış ${pct(1 - z.satis / a.satis)} düşerken genel giderler ${pct(1 - z.genel / a.genel)} düştü.`,
+          baslik: M.genelOran.baslik,
+          ozet: M.genelOran.ozet(o1, o2, 1 - z.satis / a.satis, 1 - z.genel / a.genel),
           aylikEtki: (o2 - o1) * z.satis,
-          oneri: 'Sabit giderlerin hangi kısmı satışla birlikte küçülebilir (kira, şube, kadro)? Satışın taşıyamayacağı yapıyı erken küçült.',
+          oneri: M.genelOran.oneri,
           ciddiyet: 'yuksek',
-          kanit: Y.map((x) => ({ etiket: x.y, deger: `${pct1(x.genel / x.satis)} · ${tl(x.genel)}` })),
+          kanit: YS.map((x) => ({ etiket: x.y, deger: `${pct1(x.genel / x.satis)} · ${tl(x.genel)}` })),
         });
       }
     }
     if (a.faiz > 0 && z.faiz > 0 && z.faiz / z.satis > (a.faiz / a.satis) * 1.3) {
       bulgular.push({
         id: 'faiz-yuku',
-        baslik: 'Faiz yükü katlanıyor',
-        ozet: `Faiz gideri${reelVar ? ' (gerçek)' : ''} ${tl(a.faiz)} → ${tl(z.faiz)}; satışa oranı ${pct1(a.faiz / a.satis)} → ${pct1(z.faiz / z.satis)}.`,
+        baslik: M.faizYuku.baslik,
+        ozet: M.faizYuku.ozet(a.faiz, z.faiz, a.faiz / a.satis, z.faiz / z.satis, reelVar),
         aylikEtki: z.faiz - (a.faiz / a.satis) * z.satis,
-        oneri: 'Borç, işletmenin ürettiği nakitten hızlı büyüyor. Yeni borçla eski borcu kapatmak yerine borcu küçültme planı gerekiyor.',
+        oneri: M.faizYuku.oneri,
         ciddiyet: 'yuksek',
-        kanit: Y.map((x) => ({ etiket: x.y, deger: `${tl(x.faiz)} · ${pct1(x.faiz / x.satis)}` })),
+        kanit: YS.map((x) => ({ etiket: x.y, deger: `${tl(x.faiz)} · ${pct1(x.faiz / x.satis)}` })),
       });
     }
-    const zararYillari = Y.filter((x) => x.faaliyet < 0);
+    const zararYillari = YS.filter((x) => x.faaliyet < 0);
     if (zararYillari.length) {
       bulgular.push({
         id: 'faaliyet-zarari',
         toplamaDahil: false,
-        baslik: 'Ana faaliyet zarar ediyor',
-        ozet: `Satıştan malın maliyeti ve genel giderler düşülünce ${zararYillari.map((x) => x.y).join(', ')} yıllarında zarar var. Faiz bunun üstüne eklenir.`,
+        baslik: M.faaliyetZarari.baslik,
+        ozet: M.faaliyetZarari.ozet(zararYillari.map((x) => x.y)),
         aylikEtki: -zararYillari[zararYillari.length - 1].faaliyet,
-        oneri: 'Zarar eden birimleri (şube, ürün grubu) ayrı ayrı çıkar; nakit yakan yapıları kapatmak, satışı büyütmeye çalışmaktan hızlı sonuç verir.',
+        oneri: M.faaliyetZarari.oneri,
         ciddiyet: 'yuksek',
-        kanit: Y.map((x) => ({ etiket: x.y, deger: tl(x.faaliyet) })),
+        kanit: YS.map((x) => ({ etiket: x.y, deger: tl(x.faaliyet) })),
       });
     }
     bulgular.sort((p, q) => ciddiyetSira[p.ciddiyet] - ciddiyetSira[q.ciddiyet] || q.aylikEtki - p.aylikEtki);
-    yapilamayan.push('Yıllık özet veri: aylık mevsim, fiyat, müşteri ve tedarikçi bulguları için işlem bazında kayıt gerekir.');
+    yapilamayan.push(Y.yillik);
     return {
       ad: opts.ad,
       para,
+      dil,
       donemTipi: 'yil',
       donem: { bas: months[0], son, ay: months.length, fiyatAyi, eksikSonAy: false },
       kaynak: reelVar ? e!.kaynak : null,

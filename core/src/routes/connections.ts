@@ -167,11 +167,12 @@ export const connectionRoutes: Route[] = [
     auth: 'user',
     ownerOnly: true,
     gated: true,
-    query: z.object({ format: z.enum(['json', 'html']).default('json') }),
+    query: z.object({ format: z.enum(['json', 'html']).default('json'), lang: z.enum(['tr', 'en', 'es']).optional() }),
     async handler(ctx, { query }) {
       const v = await rontgenVerisi(ctx.db, ctx.shopId);
       if (!v.kayitlar.length) return { rontgen: null, reason: 'NO_DATA' };
-      const r = rontgen(v.kayitlar, { ad: v.ad, para: v.para, randevular: v.randevular, acilisKasa: v.acilisKasa });
+      // In the shop's language unless the app asks for another (the owner's phone may be set differently).
+      const r = rontgen(v.kayitlar, { ad: v.ad, para: v.para, randevular: v.randevular, acilisKasa: v.acilisKasa, dil: query.lang ?? v.dil });
       return query.format === 'html' ? { html: raporHtml(r) } : { rontgen: r };
     },
   },

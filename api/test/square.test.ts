@@ -220,12 +220,21 @@ describe('square connection', () => {
     const ids = r.body.rontgen.bulgular.map((b: any) => b.id);
     expect(ids).toContain('musteri-kaybi');
     expect(ids).toContain('randevu-kaybi');
+    // Written in the shop's language (this shop is English), or the one the app asks for.
     const kayip = r.body.rontgen.bulgular.find((b: any) => b.id === 'musteri-kaybi');
-    expect(kayip.baslik).toBe('5 düzenli müşteri gelmeyi bıraktı');
-    expect(kayip.kanit[0].deger).toMatch(/her 14 günde bir/);
+    expect(kayip.baslik).toBe('5 regular clients stopped coming');
+    expect(kayip.kanit[0].deger).toMatch(/every 14 days · away \d+ days/);
     expect(r.body.rontgen.para).toBe('USD');
+    const tr = (await t.call('GET', '/rontgen?lang=tr', { token: s.token })).body.rontgen.bulgular.find((b: any) => b.id === 'musteri-kaybi');
+    expect(tr.baslik).toBe('5 düzenli müşteri gelmeyi bıraktı');
+    expect(tr.kanit[0].deger).toMatch(/her 14 günde bir/);
+    const es = (await t.call('GET', '/rontgen?lang=es', { token: s.token })).body.rontgen.bulgular.find((b: any) => b.id === 'musteri-kaybi');
+    expect(es.baslik).toBe('5 clientes habituales dejaron de venir');
     const html = await t.call('GET', '/rontgen?format=html', { token: s.token });
-    expect(html.body.html).toContain('düzenli müşteri gelmeyi bıraktı');
+    expect(html.body.html).toContain('<html lang="en">');
+    expect(html.body.html).toContain('regular clients stopped coming');
+    expect(html.body.html).toContain('Findings and what to do');
+    expect(html.body.html).not.toMatch(/Bulgular|Yapılacak|kayıt/);
   });
 
   it('disconnecting forgets the tokens; with data=delete the imported rows go too', async () => {

@@ -53,7 +53,7 @@ export function Today() {
         <header className="receipt-head">
           <strong>{t('dayReceipt')}</strong>
           <span>
-            {me.shop.name} · {DateTime.fromISO(date).setLocale(lang).toFormat('ccc dd.LL.yyyy')} · {data?.data.length ?? 0} {t('receiptAppts')}
+            {me.shop.name} · {DateTime.fromISO(date).setLocale(lang).toFormat('ccc dd.LL.yyyy')} · {data?.data.length ?? 0} {t(data?.data.length === 1 ? 'receiptAppt' : 'receiptAppts')}
           </span>
         </header>
         <hr className="rule" />

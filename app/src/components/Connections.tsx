@@ -82,7 +82,7 @@ export function Connections() {
   const disconnectBank = () => run(async () => void (await api.del('/connections/plaid?data=keep')));
   const xray = () =>
     run(async () => {
-      const r = await api.get<{ html?: string; reason?: string }>('/rontgen?format=html');
+      const r = await api.get<{ html?: string; reason?: string }>(`/rontgen?format=html&lang=${lang}`);
       if (!r.html) return toast(t('xrayNoData'));
       const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' }));
       window.open(url, '_blank', 'noopener');
