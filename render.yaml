@@ -1,14 +1,14 @@
-# Render blueprint: the API (under /api) and its Postgres database. The website, demo and app are on Netlify,
-# which proxies /api/* here (set API_ORIGIN on Netlify to this service's URL).
+# Render blueprint: the API (under /api) and its Postgres database. The website, demo and app are on
+# Cloudflare Pages, whose /api function forwards here (set API_ORIGIN on Pages to this service's URL).
 # New → Blueprint → pick this repository. Secrets marked sync: false are entered in the Render dashboard.
 services:
   - type: web
-    name: fade
+    name: monacount-api
     runtime: node
     # Free instances sleep when idle, and a sleeping server sends no reminders. Use an always-on plan
     # (starter or above) before real shops rely on reminders.
     plan: free
-    region: frankfurt
+    region: virginia
     # Hourly jobs take a lease (job_runs), so more copies are safe; one is enough until there are hundreds of shops.
     numInstances: 1
     buildCommand: npm ci --include=dev
@@ -21,11 +21,11 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: fade-db
+          name: monacount-db
           property: connectionString
       - key: SERVE_STATIC
         value: "false"
-      # The public address people use (Netlify), for links in e-mails.
+      # The public address people use (Cloudflare Pages), for links in e-mails and the Twilio webhook signature.
       - key: PUBLIC_URL
         value: https://monacount.com
       - key: API_PREFIX
@@ -96,8 +96,8 @@ services:
         sync: false
 
 databases:
-  - name: fade-db
+  - name: monacount-db
     plan: free
-    region: frankfurt
-    databaseName: fade
-    user: fade
+    region: virginia
+    databaseName: monacount
+    user: monacount

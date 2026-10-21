@@ -44,7 +44,7 @@ npx wrangler@4 pages dev web-dist --binding API_ORIGIN=http://127.0.0.1:3100
    - Root directory: boş bırak.
 3. **Environment variables (Production):**
    - `NODE_VERSION` = `22`.
-   - `API_ORIGIN` = Render'daki API adresi, ör. `https://fade-xxxx.onrender.com`. Boşsa `/api` 503 "API_OFFLINE" döner.
+   - `API_ORIGIN` = Render'daki API adresi, ör. `https://monacount-api.onrender.com`. Boşsa `/api` 503 "API_OFFLINE" döner.
 4. **Save and Deploy.** Bitince `<proje>.pages.dev` adresinde site açılır; orada dene.
 5. **Alan adını çevir:**
    - Cloudflare → DNS → Records'ta Netlify'a giden iki CNAME'i sil (`monacount.com` ve `www` → `usta-fade.netlify.app`).

@@ -3,7 +3,7 @@
 **Güncel düzen:** web sitesi, demo ve uygulama Netlify'da (`https://monacount.com`; Netlify adresi `usta-fade.netlify.app` oraya yönlenir); API ve veritabanı Render'da. Netlify, `/api/*` isteklerini Render'a yönlendirir; kullanıcı tek adres görür.
 
 1. Render'da Blueprint ile repoyu bağla (`render.yaml`). Render yalnızca API'yi çalıştırır.
-2. Render adresini (ör. `https://fade-xxxx.onrender.com`) Netlify → Site configuration → Environment variables'a `API_ORIGIN` olarak gir, sonra yeniden yayınla.
+2. Render adresini (ör. `https://monacount-api.onrender.com`) Netlify → Site configuration → Environment variables'a `API_ORIGIN` olarak gir, sonra yeniden yayınla.
 3. Render'da `PUBLIC_URL` Netlify adresidir; e-postadaki davet linkleri oraya gider.
 
 Aşağıdaki bölümler Stripe açıldığında da geçerlidir.
@@ -55,12 +55,12 @@ Stripe hazır olduğunda yalnızca üç anahtarı girersin; form kendiliğinden 
 1. https://render.com adresinde GitHub hesabınla giriş yap.
 2. **New → Blueprint**'e tıkla, `tonyfromitaly/makas` reposunu seç. Render, repodaki `render.yaml` dosyasını okuyup web servisini ve Postgres veritabanını kendisi kurar. `JWT_SECRET`, `SERVICE_API_KEY` ve `ADMIN_API_KEY` otomatik üretilir.
 3. Senden istenen değerleri gir: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `RESEND_API_KEY`, `MAIL_FROM`, `ANTHROPIC_API_KEY` (Claude). `STRIPE_WEBHOOK_SECRET`'ı şimdilik boş bırak.
-4. İlk yayın bitince adresin belli olur: `https://fade-xxxx.onrender.com`. Sitenin `/` adresinde, uygulamanın `/app/` adresinde açıldığını kontrol et.
+4. İlk yayın bitince adresin belli olur: `https://monacount-api.onrender.com`. Sitenin `/` adresinde, uygulamanın `/app/` adresinde açıldığını kontrol et.
 
 ## 4. Stripe webhook
 
 1. Stripe → **Geliştiriciler → Webhook'lar → Uç nokta ekle**.
-2. URL: `https://fade-xxxx.onrender.com/api/billing/webhook`
+2. URL: `https://monacount-api.onrender.com/api/billing/webhook`
 3. Olaylar: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.
 4. Kaydet ve **İmzalama sırrı**nı kopyala (`whsec_...`). Render'da `STRIPE_WEBHOOK_SECRET` olarak gir; servis yeniden başlar.
 
@@ -82,6 +82,6 @@ Alan adı doğrulanmadan Resend yalnızca hesabını açtığın e-postaya gönd
 ## İşletme işleri
 
 - **E-postası kaybolan müşteri:** `POST /api/admin/shops/<shop_id>/access-key` ile yeni anahtar üret (`ADMIN_API_KEY` ile; Render → Environment'tan görebilirsin) ve müşteriye ilet. Anahtar tek kullanımlık ve 14 gün geçerli.
-- **Destek:** `https://fade-xxxx.onrender.com/app/#operator` adresinde `ADMIN_API_KEY` ile İşletme paneli.
+- **Destek:** `https://monacount-api.onrender.com/app/#operator` adresinde `ADMIN_API_KEY` ile İşletme paneli.
 - **Ücretsiz plan notları:** Render'ın ücretsiz web servisi 15 dakika boşta kalınca uyur; ilk istek 30-60 saniye sürebilir. Ücretsiz Postgres sınırlı süre ücretsizdir. Gerçek müşteriler gelmeden önce iki hizmeti de ücretli plana geçir.
 - **Canlı demo** GitHub Pages'te ayrı ve açık kalır; gerçek veriye dokunmaz.
