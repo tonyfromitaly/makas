@@ -27,10 +27,8 @@ npx wrangler@4 pages dev web-dist --binding API_ORIGIN=http://127.0.0.1:3100
 - `monacount.com` ve `www.monacount.com` Pages'e bağlı. Sertifikayı Cloudflare veriyor (Google Trust Services).
 - `www` adresi, bir yönlendirme kuralıyla (Rules → Redirect Rules) `monacount.com`'a 301 ile gider; sorgu parametreleri korunur.
 - Netlify'dan alan adı kaldırıldı. Depo zaten bağlı değildi. Netlify Forms'ta kayıtlı talep yoktu.
-- `API_ORIGIN` henüz boş, çünkü API Render'da canlı değil. Bu sürece kadar:
-  - `/api` 503 `API_OFFLINE` döner;
-  - uygulamaya giriş ve sitedeki demo formu çalışmaz; form hata mesajı gösterir, sayfadaki e-posta bağlantısı çalışır.
-  - Render açılınca: Pages → Settings → Variables and Secrets → `API_ORIGIN` = Render adresi → yeniden yayınla (Deployments → Retry).
+- `API_ORIGIN=https://monacount-api.onrender.com`. API Render'da (Virginia, ücretsiz plan) ve canlı; giriş, randevu sayfası ve demo formu bu adrese gidiyor.
+- Cloudflare sayfalara kendi istatistik betiğini (`static.cloudflareinsights.com`) eklemeye çalışıyor. Sayfa güvenlik kuralı (CSP) bunu engelliyor, bu yüzden ziyaretçi verisi toplanmıyor. Gizlilik metni de bunu söylüyor.
 
 ## Kurulum (bir kez, yapıldı)
 

@@ -85,3 +85,14 @@ Alan adı doğrulanmadan Resend yalnızca hesabını açtığın e-postaya gönd
 - **Destek:** `https://monacount-api.onrender.com/app/#operator` adresinde `ADMIN_API_KEY` ile İşletme paneli.
 - **Ücretsiz plan notları:** Render'ın ücretsiz web servisi 15 dakika boşta kalınca uyur; ilk istek 30-60 saniye sürebilir. Ücretsiz Postgres sınırlı süre ücretsizdir. Gerçek müşteriler gelmeden önce iki hizmeti de ücretli plana geçir.
 - **Canlı demo** GitHub Pages'te ayrı ve açık kalır; gerçek veriye dokunmaz.
+
+## Güncel durum (21 Ekim 2026)
+
+- Site: Cloudflare Pages, `https://monacount.com` (`docs/cloudflare-pages.md`).
+- API: Render `monacount-api`, adres `https://monacount-api.onrender.com`.
+- Veritabanı: Render `monacount-db`, Postgres.
+- İkisi de Virginia'da ve ikisi de ücretsiz planda. Ücretsiz planda:
+  - web hizmeti 15 dakika boşta kalınca uyur; uyurken hatırlatmalar gitmez ve ilk istek yavaş açılır;
+  - ücretsiz Postgres süreli bir deneme veritabanıdır.
+- Gerçek dükkânlardan önce ikisi de ücretli plana geçmeli.
+- Gizli anahtarlar Render → monacount-api → Environment'ta boş duruyor; doldurulmayan her özellik kapalı başlar.
