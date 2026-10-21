@@ -57,7 +57,7 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_MODEL
-        value: claude-opus-5-5
+        value: claude-sonnet-5-5
       # Reminder sending (docs/hatirlatma-gonderimi.md). Any pair left empty = that channel is off.
       - key: WHATSAPP_TOKEN
         sync: false

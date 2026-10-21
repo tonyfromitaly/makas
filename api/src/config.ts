@@ -37,7 +37,7 @@ export const env = {
   // The assistant's model (see llmEnv below). Claude in production; DeepSeek or any OpenAI-compatible API
   // for local work and trials. No key = the built-in rule engine.
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
-  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
+  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
   aiProvider: process.env.AI_PROVIDER ?? '',
   aiBaseUrl: process.env.AI_BASE_URL || 'https://api.deepseek.com',
   aiApiKey: process.env.AI_API_KEY ?? '',
