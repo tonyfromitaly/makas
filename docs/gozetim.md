@@ -6,7 +6,7 @@ Sunucu bir şey bozulduğunda bunu loga yazmakla kalmaz, sana haber verir. Üç 
 
 Sunucu kapandıysa kendi kendine haber veremez. Bunu dışarıdan bir servis yakalar.
 
-- **Adres:** `https://usta-fade.netlify.app/api/health/ready`
+- **Adres:** `https://monacount.com/api/health/ready`
   - Her şey yolundaysa `200` döner, bir sorun varsa `503`.
   - Cevapta yalnızca bozuk kontrolün adı görünür, ör. `{"ok":false,"failing":["connections"]}`. Ayrıntı yer almaz, dışarıya bilgi sızmaz.
 - **Kurulum (5 dakika):**
@@ -32,7 +32,7 @@ Sunucu 15 dakikada bir şu kontrolleri yapar (`core/src/watch.ts`):
 Ayrıntılı sonuç operatör anahtarıyla görülebilir:
 
 ```bash
-curl -H "Authorization: Bearer $ADMIN_API_KEY" https://usta-fade.netlify.app/api/admin/health
+curl -H "Authorization: Bearer $ADMIN_API_KEY" https://monacount.com/api/admin/health
 ```
 
 ## 3. Alarm

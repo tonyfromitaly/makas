@@ -4,7 +4,7 @@
 
 Para birimi dolar (dükkân başına değiştirilebilir). Abonelik ürünü olarak tasarlandı: her dükkân kendi verisini görür, işletme (biz) abonelikleri yönetir, mesajları ayrı bir altyapı gönderir. Arayüz Türkçe, İngilizce ve İspanyolca.
 
-> **Web sitesi:** https://usta-fade.netlify.app · **Canlı demo:** https://usta-fade.netlify.app/demo/ (örnek verili: `/demo/?ornek=berber`, `/demo/?ornek=kuafor`)
+> **Web sitesi:** https://monacount.com · **Canlı demo:** https://monacount.com/demo/ (örnek verili: `/demo/?ornek=berber`, `/demo/?ornek=kuafor`)
 > Demoda hiçbir kurulum yok: **gerçek sunucu kodu ve gerçek Postgres (PGlite, WebAssembly) tarayıcının içinde çalışır.** Sağ üstteki **Canlı demo** düğmesi mesaj altyapısını (Tony tarafı) ve işletme panelini oynamanı sağlar.
 
 **Tanıtım filmi (19 sn):** [app/public/media/fade-film.mp4](app/public/media/fade-film.mp4). Demoyu ilk açışta da oynar.

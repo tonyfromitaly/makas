@@ -57,7 +57,7 @@ Bu özellikten önce tamamlanmış ziyaretler migration sırasında fişe çevri
 
 ## Online randevu (müşteri sitesine)
 
-**Ayarlar › Online randevu** açılınca dükkânın bir sayfası olur: `https://usta-fade.netlify.app/book/<adres>`.
+**Ayarlar › Online randevu** açılınca dükkânın bir sayfası olur: `https://monacount.com/book/<adres>`.
 
 Sayfada randevu ajanı konuşur:
 
@@ -81,7 +81,7 @@ Sayfada randevu ajanı konuşur:
 **Siteye ekleme:**
 
 ```html
-<script src="https://usta-fade.netlify.app/book/embed.js" data-shop="<adres>" async></script>
+<script src="https://monacount.com/book/embed.js" data-shop="<adres>" async></script>
 ```
 
 Sağ altta bir "Randevu al" düğmesi çıkar. `data-inline="true"` verilirse sayfa olduğu yerde açılır; `data-lang` ve `data-label` da verilebilir.

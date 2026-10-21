@@ -27,7 +27,7 @@ services:
         value: "false"
       # The public address people use (Netlify), for links in e-mails.
       - key: PUBLIC_URL
-        value: https://usta-fade.netlify.app
+        value: https://monacount.com
       - key: API_PREFIX
         value: /api
       - key: TRUST_PROXY

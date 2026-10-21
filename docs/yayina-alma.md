@@ -1,6 +1,6 @@
 # Monacount'u yayına almak: Netlify + Render (+ Resend, sonra Stripe)
 
-**Güncel düzen:** web sitesi, demo ve uygulama Netlify'da (`https://usta-fade.netlify.app`); API ve veritabanı Render'da. Netlify, `/api/*` isteklerini Render'a yönlendirir; kullanıcı tek adres görür.
+**Güncel düzen:** web sitesi, demo ve uygulama Netlify'da (`https://monacount.com`; Netlify adresi `usta-fade.netlify.app` oraya yönlenir); API ve veritabanı Render'da. Netlify, `/api/*` isteklerini Render'a yönlendirir; kullanıcı tek adres görür.
 
 1. Render'da Blueprint ile repoyu bağla (`render.yaml`). Render yalnızca API'yi çalıştırır.
 2. Render adresini (ör. `https://fade-xxxx.onrender.com`) Netlify → Site configuration → Environment variables'a `API_ORIGIN` olarak gir, sonra yeniden yayınla.
