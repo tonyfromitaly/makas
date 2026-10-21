@@ -17,7 +17,9 @@
     "ai:stress": "tsx src/scripts/ai-stress.ts",
     "rontgen": "tsx src/scripts/rontgen.ts",
     "square:sim": "tsx src/scripts/square-simulasyon.ts",
-    "square:seed": "tsx src/scripts/square-seed.ts"
+    "square:seed": "tsx src/scripts/square-seed.ts",
+    "pg:check": "tsx src/scripts/pg-check.ts",
+    "staging:pg": "tsx src/scripts/staging-pg.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.15",
