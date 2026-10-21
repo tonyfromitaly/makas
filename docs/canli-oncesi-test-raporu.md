@@ -4,12 +4,12 @@
 
 ## Karar
 
-**Kontrollü pilot (1 dükkân): evet.** Bunun için iki şart var: aşağıdaki "Mutlaka" listesindeki 1, 2 ve 6. madde kapanmalı, Square ve banka bağlantıları da pilotta sandbox'ta kalmalı ya da kapalı tutulmalı.
+**Kontrollü pilot (1 dükkân): evet.** Bunun için iki şart var: aşağıdaki "Mutlaka" listesindeki 1. ve 2. madde kapanmalı, Square ve banka bağlantıları da pilotta sandbox'ta kalmalı ya da kapalı tutulmalı.
 
 **Genel açılış (ABD'de herkese): henüz hayır.** Kod tarafında engel kalmadı. Engeller iki türlü:
 
 - **Sağlayıcı onayları** (Square canlı, Plaid canlı, SMS) ve **gerçek Postgres doğrulaması**.
-- **Ürün açığı:** Röntgen bulguları ve ajan notları hâlâ yalnızca Türkçe; İngilizce dükkân sahibi bunları Türkçe görüyor.
+- ~~**Ürün açığı:** Röntgen bulguları ve ajan notları yalnızca Türkçe.~~ **Kapandı (`7216355`):** artık dükkânın dilinde (Türkçe, İngilizce, İspanyolca) yazılıyor.
 
 ## Test alanı nasıl kuruldu
 
@@ -129,7 +129,7 @@ Hepsi kaydedildi; 204 otomatik testin hepsi geçiyor.
    - OAuth kullanan büyük bankalar (Chase vb.) için Plaid panelinde izinli yönlendirme adresi tanımlamak.
    - Şu an yalnızca test bankası bağlanır.
 5. **Hatırlatma gönderimi:** WhatsApp ya da Twilio hesabı yok. Hatırlatmalar kuyruğa giriyor ama gitmiyor. ABD'de SMS için Twilio'da **A2P 10DLC kaydı** gerekir; bunun için şirket ve EIN lazım.
-6. **Röntgen ve ajan notlarının İngilizcesi.** Bulgular ve notlar yalnızca Türkçe yazılıyor ("Kasa bir aydan kısa dayanır"). İngilizce dükkân sahibi bunları Türkçe görüyor. ABD için kapanması gereken bir ürün işi.
+6. ~~**Röntgen ve ajan notlarının İngilizcesi.**~~ **Kapandı (`7216355`).** Bulgular, ajan notları, basılabilir rapor, enflasyon kaynağının adı ve sabah özeti dükkânın dilinde yazılıyor. Rakamlar, para, ay adları ve yüzdeler de o dile göre biçimleniyor: dolar kullanan İspanyolca dükkânda ABD biçimi ($1,483). Test alanında İngilizce dükkânda doğrulandı; raporda Türkçe karakter kalmadı.
 
 ### Önemli (pilotu engellemez)
 
