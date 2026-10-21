@@ -13,3 +13,5 @@ app/dist-demo
 .netlify
 site/dist
 /rontgen/
+web-dist/
+.wrangler/

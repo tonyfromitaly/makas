@@ -711,6 +711,25 @@ create table job_runs (
 );
 `;
 
+// Demo requests from the website form (they used to go to Netlify Forms). No shop yet, so no tenant access.
+const demoRequests = `
+create table demo_requests (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  business text not null,
+  business_type text not null,
+  email text not null,
+  phone text not null default '',
+  city text not null default '',
+  message text not null default '',
+  contact text not null,
+  lang text not null,
+  consent_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index demo_requests_email on demo_requests (lower(email), created_at);
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -727,4 +746,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '013_team_till', sql: team },
   { id: '014_owner_on_team', sql: ownerOnTeam },
   { id: '015_job_runs', sql: jobRuns },
+  { id: '016_demo_requests', sql: demoRequests },
 ];

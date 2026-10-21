@@ -39,3 +39,4 @@ export { isaretleriGuncelle, isaretleriHesapla, type Isaret } from './ajan/isare
 export { nakitTahmini, sabitOdemeler, type NakitTahmini } from './rontgen/tahmin';
 export { purgeDeletedShops, DELETE_GRACE_DAYS } from './routes/shop';
 export { runExclusive, healthChecks, alertPlan, markSent, REMIND_EVERY_HOURS, type Check, type HealthInput } from './watch';
+export { purgeOldDemoRequests, DEMO_REQUEST_MONTHS } from './routes/leads';

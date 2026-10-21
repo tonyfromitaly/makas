@@ -397,13 +397,12 @@ beats.forEach((b) =>
   ScrollTrigger.create({ trigger: b, start: 'top 55%', end: 'bottom 45%', onToggle: (self) => self.isActive && activate(b) }),
 );
 
-// ---------------------------------------------------------------- demo request (Netlify Forms)
+// ---------------------------------------------------------------- demo request (POST /api/public/demo-requests)
 const form = $('#demo-form');
 const done = () => {
   $$('.field, .field-row, .consent, #form-submit, .form-error', form).forEach((el) => (el.hidden = true));
   $('#form-done').hidden = false;
 };
-if (new URLSearchParams(location.search).has('gonderildi')) done();
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = $('#form-error');
@@ -415,10 +414,11 @@ form.addEventListener('submit', async (e) => {
   const btn = $('#form-submit');
   btn.disabled = true;
   try {
-    const res = await fetch('/', {
+    const data = Object.fromEntries(new FormData(form));
+    const res = await fetch('/api/public/demo-requests', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(new FormData(form)).toString(),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, consent: data.consent === 'evet', lang }),
     });
     if (!res.ok) throw new Error(String(res.status));
     done();

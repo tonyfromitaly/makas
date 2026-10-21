@@ -1,4 +1,6 @@
-// Builds everything Netlify serves into netlify-dist/:
+// Builds the website, demo, app and booking page into one static folder:
+//   netlify-dist/ for Netlify, or web-dist/ for Cloudflare Pages (WEB_HOST=cloudflare).
+// What is in it:
 //   /        the website (site/)
 //   /demo/   the in-browser demo (app in demo mode, incl. the sample shops)
 //   /app/    the real app; its /api calls are proxied to the API server (API_ORIGIN, e.g. Render)
@@ -7,7 +9,8 @@ import { execSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 const run = (cmd, opts = {}) => execSync(cmd, { stdio: 'inherit', ...opts, env: { ...process.env, ...(opts.env ?? {}) } });
-const out = 'netlify-dist';
+const cloudflare = process.env.WEB_HOST === 'cloudflare';
+const out = cloudflare ? 'web-dist' : 'netlify-dist';
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
 
@@ -23,13 +26,22 @@ cpSync('app/dist-netlify/app', `${out}/app`, { recursive: true });
 
 // Routing. Proxy rules come first; single-page fallbacks last.
 const api = (process.env.API_ORIGIN ?? '').replace(/\/$/, '');
+// On Cloudflare /api/* is handled by functions/api/[[path]].js (Pages redirects cannot proxy to another host).
 const redirects = [
-  api ? `/api/*  ${api}/api/:splat  200` : '/api/*  /api-offline.json  503',
-  '/app/*   /app/index.html   200',
-  '/demo/*  /demo/index.html  200',
-  '/book/*  /book/index.html  200',
+  ...(cloudflare ? [] : [api ? `/api/*  ${api}/api/:splat  200` : '/api/*  /api-offline.json  503']),
+  // Single-page fallbacks. Cloudflare redirects /x/index.html to /x/, so there the target is the folder.
+  ...['app', 'demo', 'book'].map((d) => `/${d}/*  /${d}/${cloudflare ? '' : 'index.html'}  200`),
 ];
 writeFileSync(`${out}/_redirects`, redirects.join('\n') + '\n');
+// A real 404 for unknown paths: without one, Cloudflare Pages treats the site as a single-page app and serves
+// the home page (without its headers) for any address.
+const brand = JSON.parse(readFileSync('site/brand.json', 'utf8'));
+writeFileSync(
+  `${out}/404.html`,
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Not found · ${brand.product}</title>` +
+    `<style>body{margin:0;min-height:100vh;display:grid;place-items:center;font:16px/1.5 system-ui,sans-serif;background:#f6f4ef;color:#1c1b19}main{padding:24px;text-align:center}a{color:inherit}</style></head>` +
+    `<body><main><h1>${brand.product}</h1><p>This page doesn’t exist. · Bu sayfa yok.</p><p><a href="/">${brand.product} home · Ana sayfa</a></p></main></body></html>\n`,
+);
 writeFileSync(`${out}/api-offline.json`, JSON.stringify({ error: { code: 'API_OFFLINE', message: 'The app server is not connected yet' } }));
 // The same security headers as netlify.toml, as a _headers file inside the publish folder, so they apply
 // to CLI deploys of this folder too.
@@ -38,4 +50,4 @@ const headers = [...toml.matchAll(/\[\[headers\]\]\s*for = "([^"]+)"\s*\[headers
   .map((m) => [m[1], ...[...m[2].matchAll(/^\s*([\w-]+) = "([^"]*)"/gm)].map((v) => `  ${v[1]}: ${v[2]}`)].join('\n'))
   .join('\n\n');
 writeFileSync(`${out}/_headers`, headers + '\n');
-console.log(`\nnetlify-dist ready · api: ${api || 'not connected (set API_ORIGIN)'}`);
+console.log(`\n${out} ready · api: ${cloudflare ? 'functions/api (API_ORIGIN at runtime)' : api || 'not connected (set API_ORIGIN)'}`);

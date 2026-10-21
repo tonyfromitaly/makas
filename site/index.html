@@ -202,8 +202,7 @@
             <p data-k="demoBody">Formu bırak; mesajını okuyup seni arar ya da yazarız. Uygun görürsek dükkânına gelir, {{product}}’u birlikte kurarız.</p>
             <p class="demo-mail"><span data-k="demoMail">Doğrudan yazmak istersen:</span> <a href="mailto:{{email}}">{{email}}</a></p>
           </div>
-          <form class="form" id="demo-form" name="demo" method="POST" data-netlify="true" netlify-honeypot="company_url" action="/?gonderildi=1#demo">
-            <input type="hidden" name="form-name" value="demo" />
+          <form class="form" id="demo-form" name="demo" method="POST" action="#demo">
             <p class="hp"><label>Bu alanı boş bırak <input name="company_url" tabindex="-1" autocomplete="off" /></label></p>
             <div class="field-row">
               <label class="field"><span data-k="fName">Adın soyadın</span><input name="name" required maxlength="120" autocomplete="name" /></label>

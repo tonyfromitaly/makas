@@ -14,6 +14,7 @@ import { agentRoutes } from './routes/agent';
 import { teamRoutes } from './routes/team';
 import { bookingRoutes } from './routes/booking';
 import { checksIn } from './watch';
+import { leadRoutes } from './routes/leads';
 
 export interface ApiRequest {
   method: string;
@@ -35,6 +36,7 @@ export const routes: Route[] = [
   ...agentRoutes,
   ...teamRoutes,
   ...bookingRoutes,
+  ...leadRoutes,
   ...shopRoutes,
   ...clientRoutes,
   ...appointmentRoutes,

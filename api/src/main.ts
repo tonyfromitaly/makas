@@ -1,4 +1,4 @@
-import { alertPlan, healthChecks, markSent, migrate, plaidBaglanti, purgeDeletedShops, runExclusive, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
+import { alertPlan, healthChecks, markSent, migrate, plaidBaglanti, purgeDeletedShops, purgeOldDemoRequests, runExclusive, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
 import { hostname } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { env, llmEnv, llmName, loadConfig } from './config';
@@ -51,6 +51,8 @@ const JOBS = ['sync', 'upkeep'];
 const deps = {
   ...argon2Deps,
   health: () => ({ sending, errors5xx: recentErrors(), jobs: JOBS }),
+  // Called only while serving requests, after `alerts` below exists.
+  notifyOperator: (subject: string, lines: string[]) => alerts.send(subject, lines),
   parseNote: parseServiceClient(env.parseServiceUrl, env.parseServiceKey),
   assistant: assistantClient(llm),
   chat: chatClient(llm),
@@ -86,7 +88,7 @@ console.log(`billing: ${paymentsOn ? 'stripe' : 'off, website takes applications
 app.addHook('onResponse', async (_req, reply) => {
   if (reply.statusCode >= 500) errors.push(Date.now());
 });
-const alerts = alerter({ mailer, to: env.alertEmail, webhookUrl: env.alertWebhookUrl, service: 'fade', log: (o, m) => app.log.warn(o, m) });
+const alerts = alerter({ mailer, to: env.alertEmail, webhookUrl: env.alertWebhookUrl, service: 'monacount', log: (o, m) => app.log.warn(o, m) });
 console.log(`alerts: ${[env.alertEmail ? 'e-mail' : '', env.alertWebhookUrl ? 'webhook' : ''].filter(Boolean).join(' + ') || 'log only (set ALERT_EMAIL or ALERT_WEBHOOK_URL)'}`);
 await app.listen({ port: env.port, host: env.host });
 
@@ -118,6 +120,8 @@ const upkeep = async () => {
   try {
     const purged = await withSystem(db, (tx) => purgeDeletedShops(tx, new Date()));
     if (purged) app.log.info({ purged }, 'deleted shops purged');
+    const requests = await withSystem(db, (tx) => purgeOldDemoRequests(tx, new Date()));
+    if (requests) app.log.info({ requests }, 'old demo requests deleted');
   } catch (e) {
     app.log.error(e, 'purge failed');
   }

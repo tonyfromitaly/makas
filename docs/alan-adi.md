@@ -1,10 +1,12 @@
 # monacount.com: alan adı, site ve e-posta
 
+> Site Cloudflare Pages'e taşınıyor. Taşıma adımları `docs/cloudflare-pages.md`'de. Aşağıdaki 1. ve 2. bölümler Netlify'daki geçici kurulumu anlatıyor.
+
 | Ne | Nerede |
 |---|---|
 | Alan adı | Cloudflare'da kayıtlı. DNS de Cloudflare'da |
-| Site, demo, uygulama, randevu sayfaları | Netlify (`usta-fade` sitesi) |
-| API | Render. Netlify `/api/*` isteklerini oraya iletir |
+| Site, demo, uygulama, randevu sayfaları | Cloudflare Pages (`docs/cloudflare-pages.md`). Geçiş bitene kadar Netlify (`usta-fade`) |
+| API | Render. `/api/*` isteklerini Pages Function (önceden Netlify) oraya iletir |
 | Giden e-posta | Resend, `send.monacount.com` alt alanı üzerinden |
 | Gelen e-posta (`support@`) | Cloudflare Email Routing, Gmail'e yönlendirir |
 
