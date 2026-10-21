@@ -4,11 +4,11 @@
 
 ## Karar
 
-**Kontrollü pilot (1 dükkân): evet.** Bunun için iki şart var: aşağıdaki "Mutlaka" listesindeki 1. ve 2. madde kapanmalı, Square ve banka bağlantıları da pilotta sandbox'ta kalmalı ya da kapalı tutulmalı.
+**Kontrollü pilot (1 dükkân): evet.** Bunun için iki şart var: aşağıdaki "Mutlaka" listesindeki 2. madde (Render ve Netlify ortam değerleri) kapanmalı, Square ve banka bağlantıları da pilotta sandbox'ta kalmalı ya da kapalı tutulmalı.
 
 **Genel açılış (ABD'de herkese): henüz hayır.** Kod tarafında engel kalmadı. Engeller iki türlü:
 
-- **Sağlayıcı onayları** (Square canlı, Plaid canlı, SMS) ve **gerçek Postgres doğrulaması**.
+- **Sağlayıcı onayları:** Square canlı, Plaid canlı, SMS. Gerçek Postgres doğrulaması kapandı.
 - ~~**Ürün açığı:** Röntgen bulguları ve ajan notları yalnızca Türkçe.~~ **Kapandı (`7216355`):** artık dükkânın dilinde (Türkçe, İngilizce, İspanyolca) yazılıyor.
 
 ## Test alanı nasıl kuruldu
@@ -115,7 +115,15 @@ Hepsi kaydedildi; 204 otomatik testin hepsi geçiyor.
 
 ### Mutlaka (bunlar kapanmadan canlıda çalışmaz)
 
-1. **Gerçek Postgres doğrulaması.** Test alanı ve bütün testler PGlite'ta (Postgres'in gömülü sürümü) koştu. Render'daki gerçek Postgres'te migration'lar, satır güvenliği ve çakışma kuralları (`btree_gist`) hiç çalıştırılmadı. Bu kodda kalan en büyük teknik risk. Render'da bir deneme veritabanı açılıp test betiği oraya karşı koşturulmalı.
+1. ~~**Gerçek Postgres doğrulaması.**~~ **Kapandı (20 Ekim 2026).** Render'da deneme veritabanı açıldı: Frankfurt, PostgreSQL 16.15. Kullanıcı süper kullanıcı değil ve satır güvenliğini atlama yetkisi yok; canlıdaki durumla aynı.
+   - `npm run pg:check -w api` **11/11** geçti:
+     - 14 migration uygulandı;
+     - 22 dükkân tablosunda satır güvenliği zorunlu;
+     - `btree_gist` ve iki çakışma kuralı yerinde;
+     - dükkânlar birbirinin müşterisini ve koltuğunu göremiyor, ötekine yazamıyor, ötekinin satırını değiştiremiyor;
+     - dükkân seçilmeden sorgu atılınca hiçbir satır görünmüyor.
+   - Üretim modu API bu veritabanıyla açıldı; Netlify vekili arkasında **uçtan uca test 55/55** geçti. Square sandbox eşitlemesi de çalıştı (67 kayıt, 24 müşteri).
+   - Not: Eşitleme dizüstünden Frankfurt'a 13,5 saniye sürdü; her kayıt ayrı bir gidiş-dönüş yapıyor. Canlıda API ile veritabanı aynı Render bölgesinde olacağı için bu süre kısalır.
 2. **Render ve Netlify ortam değerleri:**
    - Render'da `CONNECTION_SECRET` (32+ karakter) girilmeli. Square ya da Plaid ayarlıyken bu değer yoksa API açılmıyor; bu doğru ama girilmesi şart.
    - Render ücretli plana geçmeli. Ücretsiz sunucu boşta uyur; o sırada saatlik eşitleme, hatırlatma ve 30 günlük silme çalışmaz.
