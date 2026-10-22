@@ -74,6 +74,24 @@ describe('the booking page', () => {
     expect(Object.keys(fri[0]).sort()).toEqual(['staff_id', 'staff_name', 'station_name', 'time']);
   });
 
+  it('a booking cannot turn texts back on for a number that said no (audit F07)', async () => {
+    const { t, s, owner } = await salon();
+    await t.call('PATCH', '/shops/me/booking', { token: owner, body: { booking_enabled: true } });
+    const known = (await t.call('POST', '/clients', { token: owner, body: { name: 'Rosa Diaz', phone_e164: '+14155550199', consent: true } })).body;
+    // Rosa replied STOP; the shop recorded it.
+    await t.call('PATCH', `/clients/${known.id}`, { token: owner, body: { consent: false } });
+
+    // Someone who knows her number books online and ticks "text me".
+    const r = await t.call('POST', '/public/book/elif-hair-studio', {
+      body: { service_id: s.service.id, date: '2026-10-16', time: '14:00', name: 'Not Rosa', phone: '(415) 555-0199', consent: true },
+    });
+    expect(r.status).toBe(201);
+    const rosa = (await t.call('GET', `/clients/${known.id}`, { token: owner })).body;
+    expect(rosa).toMatchObject({ name: 'Rosa Diaz', consent_status: 'revoked' });
+    const appt = (await t.call('GET', '/appointments?date=2026-10-16', { token: owner })).body.data[0];
+    expect(appt.reminders).toEqual([]);
+  });
+
   it('books: a client by phone, an online appointment with a chair, reminders when they agree', async () => {
     const { t, s, owner, elif } = await salon();
     await t.call('PATCH', '/shops/me/booking', { token: owner, body: { booking_enabled: true } });

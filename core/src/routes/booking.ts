@@ -99,7 +99,12 @@ async function bookOnline(
       )
     ).rows[0];
   } else if (b.consent && client.consent_status !== 'granted') {
-    await ctx.db.query(`update clients set consent_status = 'granted', consent_at = $3 where id = $1 and shop_id = $2`, [client.id, shop.id, ctx.now]);
+    // A known number keeps the choice it made with the shop. Anyone who knows a number can fill in this form,
+    // so ticking "text me" here never undoes a STOP; the shop sees the request and can ask the client.
+    await ctx.db.query(
+      `insert into audit_log (shop_id, user_id, action, entity, entity_id, at) values ($1, null, 'consent.requested_online', 'client', $2, $3)`,
+      [shop.id, client.id, ctx.now],
+    );
   }
   const service = (await ctx.db.query('select name, price_cents, duration_min from services where id = $1 and shop_id = $2', [b.service_id, shop.id])).rows[0];
   const starts = DateTime.fromISO(`${b.date}T${b.time}`, { zone: shop.timezone }).toJSDate();
