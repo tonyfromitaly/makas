@@ -24,6 +24,8 @@ export const DEMO = import.meta.env.MODE === 'demo' || import.meta.env.VITE_DEMO
 type Tab = 'today' | 'till' | 'clients' | 'assistant' | 'books' | 'settings';
 
 const LANG_KEY = 'makas.lang';
+/** Set by the Pages Function that serves the private operator link (functions/o). */
+const OPS_PAGE = () => !!document.querySelector('meta[name="monacount-ops"]');
 const savedLang = (): Lang | null => {
   try {
     return (localStorage.getItem(LANG_KEY) as Lang) || null;
@@ -79,7 +81,8 @@ export function App() {
   const [toastMsg, setToast] = useState('');
   const [setupOpen, setSetupOpen] = useState(false);
   const [bump, setBump] = useState(0);
-  const [operator, setOperator] = useState(() => typeof location !== 'undefined' && location.hash === '#operator');
+  // The operator panel opens only from the private link (the server marks that page); the demo keeps #operator.
+  const [operator, setOperator] = useState(() => typeof document !== 'undefined' && (OPS_PAGE() || (DEMO && location.hash === '#operator')));
   const [unread, setUnread] = useState(0);
   const [demoAdminKey, setDemoAdminKey] = useState<string>();
   const t = useMemo(() => makeT(lang), [lang]);
@@ -102,7 +105,7 @@ export function App() {
   }, [lang]);
 
   useEffect(() => {
-    const onHash = () => setOperator(location.hash === '#operator');
+    const onHash = () => setOperator(OPS_PAGE() || (DEMO && location.hash === '#operator'));
     window.addEventListener('hashchange', onHash);
     if (DEMO) import('./demo').then((d) => setDemoAdminKey(d.DEMO_KEYS.admin));
     return () => window.removeEventListener('hashchange', onHash);
@@ -141,7 +144,7 @@ export function App() {
   }, [loadMe]);
 
   if (operator && api)
-    return <Operator api={api} t={t} demoKey={demoAdminKey} onClose={() => ((location.hash = ''), setOperator(false))} />;
+    return <Operator api={api} t={t} demoKey={demoAdminKey} onClose={() => (OPS_PAGE() ? location.assign('/') : ((location.hash = ''), setOperator(false)))} />;
 
   // The welcome shows at once; Postgres keeps starting in the background behind it.
   if (welcome) return <Welcome t={t} onStart={closeWelcome} />;

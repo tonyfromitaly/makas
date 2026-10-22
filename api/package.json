@@ -20,7 +20,8 @@
     "square:seed": "tsx src/scripts/square-seed.ts",
     "pg:check": "tsx src/scripts/pg-check.ts",
     "staging:pg": "tsx src/scripts/staging-pg.ts",
-    "ai:latency": "tsx src/scripts/ai-latency.ts"
+    "ai:latency": "tsx src/scripts/ai-latency.ts",
+    "ops:totp": "tsx src/scripts/ops-totp.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",

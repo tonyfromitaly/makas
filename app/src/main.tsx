@@ -24,6 +24,6 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD && !bookSlug()) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && !bookSlug() && !document.querySelector('meta[name="monacount-ops"]')) {
   window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}));
 }

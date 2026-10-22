@@ -2,7 +2,7 @@
   "name": "makas",
   "private": true,
   "version": "0.1.0",
-  "description": "Monacount: berber dükkânları için randevu defteri, gün kazancı, borç defteri ve otomatik hatırlatmalar.",
+  "description": "Monacount: appointments, sales, team pay and books for small businesses, with an assistant that answers from the records.",
   "workspaces": [
     "core",
     "api",
@@ -20,7 +20,8 @@
     "typecheck": "npm run typecheck -w core && npm run typecheck -w api && npm run typecheck -w app",
     "ai:stress": "npm run ai:stress -w api",
     "agent:sync": "node scripts/agent-sync.mjs",
-    "build:pages": "WEB_HOST=cloudflare node scripts/build-netlify.mjs"
+    "build:pages": "WEB_HOST=cloudflare node scripts/build-netlify.mjs",
+    "build:lab": "node scripts/build-lab.mjs"
   },
   "engines": {
     "node": ">=20"

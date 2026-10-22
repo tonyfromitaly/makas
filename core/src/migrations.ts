@@ -730,6 +730,46 @@ create table demo_requests (
 create index demo_requests_email on demo_requests (lower(email), created_at);
 `;
 
+// Voids and cancellations keep a record with a reason: the owner (and Mona) can answer "how many were
+// cancelled today, and why". A paid reminder writes its expense to the books. Operator actions are logged.
+const voidsAndPaidTasks = `
+create table voids (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references shops(id) on delete cascade,
+  kind text not null check (kind in ('sale', 'appointment')),
+  ref_id uuid not null,
+  reason text not null check (reason in ('client_cancelled', 'no_show', 'wrong_entry', 'refund', 'duplicate', 'shop_cancelled', 'other', 'not_given')),
+  note text check (length(note) <= 200),
+  amount_cents int not null default 0 check (amount_cents >= 0),
+  client_name text check (length(client_name) <= 80),
+  staff_name text check (length(staff_name) <= 80),
+  happened_at timestamptz not null,
+  voided_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index voids_shop_at on voids (shop_id, created_at desc);
+${rls('voids')}
+${toTenant('grant select, insert, update, delete on voids to makas_tenant;')}
+
+alter table book_entries add column task_id uuid unique;
+alter table book_entries drop constraint if exists book_entries_source_check;
+alter table book_entries add constraint book_entries_source_check check (source in ('manual', 'ai_note', 'appointment', 'import', 'sale', 'payout', 'task'));
+
+alter table demo_requests add column site text not null default 'monacount';
+alter table demo_requests add column team_size text not null default '';
+
+create table operator_log (
+  id uuid primary key default gen_random_uuid(),
+  action text not null,
+  target text,
+  ip text,
+  ok boolean not null,
+  at timestamptz not null default now()
+);
+create index operator_log_at on operator_log (at desc);
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -747,4 +787,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '014_owner_on_team', sql: ownerOnTeam },
   { id: '015_job_runs', sql: jobRuns },
   { id: '016_demo_requests', sql: demoRequests },
+  { id: '017_voids_paid_tasks', sql: voidsAndPaidTasks },
 ];

@@ -3065,3 +3065,12 @@ button.kpi:focus-visible {
 .register.checkout .register-grid {
   flex-direction: column-reverse;
 }
+
+/* Void / cancel: the reason sits under the receipt line it belongs to. */
+.void-row {
+  flex-basis: 100%;
+  padding-top: 8px;
+}
+.void-reason .chips {
+  flex-wrap: wrap;
+}

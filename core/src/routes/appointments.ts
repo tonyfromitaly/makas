@@ -4,6 +4,7 @@ import { audit, badRequest, conflict, isoDate, notFound, ok, pageQuery, paged, u
 import { dropQueued, enqueueReminders } from '../reminders';
 import { freeSlots, stationFor } from '../ekip/saat';
 import { staffOf, syncVisitSale } from '../ekip/kasa';
+import { recordVoid, VOID_REASONS } from '../voids';
 
 const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Expected YYYY-MM-DDTHH:mm');
 const status = z.enum(['booked', 'done', 'missed', 'cancelled']);
@@ -237,6 +238,9 @@ export const appointmentRoutes: Route[] = [
         station_id: uuid,
         service_id: uuid,
         notes: z.string().trim().max(500).nullable(),
+        // Why a visit was cancelled; kept in the voids record.
+        cancel_reason: z.enum(VOID_REASONS),
+        cancel_note: z.string().trim().max(200),
       })
       .partial(),
     async handler(ctx, { params, body }) {
@@ -299,6 +303,20 @@ export const appointmentRoutes: Route[] = [
       }
       if (patch.status || moved || patch.price_cents_snapshot !== undefined)
         await syncVisitSale(ctx.db, ctx.shopId, ctx.userId, before.id, nextStatus === 'done');
+      if (patch.status && (nextStatus === 'cancelled' || nextStatus === 'missed'))
+        await recordVoid(ctx.db, {
+          shopId: ctx.shopId,
+          userId: ctx.userId,
+          kind: 'appointment',
+          refId: before.id,
+          reason: body.cancel_reason ?? (nextStatus === 'missed' ? 'no_show' : 'not_given'),
+          note: body.cancel_note,
+          amountCents: before.price_cents_snapshot ?? 0,
+          clientName: before.client_name,
+          staffName: before.barber_name,
+          happenedAt: before.starts_at,
+          at: ctx.now,
+        });
       if (patch.status) await audit(ctx, `appointment.${nextStatus}`, 'appointment', before.id);
       if (moved) await audit(ctx, 'appointment.reschedule', 'appointment', before.id);
       return getAppointment(ctx, before.id);

@@ -15,6 +15,7 @@ import { teamRoutes } from './routes/team';
 import { bookingRoutes } from './routes/booking';
 import { checksIn } from './watch';
 import { leadRoutes } from './routes/leads';
+import { logOperator, opsRoutes, verifyOps } from './ops';
 
 export interface ApiRequest {
   method: string;
@@ -37,6 +38,7 @@ export const routes: Route[] = [
   ...teamRoutes,
   ...bookingRoutes,
   ...leadRoutes,
+  ...opsRoutes,
   ...shopRoutes,
   ...clientRoutes,
   ...appointmentRoutes,
@@ -60,6 +62,7 @@ export const routes: Route[] = [
     method: 'GET',
     path: '/admin/health',
     auth: 'admin',
+    machine: true,
     async handler(ctx) {
       const checks = await checksIn(ctx.db, { now: ctx.now, ...(ctx.deps.health?.() ?? { sending: false }) });
       return { ok: checks.every((c) => c.ok), checks };
@@ -128,12 +131,19 @@ export function createApi(opts: { db: Database; config: Config; deps: Deps; log?
       let result: unknown;
       if (route.auth === 'public') {
         result = await withSystem(opts.db, (db) => route.handler({ ...base, db, shopId: '', userId: '', role: 'public' }, input));
-      } else if (route.auth === 'service' || route.auth === 'admin') {
-        const secret = route.auth === 'service' ? opts.config.serviceApiKey : opts.config.adminApiKey;
-        if (!(await safeEqual(token, secret))) throw unauthorized('Invalid service credentials');
-        result = await withSystem(opts.db, (db) =>
-          route.handler({ ...base, db, shopId: '', userId: '', role: route.auth as 'service' | 'admin' }, input),
-        );
+      } else if (route.auth === 'service') {
+        if (!(await safeEqual(token, opts.config.serviceApiKey))) throw unauthorized('Invalid service credentials');
+        result = await withSystem(opts.db, (db) => route.handler({ ...base, db, shopId: '', userId: '', role: 'service' }, input));
+      } else if (route.auth === 'admin') {
+        // The panel signs in for a short session (key + code). The raw key alone is for scripts and monitors:
+        // it opens every admin route only while no TOTP secret is configured.
+        const session = token.split('.').length === 3 && (await verifyOps(opts.config, token));
+        const raw = !session && (await safeEqual(token, opts.config.adminApiKey));
+        const allowed = session || (raw && (!opts.config.adminTotpSecret || route.machine));
+        const target = params.id ?? null;
+        await withSystem(opts.db, (db) => logOperator(db, { action: `${route.method} ${route.path}`, target, ip: req.ip, ok: !!allowed, at: now }));
+        if (!allowed) throw unauthorized(raw ? 'Sign in with the admin key and your authenticator code' : 'Invalid admin credentials');
+        result = await withSystem(opts.db, (db) => route.handler({ ...base, db, shopId: '', userId: '', role: 'admin' }, input));
       } else {
         if (!token) throw unauthorized();
         const claims = await verifyAccess(opts.config, token);

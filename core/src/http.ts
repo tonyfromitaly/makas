@@ -79,6 +79,8 @@ export interface Config {
   publicUrl?: string;
   /** Stripe checkout is configured. */
   billingEnabled?: boolean;
+  /** Base32 TOTP secret: when set, the operator panel needs a 6-digit code as well as the admin key. */
+  adminTotpSecret?: string;
 }
 
 export interface Ctx {
@@ -117,6 +119,8 @@ export interface Route {
    * query runs in its own short tenant transaction, so row-level security still applies.
    */
   outside?: boolean;
+  /** Admin routes run by scripts and monitors: the raw admin key still works when sign-in needs a code. */
+  machine?: boolean;
   body?: z.ZodTypeAny;
   query?: z.ZodTypeAny;
   handler(ctx: Ctx, input: Input): Promise<unknown | Result>;

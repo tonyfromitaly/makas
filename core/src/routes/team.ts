@@ -7,6 +7,7 @@ import { payReport, saveSale, staffOf, syncVisitSale, type Line } from '../ekip/
 import { dropQueued, enqueueReminders } from '../reminders';
 import { periodBounds } from './money';
 import { fold } from '../parse/text';
+import { recordVoid, voidBody } from '../voids';
 
 // The team, the stations they work at, what the shop sells over the counter, the till and settling up.
 // The owner sees and changes everything; a team member sees their own work and rings up their own sales.
@@ -479,15 +480,37 @@ export const teamRoutes: Route[] = [
     },
   },
   {
-    // Void a sale. A visit's sale cannot stand alone: voiding it puts the visit back to booked.
+    // Void a sale, with a reason. A visit's sale cannot stand alone: voiding it puts the visit back to booked.
+    // The sale itself goes; a voids row keeps what it was and why.
     method: 'DELETE',
     path: '/sales/:id',
     auth: 'user',
     gated: true,
     ownerOnly: true,
-    async handler(ctx, { params }) {
-      const s = (await ctx.db.query('select id, appointment_id from sales where id = $1 and shop_id = $2', [params.id, ctx.shopId])).rows[0];
+    body: voidBody,
+    async handler(ctx, { params, body }) {
+      const s = (
+        await ctx.db.query(
+          `select s.id, s.appointment_id, s.total_cents, s.sold_at, coalesce(s.client_name, c.name) as client_name, b.name as staff_name
+             from sales s left join barbers b on b.id = s.staff_id left join clients c on c.id = s.client_id
+            where s.id = $1 and s.shop_id = $2`,
+          [params.id, ctx.shopId],
+        )
+      ).rows[0];
       if (!s) throw notFound('Sale');
+      await recordVoid(ctx.db, {
+        shopId: ctx.shopId,
+        userId: ctx.userId,
+        kind: 'sale',
+        refId: s.id,
+        reason: body.reason,
+        note: body.note,
+        amountCents: s.total_cents,
+        clientName: s.client_name,
+        staffName: s.staff_name,
+        happenedAt: s.sold_at,
+        at: ctx.now,
+      });
       if (s.appointment_id) {
         await syncVisitSale(ctx.db, ctx.shopId, ctx.userId, s.appointment_id, false);
         await ctx.db.query(`update appointments set status = 'booked' where id = $1 and shop_id = $2`, [s.appointment_id, ctx.shopId]);
@@ -502,6 +525,24 @@ export const teamRoutes: Route[] = [
       }
       await audit(ctx, 'sale.void', 'sale', s.id);
       return noContent();
+    },
+  },
+
+  {
+    // Voided sales and cancelled visits, newest first, with their reasons.
+    method: 'GET',
+    path: '/voids',
+    auth: 'user',
+    gated: true,
+    ownerOnly: true,
+    query: z.object({ days: z.coerce.number().int().min(1).max(366).default(30) }),
+    async handler(ctx, { query }) {
+      const { rows } = await ctx.db.query(
+        `select id, kind, ref_id, reason, note, amount_cents, client_name, staff_name, happened_at, created_at
+           from voids where shop_id = $1 and created_at >= $2 order by created_at desc limit 200`,
+        [ctx.shopId, new Date(ctx.now.getTime() - query.days * 86_400_000)],
+      );
+      return { data: rows };
     },
   },
 

@@ -15,3 +15,4 @@ site/dist
 /rontgen/
 web-dist/
 .wrangler/
+lab-dist/

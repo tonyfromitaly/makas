@@ -59,6 +59,24 @@ export async function shopSnapshot(db: Queryable, shopId: string, now: DateTime)
     `select count(*)::int as n from appointments where shop_id = $1 and status = 'booked' and starts_at between $2 and $3`,
     [shopId, now.toJSDate(), now.plus({ days: 7 }).toJSDate()],
   );
+  // Voided sales and cancelled visits with their reasons: "how many were cancelled today, and why?"
+  const voidRows = await all(
+    `select kind, reason, note, amount_cents, client_name, staff_name, created_at from voids
+      where shop_id = $1 and created_at >= $2 order by created_at desc`,
+    [shopId, now.minus({ days: 30 }).toJSDate()],
+  );
+  const startOfDay = now.startOf('day').toMillis();
+  const tally = (rows: any[]) => {
+    const by: Record<string, number> = {};
+    for (const r of rows) by[`${r.kind}:${r.reason}`] = (by[`${r.kind}:${r.reason}`] ?? 0) + 1;
+    return {
+      voided_sales: rows.filter((r) => r.kind === 'sale').length,
+      cancelled_or_missed_visits: rows.filter((r) => r.kind === 'appointment').length,
+      amount_cents: rows.reduce((t, r) => t + Number(r.amount_cents), 0),
+      by_kind_and_reason: by,
+    };
+  };
+  const todays = voidRows.filter((r: any) => new Date(r.created_at).getTime() >= startOfDay);
   const doneMissed = visits.done + visits.missed;
   return {
     today: now.toISODate(),
@@ -78,6 +96,21 @@ export async function shopSnapshot(db: Queryable, shopId: string, now: DateTime)
     receivables_cents: Number(receivable.t),
     payables_this_month: { total_cents: Number(payable.t), items: payable.n },
     booked_next_7_days: upcoming.n,
+    voids_and_cancellations: {
+      today: {
+        ...tally(todays),
+        items: todays.slice(0, 20).map((r: any) => ({
+          kind: r.kind,
+          reason: r.reason,
+          note: r.note,
+          amount_cents: Number(r.amount_cents),
+          client: r.client_name,
+          staff: r.staff_name,
+          at: DateTime.fromJSDate(new Date(r.created_at)).setZone(now.zone).toFormat('HH:mm'),
+        })),
+      },
+      last_30_days: tally(voidRows),
+    },
   };
 }
 

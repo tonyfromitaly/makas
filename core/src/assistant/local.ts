@@ -47,6 +47,8 @@ const METRIC_RULES: [string, RegExp][] = [
   ['cash', re(['kasada ne', 'kasada kac', 'kasada ne kadar', 'kasa ne durumda', 'kasa durumu', 'bakiye', 'bankada', 'hesapta ne', 'hesapta kac', 'hesapta ne kadar', 'balance', 'in the bank', 'cash on hand', 'whats in the till', 'what s in the till', 'in the till', 'saldo', 'en el banco', 'en caja'])],
   ['payables', re(['odemem', 'odeyecegim', 'odenecek', 'odemeler', 'odemem gereken', 'borcum', 'faturalar', 'have to pay', 'need to pay', 'i owe', 'bills', 'payments due', 'due', 'debo', 'tengo que pagar', 'pagos', 'por pagar'])],
   ['receivables', re(['alacak', 'veresiye', 'borclu', 'bana borc', 'owe me', 'owed', 'outstanding', 'receivable', 'me deben', 'fiado', 'por cobrar'])],
+  // Voided sales and cancelled or missed visits: "bugün kaç iptal oldu", "why were sales voided".
+  ['voids', re(['iptal ol', 'iptal edil', 'iptaller', 'iptal sayisi', 'kac iptal', 'iptal neden', 'iptallerin', 'gelmeyen', 'gelmedi', 'void', 'cancellation', 'cancelled', 'canceled', 'no show', 'cancelaci', 'cancelad', 'anulad', 'no vino', 'no vinieron'])],
   ['reminders', re(['hatirlatma', 'yapilacak', 'isler', 'reminder', 'to do', 'todo', 'tasks', 'recordatorio', 'pendiente'])],
   ['top_service', re(['en cok', 'en populer', 'hangi hizmet', 'en iyi satan', 'most popular', 'best selling', 'best seller', 'top service', 'what sold', 'mas vendido', 'mas popular'])],
   ['appointments', re(['randevu', 'musteri gel', 'kac musteri', 'kimler var', 'kim var', 'kim geliyor', 'appointment', 'booking', 'customers', 'clients', 'who is coming', 'whos coming', 'who s coming', 'cita', 'clientes', 'quien viene'])],
@@ -73,7 +75,7 @@ function periodOf(f: string, metric: string) {
   if (re(['dun', 'yesterday', 'ayer']).test(f)) return 'yesterday';
   if (re(['yarin', 'tomorrow', 'manana']).test(f)) return 'tomorrow';
   if (re(['bugun', 'today', 'hoy']).test(f)) return 'today';
-  return metric === 'appointments' || metric === 'reminders' ? 'today' : 'this_month';
+  return metric === 'appointments' || metric === 'reminders' || metric === 'voids' ? 'today' : 'this_month';
 }
 
 const MONTHS: Record<string, number> = {
@@ -203,6 +205,8 @@ export function understandLocal(said: string, base: AssistantContext): Plan {
     const client = bestMatch(f.split(' '), ctx.clients);
     if (client && re(['borc', 'owe', 'debe', 'balance', 'bakiye', 'veresiye']).test(f))
       return { items: [{ type: 'query', metric: 'client_balance', period: 'this_month', client_name: client.item.name }] };
+    // "Bugün kaç iptal oldu, nedenleri ne?": the reasons are in the records, so "why" is still a count.
+    if (metricHit?.[0] === 'voids') return { items: [{ type: 'query', metric: 'voids', period: periodOf(f, 'voids') as any, month }] };
     // "Ahmet bu ay ne kadar sattı", "ekip bu hafta ne yaptı", "kim en çok sattı": the team's sales.
     const member = bestMatch(f.split(' ').map((w) => w.replace(/'.*$/, '')), ctx.barbers);
     if (!ADVICE_REAL.test(f) && (TEAM.test(f) || (member && (SOLD.test(f) || metricHit?.[0] === 'income'))))

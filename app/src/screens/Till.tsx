@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp, useLoad } from '../state';
-import { addDays, dateLabel, timeIn, toCents, todayIn , pct as percent } from '../format';
+import { addDays, dateLabel, timeIn, toCents, todayIn, pct as percent } from '../format';
+import { VoidReason } from '../components/VoidReason';
 import { Empty, Icon, Segmented, Sheet } from '../components/ui';
 
 // The till. The owner rings up anyone's sale, sees each person's settlement slip and the day's receipts.
@@ -549,13 +550,21 @@ function Receipts() {
               </div>
             </div>
             <strong className="numeral">{fmt(s.total_cents)}</strong>
-            {owner &&
-              (voiding === s.id ? (
-                <button
-                  className="btn danger small"
-                  onClick={async () => {
+            {owner && voiding !== s.id && (
+              <button className="icon-btn" onClick={() => setVoiding(s.id)} aria-label={t('voidSale')}>
+                <Icon name="undo" size={18} />
+              </button>
+            )}
+            {owner && voiding === s.id && (
+              <div className="void-row">
+                <VoidReason
+                  title={t('whyVoid')}
+                  reasons={['wrong_entry', 'refund', 'duplicate', 'client_cancelled', 'other']}
+                  confirm={t('voidConfirm')}
+                  onCancel={() => setVoiding(null)}
+                  onConfirm={async (reason, note) => {
                     try {
-                      await api.del(`/sales/${s.id}`);
+                      await api.del(`/sales/${s.id}`, { reason, ...(note ? { note } : {}) });
                       setVoiding(null);
                       reload();
                       refreshAll();
@@ -563,14 +572,9 @@ function Receipts() {
                       fail(e);
                     }
                   }}
-                >
-                  {t('voidConfirm')}
-                </button>
-              ) : (
-                <button className="icon-btn" onClick={() => setVoiding(s.id)} aria-label={t('voidSale')}>
-                  <Icon name="undo" size={18} />
-                </button>
-              ))}
+                />
+              </div>
+            )}
           </li>
         ))}
       </ul>

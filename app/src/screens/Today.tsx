@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { DateTime } from 'luxon';
 import { useApp, useLoad } from '../state';
-import { addDays, dateLabel, timeIn, todayIn , pct as percent } from '../format';
+import { addDays, dateLabel, timeIn, todayIn, pct as percent } from '../format';
+import { VoidReason } from '../components/VoidReason';
 import { Empty, Icon, Sheet } from '../components/ui';
 import { AppointmentForm } from './AppointmentForm';
 import { AgentNotes, SetupBanner } from '../components/AgentNotes';
@@ -182,6 +183,7 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
   const [time, setTime] = useState(timeIn(appt.starts_at, tz));
   // "Done" is the checkout: the visit's receipt, with products, a tip and how it was paid.
   const [checkout, setCheckout] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   if (checkout) return <Register appointment={appt} onDone={onDone} />;
   const local = DateTime.fromISO(appt.starts_at, { zone: tz });
   const set = async (body: any) => {
@@ -203,7 +205,15 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
           <Icon name="flame" size={16} /> {appt.client_missed > 1 ? t('risk') : t('riskSome')} ({appt.client_missed}×)
         </p>
       )}
-      {appt.status === 'booked' ? (
+      {cancelling ? (
+        <VoidReason
+          title={t('whyCancel')}
+          reasons={['client_cancelled', 'shop_cancelled', 'wrong_entry', 'duplicate', 'other']}
+          confirm={t('cancelled')}
+          onCancel={() => setCancelling(false)}
+          onConfirm={(reason, note) => set({ status: 'cancelled', cancel_reason: reason, ...(note ? { cancel_note: note } : {}) })}
+        />
+      ) : appt.status === 'booked' ? (
         <div className="action-grid">
           <button className="btn ok" onClick={() => setCheckout(true)}>
             <Icon name="check" /> {t('doneCheckout')}
@@ -211,7 +221,7 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
           <button className="btn" onClick={() => set({ status: 'missed' })}>
             {t('missed')}
           </button>
-          <button className="btn danger-ghost" onClick={() => set({ status: 'cancelled' })}>
+          <button className="btn danger-ghost" onClick={() => setCancelling(true)}>
             {t('cancelled')}
           </button>
         </div>
@@ -298,13 +308,18 @@ function DayReport({ date, appts }: { date: string; appts: any }) {
 
 /** The barber's reminders and payments due today, overdue or in the next two days. */
 function TasksCard() {
-  const { api, me, t, lang, fmt, fail, bump } = useApp();
+  const { api, me, t, lang, fmt, fail, bump, toast, refreshAll } = useApp();
   const today = todayIn(me.shop.timezone);
   const { data, reload } = useLoad(() => api.get(`/tasks?status=open&until=${addDays(today, 2)}`), [today, bump]);
   if (!data?.data.length) return null;
   const done = async (id: string) => {
     try {
-      await api.patch(`/tasks/${id}`, { status: 'done' });
+      // A paid payment reminder becomes an expense in the books; everything that shows money refreshes.
+      const r = await api.patch(`/tasks/${id}`, { status: 'done' });
+      if (r?.book_entry_id) {
+        toast(t('paidToBooks', { amount: fmt(r.amount_cents) }));
+        refreshAll();
+      }
       reload();
     } catch (e) {
       fail(e);

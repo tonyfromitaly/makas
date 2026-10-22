@@ -161,8 +161,13 @@ describe('the till', () => {
     expect(work.row).toMatchObject({ gross_cents: 6600, tips_cents: 600, commission_cents: 1860 });
     expect(work.sales).toHaveLength(1);
     // Only the owner voids. Voiding a visit's sale puts the visit back to booked.
-    expect((await t.call('DELETE', `/sales/${sale.body.id}`, { token: elif.token })).status).toBe(403);
-    expect((await t.call('DELETE', `/sales/${sale.body.id}`, { token: owner })).status).toBe(204);
+    expect((await t.call('DELETE', `/sales/${sale.body.id}`, { token: elif.token, body: { reason: 'refund' } })).status).toBe(403);
+    // A void needs a reason, and leaves a record of what it was and why.
+    expect((await t.call('DELETE', `/sales/${sale.body.id}`, { token: owner })).status).toBe(400);
+    expect((await t.call('DELETE', `/sales/${sale.body.id}`, { token: owner, body: { reason: 'refund', note: 'Wax was the wrong one' } })).status).toBe(204);
+    const voids = (await t.call('GET', '/voids', { token: owner })).body.data;
+    expect(voids).toHaveLength(1);
+    expect(voids[0]).toMatchObject({ kind: 'sale', reason: 'refund', note: 'Wax was the wrong one', amount_cents: 7200, staff_name: 'Elif' });
     expect((await t.call('GET', '/books?from=2026-10-15&to=2026-10-15', { token: owner })).body.data).toEqual([]);
     expect((await t.call('GET', '/products', { token: owner })).body.data[0].stock).toBe(5);
     const back = (await t.call('GET', '/appointments?date=2026-10-15', { token: owner })).body.data[0];

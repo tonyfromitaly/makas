@@ -3,22 +3,39 @@ import type { Client } from '../api';
 import type { T } from '../i18n';
 import { Icon } from '../components/ui';
 
-const KEY = 'fade.adminKey';
+const KEY = 'monacount.ops';
 
 /**
- * Our side of "Bize yaz" (#operator): every shop's thread, newest and unanswered first, and a reply box.
- * Uses the admin key, never a shop login. In the live demo the key is provided automatically.
+ * Our side of "Bize yaz": every shop's thread, newest and unanswered first, a reply box, website demo
+ * requests, applications, invites and the activity log. Opened only from the private operator link.
+ * Signing in takes the admin key and, in production, a code from an authenticator app; the result is a
+ * 30-minute session kept for this tab only. In the live demo the key is provided automatically.
  */
 export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demoKey?: string; onClose(): void }) {
   const [key, setKey] = useState(() => demoKey ?? sessionStorage.getItem(KEY) ?? '');
   const [draftKey, setDraftKey] = useState('');
+  const [code, setCode] = useState('');
+  const signOut = () => (sessionStorage.removeItem(KEY), setKey(''), setDraftKey(''), setCode(''));
+  const signIn = async () => {
+    const r = await api.raw('POST', '/admin/session', '', { key: draftKey, ...(code ? { code } : {}) });
+    if (r.status !== 200) return setError(r.body?.error?.message ?? String(r.status));
+    sessionStorage.setItem(KEY, r.body.token);
+    setError('');
+    setDraftKey('');
+    setCode('');
+    setKey(r.body.token);
+  };
   const [threads, setThreads] = useState<any[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [thread, setThread] = useState<any | null>(null);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   // Applications come from the website and live on the real server only (not in the browser demo).
-  const [view, setView] = useState<'support' | 'apps' | 'invite'>('support');
+  const [view, setView] = useState<'support' | 'demos' | 'apps' | 'invite' | 'log'>('support');
+  const [demos, setDemos] = useState<any[] | null>(null);
+  const [log, setLog] = useState<any[] | null>(null);
+  const loadDemos = async () => setDemos((await api.raw('GET', '/admin/demo-requests', key)).body?.data ?? []);
+  const loadLog = async () => setLog((await api.raw('GET', '/admin/log', key)).body?.data ?? []);
   const [inv, setInv] = useState({ shop_name: '', owner_name: '', email: '', business_type: 'barber', country: 'TR', language: 'tr', status: 'trial', days: 14 });
   const sendInvite = async () => {
     const r = await api.raw('POST', '/admin/invites', key, { ...inv, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', days: Number(inv.days) });
@@ -44,7 +61,8 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
 
   const loadThreads = async () => {
     const r = await api.raw('GET', '/admin/support', key);
-    if (r.status === 401) return setError('401'), setKey('');
+    // The session ended (30 minutes) or the key changed: back to sign-in.
+    if (r.status === 401) return setError('401'), signOut();
     setThreads(r.body?.data ?? []);
   };
   const loadThread = async (id: string) => {
@@ -74,18 +92,12 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
           <h1>{t('operatorPanel')}</h1>
           <button className="icon-btn" onClick={onClose} aria-label="close"><Icon name="x" /></button>
         </header>
-        <form
-          className="card stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            sessionStorage.setItem(KEY, draftKey);
-            setError('');
-            setKey(draftKey);
-          }}
-        >
-          <input type="password" value={draftKey} onChange={(e) => setDraftKey(e.target.value)} placeholder={t('adminKey')} autoFocus />
-          {error && <p className="notice warn small">ADMIN_API_KEY ✕</p>}
-          <button className="btn primary">{t('openOperator')}</button>
+        <form className="card stack" onSubmit={(e) => (e.preventDefault(), signIn())}>
+          <input type="password" autoComplete="off" value={draftKey} onChange={(e) => setDraftKey(e.target.value)} placeholder={t('adminKey')} autoFocus />
+          <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder={t('authCode')} />
+          {error && <p className="notice warn small">{error === '401' ? t('sessionEnded') : error}</p>}
+          <button className="btn primary" disabled={!draftKey}>{t('openOperator')}</button>
+          <p className="muted small">{t('opsNotice')}</p>
         </form>
       </div>
     );
@@ -98,15 +110,49 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
         ) : (
           <h1>{t('operatorPanel')}</h1>
         )}
-        <button className="icon-btn" onClick={onClose} aria-label="close"><Icon name="x" /></button>
+        <div className="row">
+          {!demoKey && <button className="btn small" onClick={signOut}>{t('logout')}</button>}
+          <button className="icon-btn" onClick={onClose} aria-label="close"><Icon name="x" /></button>
+        </div>
       </header>
 
       {!open && !demoKey && (
-        <div className="segmented">
+        <div className="segmented wrap">
           <button className={view === 'support' ? 'on' : ''} onClick={() => setView('support')}>{t('feedback')}</button>
+          <button className={view === 'demos' ? 'on' : ''} onClick={() => (setView('demos'), loadDemos())}>{t('demoRequests')}</button>
           <button className={view === 'apps' ? 'on' : ''} onClick={() => (setView('apps'), loadApps())}>{t('applications')}</button>
           <button className={view === 'invite' ? 'on' : ''} onClick={() => setView('invite')}>{t('newInvite')}</button>
+          <button className={view === 'log' ? 'on' : ''} onClick={() => (setView('log'), loadLog())}>{t('activityLog')}</button>
         </div>
+      )}
+
+      {!open && view === 'demos' && (
+        <ul className="list">
+          {demos?.map((d) => (
+            <li key={d.id} className="app-row">
+              <div>
+                <span className="row-title">{d.business} · {d.name} <span className="chip">{d.site === 'monamilelab' ? 'TR' : 'US'}{d.team_size ? ` · ${d.team_size}` : ''}</span></span>
+                <span className="row-meta">
+                  <a href={`mailto:${d.email}`}>{d.email}</a>{d.phone ? ` · ${d.phone}` : ''}{d.city ? ` · ${d.city}` : ''} · {d.business_type} · {new Date(d.created_at).toLocaleString()}
+                </span>
+                {d.message && <p className="small">{d.message}</p>}
+              </div>
+            </li>
+          ))}
+          {demos && !demos.length && <li className="muted small" style={{ padding: 16 }}>{t('noDemoRequests')}</li>}
+        </ul>
+      )}
+
+      {!open && view === 'log' && (
+        <ul className="list">
+          {log?.map((e, i) => (
+            <li key={i} className="list-row small">
+              <span className={e.ok ? '' : 'neg'}>{e.ok ? '✓' : '✕'}</span>
+              <span className="grow numeral">{e.action}{e.target ? ` · ${e.target.slice(0, 8)}` : ''}</span>
+              <span className="muted">{e.ip ?? ''} · {new Date(e.at).toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
       )}
       {note && <p className="notice small">{note}</p>}
 

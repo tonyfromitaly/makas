@@ -287,6 +287,7 @@ export const adminRoutes: Route[] = [
     method: 'POST',
     path: '/admin/retention/run',
     auth: 'admin',
+    machine: true,
     body: z.object({ days: z.number().int().min(1).max(3650).default(90) }).default({}),
     async handler(ctx, { body }) {
       const { rows } = await ctx.db.query(

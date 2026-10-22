@@ -109,6 +109,7 @@ export const shopRoutes: Route[] = [
         reminders: await q('select * from reminder_queue where shop_id = $1 order by scheduled_at'),
         assistant_notes: await q('select kind, subject, text, source, pinned, last_seen_at, expires_at, created_at from assistant_notes where shop_id = $1 order by kind, created_at'),
         assistant_conversations: await q('select user_id, role, text, drafts, created_at from assistant_turns where shop_id = $1 order by created_at'),
+        voids: await q('select * from voids where shop_id = $1 order by created_at'),
         audit_log: await q('select * from audit_log where shop_id = $1 order by at'),
       };
       await audit(ctx, 'shop.export', 'shop', ctx.shopId);
@@ -296,4 +297,24 @@ async function postSupport(ctx: Ctx, message: string) {
       [ctx.shopId, ctx.userId, message, ctx.now],
     )
   ).rows[0];
+}
+
+/**
+ * Retention, run with the hourly upkeep: shops whose subscription was cancelled more than `days` ago are
+ * removed with everything they own, and assistant conversations older than `chatDays` are deleted
+ * (they can hold client names and numbers). The privacy policy promises both.
+ */
+export async function runRetention(tx: Queryable, now: Date, opts: { days?: number; chatDays?: number } = {}) {
+  const days = opts.days ?? 90;
+  const chatDays = opts.chatDays ?? 90;
+  const shops = await tx.query(
+    `delete from shops s using subscriptions sub
+      where sub.shop_id = s.id and sub.status = 'cancelled'
+        and sub.cancelled_at < $1::timestamptz - make_interval(days => $2)
+    returning s.id`,
+    [now, days],
+  );
+  const chat = await tx.query(`delete from assistant_turns where created_at < $1::timestamptz - make_interval(days => $2) returning id`, [now, chatDays]);
+  const notes = await tx.query('delete from assistant_notes where not pinned and expires_at < $1 returning id', [now]);
+  return { shops: shops.rows.length, turns: chat.rows.length, notes: notes.rows.length };
 }

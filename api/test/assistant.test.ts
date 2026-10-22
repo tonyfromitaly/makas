@@ -87,10 +87,11 @@ describe('assistant', () => {
     expect(last.body.reply).toContain('Geçen ay');
     expect(last.body.reply).toContain('$800,50');
     const exp = await ask('bu ayki toplam masraf ne?');
-    expect(exp.body.reply).toContain('$1.864');
+    // $1.864 written here, plus the $140 electricity bill ticked as paid in the test above.
+    expect(exp.body.reply).toContain('$2.004');
     expect(exp.body.reply).toContain('kira');
     const net = await ask('bu ay net ne kadar');
-    expect(net.body.reply).toContain('$1.614 açık var'); // a shortfall is said in words, not as a minus sign
+    expect(net.body.reply).toContain('$1.754 açık var'); // a shortfall is said in words, not as a minus sign
   });
 
   it('gives the whole account of a period, compared with the one before, in plain words', async () => {

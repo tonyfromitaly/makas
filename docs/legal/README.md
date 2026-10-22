@@ -1,12 +1,13 @@
 # ABD yasal metinleri: taslaklar
 
-Bu klasördeki dört metin, avukatla konuşmayı hızlandırmak için yazılmış **taslaklardır**. Hukuki görüş değildir ve bu haliyle yayınlanmamalıdır. Hepsi sistemin bugün gerçekten yaptığına göre yazıldı: saklama süreleri, onay kaydı, STOP, dışa aktarma, silme ve alt işleyiciler. Avukatın düzelteceği yer hukuki dil ve risk dağılımı olmalı, olgular değil.
+Bu klasördeki dört metin (ve teknik açıklama, `technical-overview.md`), avukatla konuşmayı hızlandırmak için yazılmış **taslaklardır**. Hukuki görüş değildir ve bu haliyle yayınlanmamalıdır. Hepsi sistemin bugün gerçekten yaptığına göre yazıldı: saklama süreleri, onay kaydı, STOP, dışa aktarma, silme ve alt işleyiciler. Avukatın düzelteceği yer hukuki dil ve risk dağılımı olmalı, olgular değil.
 
 | Dosya | Ne işe yarar | Nerede kullanılır |
 |---|---|---|
 | `terms-of-service.md` | İşletmeyle aramızdaki sözleşme: abonelik, sorumluluk sınırı, kullanım kuralları, mesaj sorumluluğu | Kayıt ve ödeme ekranında "kabul ediyorum" |
 | `privacy-policy.md` | Kimin verisini neden topluyoruz, kimle paylaşıyoruz, ne kadar saklıyoruz, haklar | Site altbilgisi. **Plaid ve Square başvuruları bu adresi ister** |
 | `data-processing-addendum.md` | İşletme veri sorumlusu, biz işleyiciyiz: taahhütler ve güvenlik önlemleri | Terms'in parçası. Büyük müşteriler ayrıca ister |
+| `technical-overview.md` | How the software actually works: records, bookkeeping rules, voids, the AI assistant, data flows, sub-processors, retention, security, our own access, open items | Background for counsel: every promise in the other texts should match it |
 | `sms-terms.md` | Hatırlatma SMS programının koşulları, STOP/HELP, örnek mesajlar | Online randevu sayfası. **Twilio A2P 10DLC kampanya kaydı bu adresi ister** |
 
 ## Köşeli parantezler

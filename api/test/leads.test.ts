@@ -18,7 +18,7 @@ describe('website demo requests', () => {
     const r = await env.call('POST', '/public/demo-requests', { body: form });
     expect(r.status).toBe(201);
     expect(told).toHaveLength(1);
-    expect(told[0].subject).toBe('demo request: Northside Barbers');
+    expect(told[0].subject).toBe('demo request (monacount): Northside Barbers');
     expect(told[0].lines.join('\n')).toContain('rosa@example.com');
     expect((await env.call('GET', '/admin/demo-requests')).status).toBe(401);
     const list = await admin(env);

@@ -40,6 +40,9 @@ services:
         generateValue: true
       - key: ADMIN_API_KEY
         generateValue: true
+      # Operator panel sign-in code (authenticator app). Make one with: npm run ops:totp -w api
+      - key: ADMIN_TOTP_SECRET
+        sync: false
       # Stripe: secret key, the monthly price id (price_...) and the webhook signing secret (whsec_...).
       - key: STRIPE_SECRET_KEY
         sync: false

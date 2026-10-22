@@ -1,4 +1,4 @@
-import { alertPlan, healthChecks, markSent, migrate, plaidBaglanti, purgeDeletedShops, purgeOldDemoRequests, runExclusive, runMemoryUpkeep, seedDemo, squareBaglanti, withSystem } from '@makas/core';
+import { alertPlan, healthChecks, markSent, migrate, plaidBaglanti, purgeDeletedShops, purgeOldDemoRequests, runExclusive, runMemoryUpkeep, runRetention, seedDemo, squareBaglanti, withSystem } from '@makas/core';
 import { hostname } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { env, llmEnv, llmName, loadConfig } from './config';
@@ -122,6 +122,11 @@ const upkeep = async () => {
     if (purged) app.log.info({ purged }, 'deleted shops purged');
     const requests = await withSystem(db, (tx) => purgeOldDemoRequests(tx, new Date()));
     if (requests) app.log.info({ requests }, 'old demo requests deleted');
+    // Cancelled shops after 90 days, assistant conversations after 90 days (the privacy policy's promise).
+    const kept = await withSystem(db, (tx) =>
+      runRetention(tx, new Date(), { days: Number(process.env.RETENTION_DAYS ?? 90), chatDays: Number(process.env.ASSISTANT_RETENTION_DAYS ?? 90) }),
+    );
+    if (kept.shops || kept.turns || kept.notes) app.log.info({ retention: kept }, 'retention');
   } catch (e) {
     app.log.error(e, 'purge failed');
   }

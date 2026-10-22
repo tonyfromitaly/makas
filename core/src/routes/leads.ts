@@ -21,6 +21,9 @@ const demoRequest = z.object({
   contact: z.enum(['arayin', 'eposta']).default('eposta'),
   consent: z.literal(true),
   lang: z.enum(['tr', 'en', 'es']).default('tr'),
+  /** Which website it came from: monacount.com (US) or monamilelab.com (Turkey). */
+  site: z.enum(['monacount', 'monamilelab']).default('monacount'),
+  team_size: z.enum(['1-4', '5-19', '20-49', '50+']).optional(),
   /** Honeypot: people never fill it. */
   company_url: z.string().max(200).optional(),
 });
@@ -41,13 +44,13 @@ export const leadRoutes: Route[] = [
       ).rows[0].n;
       if (recent >= PER_EMAIL_PER_DAY) return ok({ ok: true }, 201);
       const { rows } = await ctx.db.query(
-        `insert into demo_requests (name, business, business_type, email, phone, city, message, contact, lang, consent_at, created_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10) returning id`,
-        [b.name, b.business, b.type, b.email, b.phone, b.city, b.message, b.contact, b.lang, ctx.now],
+        `insert into demo_requests (name, business, business_type, email, phone, city, message, contact, lang, consent_at, created_at, site, team_size)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, $11, $12) returning id`,
+        [b.name, b.business, b.type, b.email, b.phone, b.city, b.message, b.contact, b.lang, ctx.now, b.site, b.team_size ?? ''],
       );
       await ctx.deps.notifyOperator
-        ?.(`demo request: ${b.business}`, [
-          `${b.name} · ${b.business} (${b.type})`,
+        ?.(`demo request (${b.site}): ${b.business}`, [
+          `${b.name} · ${b.business} (${b.type}${b.team_size ? `, ${b.team_size} people` : ''})`,
           `${b.email}${b.phone ? ` · ${b.phone}` : ''}${b.city ? ` · ${b.city}` : ''}`,
           `contact by: ${b.contact === 'arayin' ? 'phone' : 'e-mail'} · language: ${b.lang}`,
           ...(b.message ? [b.message] : []),
@@ -63,7 +66,7 @@ export const leadRoutes: Route[] = [
     query: pageQuery,
     async handler(ctx, { query }) {
       const { rows } = await ctx.db.query(
-        `select id, name, business, business_type, email, phone, city, message, contact, lang, created_at, count(*) over() as total_count
+        `select id, name, business, business_type, email, phone, city, message, contact, lang, site, team_size, created_at, count(*) over() as total_count
            from demo_requests order by created_at desc limit $1 offset $2`,
         [query.page_size, (query.page - 1) * query.page_size],
       );

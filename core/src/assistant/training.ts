@@ -13,6 +13,7 @@ export const SHOP_KNOWLEDGE = `
 - Regulars come every 3-5 weeks. A regular who has not been seen for 6+ weeks is "lapsed" and worth a friendly win-back message (only if they agreed to messages).
 - "Veresiye" / tab: trusted regulars sometimes pay later. Track each client's balance; remind gently, never shame. Payments close the tab.
 - Money in: services (most of it), product sales (wax, pomade, shampoo, beard oil), tips. Money out: rent (monthly, the biggest fixed cost), utilities (electricity, water, gas, internet), supplies (blades, razors, towels, capes, shampoo, cologne, disinfectant), wages or chair shares, card fees, equipment repair (clipper servicing, blade sharpening).
+- Voids: a voided sale or a cancelled or missed visit is recorded with its reason. "How many were cancelled today and why", "iptaller", "no-shows this week" is metric "voids". Cancelling one specific appointment is not a question.
 - Cash flow: rent and bills arrive on fixed days. "What do I still have to pay this month" means open payment reminders (rent, bills, suppliers) due by month end, overdue ones included.
 - Healthy signs: average ticket rising, more combo services, low no-show rate, regulars returning on schedule, expenses below ~60% of income.
 - Hygiene and consent matter: clients only get WhatsApp/SMS reminders if they agreed; every message carries a STOP line.
@@ -29,7 +30,7 @@ Reply with ONLY a JSON object: {"items":[...]}. Item types:
 - {"type":"book","kind":"income"|"expense","amount_cents":int,"category":"service"|"product"|"tips"|"rent"|"supplies"|"utilities"|"wages"|"other","entry_date":"YYYY-MM-DD","note":string}
 - {"type":"reminder","kind":"reminder"|"payment","title":string,"due_date":"YYYY-MM-DD","due_time":"HH:MM"|null,"amount_cents":int|null}
 - {"type":"ledger","client_name":string,"kind":"charge"|"payment","amount_cents":int,"note":string|null}
-- {"type":"query","metric":"summary"|"cash"|"team"|"income"|"expense"|"net"|"payables"|"receivables"|"appointments"|"top_service"|"client_balance"|"reminders","period":"today"|"yesterday"|"tomorrow"|"this_week"|"last_week"|"this_month"|"last_month"|"this_year","month":1-12|null,"client_name":string|null,"staff_name":string|null}
+- {"type":"query","metric":"summary"|"cash"|"team"|"income"|"expense"|"net"|"payables"|"receivables"|"appointments"|"top_service"|"client_balance"|"reminders"|"voids","period":"today"|"yesterday"|"tomorrow"|"this_week"|"last_week"|"this_month"|"last_month"|"this_year","month":1-12|null,"client_name":string|null,"staff_name":string|null}
   "summary" is the whole account of a period (in, out, what is left, compared with the period before): "geçen ayın hesabını getir", "bu hafta nasıl geçti", "aylık özet", "kâr zarar durumu", "how did last month go", "give me the numbers", "¿cómo nos fue?". Comparisons ("geçen aya göre nasılız") are a summary of this_month. "kâr ettik mi", "zarardayız mı", "elimde ne kaldı" are net. "cash" is the money in the bank or till right now: "kasada ne var", "bakiye ne", "what's in the bank". "team" is what the team sold and is owed, person by person: "ekip bu hafta ne yaptı", "kim en çok sattı", "Ahmet bu ay ne kadar sattı" (staff_name "Ahmet"), "hakedişler ne kadar", "how much did the team sell", "what did Elif make this week". "month" is set only when a month is named ("ekim ayının hesabı" → month 10, "eylül ne kadar kazandırdı" → income, month 9).
 - {"type":"chat","question":string}  (advice or an open question about the shop: "why are clients dropping", "how can I earn more", "which day is busiest")
 - {"type":"cancel"}  ("boşver", "vazgeçtim", "never mind", "olvídalo" right after a draft: drop it)
@@ -102,6 +103,8 @@ export const FEW_SHOT: { input: string; output: unknown }[] = [
   { input: 'bu ay daha ne kadar ödemem var', output: { items: [{ type: 'query', metric: 'payables', period: 'this_month', client_name: null }] } },
   { input: 'kim bana borçlu', output: { items: [{ type: 'query', metric: 'receivables', period: 'this_month', client_name: null }] } },
   { input: 'yarın kaç randevum var', output: { items: [{ type: 'query', metric: 'appointments', period: 'tomorrow', client_name: null }] } },
+  { input: 'bugün kaç iptal oldu, nedenleri ne', output: { items: [{ type: 'query', metric: 'voids', period: 'today', client_name: null }] } },
+  { input: 'how many cancellations this week and why?', output: { items: [{ type: 'query', metric: 'voids', period: 'this_week', client_name: null }] } },
   { input: 'son zamanlarda müşteri azaldı gibi, ne yapmalıyım', output: { items: [{ type: 'chat', question: 'son zamanlarda müşteri azaldı gibi, ne yapmalıyım' }] } },
   {
     input: 'made 120 bucks on cuts today, bought blades for 35 and paid the electric bill 90',

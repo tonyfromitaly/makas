@@ -114,6 +114,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     allowSignup: env.allowSignup,
     publicUrl: env.publicUrl,
     billingEnabled: !!(env.stripeSecretKey && env.stripePriceId && env.stripeWebhookSecret),
+    adminTotpSecret: process.env.ADMIN_TOTP_SECRET?.trim() || undefined,
     ...overrides,
   };
 }

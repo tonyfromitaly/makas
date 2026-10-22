@@ -164,7 +164,7 @@ export const moneyRoutes: Route[] = [
     ownerOnly: true,
     async handler(ctx, { params }) {
       const row = (
-        await ctx.db.query('select source, appointment_id, sale_id from book_entries where id = $1 and shop_id = $2', [params.id, ctx.shopId])
+        await ctx.db.query('select source, appointment_id, sale_id, task_id from book_entries where id = $1 and shop_id = $2', [params.id, ctx.shopId])
       ).rows[0];
       if (!row) throw notFound('Entry');
       if (row.source === 'appointment' || row.appointment_id)
@@ -172,6 +172,9 @@ export const moneyRoutes: Route[] = [
       if (row.sale_id) throw conflict('This income comes from a sale; void the sale instead', 'LINKED_TO_SALE');
       if (row.source === 'payout') throw conflict('This is a team settlement; it stays in the books', 'LINKED_TO_PAYOUT');
       await ctx.db.query('delete from book_entries where id = $1 and shop_id = $2', [params.id, ctx.shopId]);
+      // The expense of a paid reminder: taking it out of the books means it is not paid after all.
+      if (row.task_id)
+        await ctx.db.query(`update shop_tasks set status = 'open', done_at = null where id = $1 and shop_id = $2`, [row.task_id, ctx.shopId]);
       return noContent();
     },
   },

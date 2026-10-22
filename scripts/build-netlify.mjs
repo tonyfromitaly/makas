@@ -33,7 +33,8 @@ const spas = ['app', 'demo', 'book'];
 if (cloudflare) {
   const files = ['assets', 'media'].flatMap((f) => spas.map((d) => `/${d}/${f}/*`));
   const own = ['embed.js', 'icon.svg', 'manifest.webmanifest', 'sw.js'].flatMap((f) => spas.map((d) => `/${d}/${f}`));
-  writeFileSync(`${out}/_routes.json`, JSON.stringify({ version: 1, include: ['/api/*', ...spas.map((d) => `/${d}/*`)], exclude: [...files, ...own] }, null, 2) + '\n');
+  // /o/* is the private operator link (functions/o): 404 unless the path matches OPS_PATH.
+  writeFileSync(`${out}/_routes.json`, JSON.stringify({ version: 1, include: ['/api/*', '/o/*', ...spas.map((d) => `/${d}/*`)], exclude: [...files, ...own] }, null, 2) + '\n');
 } else {
   const redirects = [api ? `/api/*  ${api}/api/:splat  200` : '/api/*  /api-offline.json  503', ...spas.map((d) => `/${d}/*  /${d}/index.html  200`)];
   writeFileSync(`${out}/_redirects`, redirects.join('\n') + '\n');

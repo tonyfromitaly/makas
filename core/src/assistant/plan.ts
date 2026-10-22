@@ -3,7 +3,7 @@ import { CATEGORIES } from '../parse/note';
 
 // What the assistant understood. Both the local rule engine and the LLM produce exactly this;
 // the server then resolves names to ids and computes every number with SQL.
-export const METRICS = ['summary', 'cash', 'team', 'income', 'expense', 'net', 'payables', 'receivables', 'appointments', 'top_service', 'client_balance', 'reminders'] as const;
+export const METRICS = ['summary', 'cash', 'team', 'income', 'expense', 'net', 'payables', 'receivables', 'appointments', 'top_service', 'client_balance', 'reminders', 'voids'] as const;
 export const PERIODS = ['today', 'yesterday', 'tomorrow', 'this_week', 'last_week', 'this_month', 'last_month', 'this_year'] as const;
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

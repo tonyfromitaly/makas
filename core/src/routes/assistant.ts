@@ -14,6 +14,7 @@ import { shopSnapshot } from '../assistant/snapshot';
 import { localAdvice } from '../assistant/advice';
 import { EARLIER_MAX, RECENT, earlierLine, nextFocus, sessionView, type Focus } from '../assistant/memory';
 import { payReport, staffOf, type PayRow } from '../ekip/kasa';
+import { syncPaidTask } from '../ekip/odeme';
 import { NOTE_KINDS, addNote, isSensitive, liveNotes, memoryMarkdown, notesForPrompt, memoryUpkeepIn } from '../assistant/notes';
 
 type Lang = 'tr' | 'en' | 'es';
@@ -341,6 +342,30 @@ async function answer(ctx: Ctx, item: Extract<PlanItem, { type: 'query' }>, shop
       );
       const bal = Number(b.b);
       return { text: r.say(bal > 0 ? 'client_balance' : 'client_balance_zero', { name: c.name, amount: r.money(bal) }), data: { client_id: c.id, balance_cents: bal } };
+    }
+    case 'voids': {
+      // A team member sees only their own; the owner sees the shop's.
+      const mine = ctx.role === 'barber' ? ((await one('select name from barbers where id = $1 and shop_id = $2', [staff, ctx.shopId]))?.name ?? '') : null;
+      const { rows } = await ctx.db.query(
+        `select kind, reason, count(*)::int as n, coalesce(sum(amount_cents), 0)::int8 as amount from voids
+          where shop_id = $1 and created_at >= $2 and created_at < $3 and ($4::text is null or staff_name = $4)
+          group by kind, reason order by n desc`,
+        [ctx.shopId, from.toJSDate(), to.plus({ days: 1 }).toJSDate(), mine],
+      );
+      if (!rows.length) return { text: r.say('voids_none', { p: pl, P: p }), data: { count: 0 } };
+      const total = rows.reduce((t: number, x: any) => t + x.n, 0);
+      const sales = rows.filter((x: any) => x.kind === 'sale');
+      const visits = rows.filter((x: any) => x.kind === 'appointment');
+      const nSales = sales.reduce((t: number, x: any) => t + x.n, 0);
+      const nVisits = visits.reduce((t: number, x: any) => t + x.n, 0);
+      const parts = [
+        nSales ? r.say(nSales === 1 ? 'voids_sales_one' : 'voids_sales', { n: nSales, amount: r.money(sales.reduce((t: number, x: any) => t + Number(x.amount), 0)) }) : '',
+        nVisits ? r.say(nVisits === 1 ? 'voids_visits_one' : 'voids_visits', { n: nVisits }) : '',
+      ].filter(Boolean).join(', ');
+      const byReason = new Map<string, number>();
+      for (const x of rows) byReason.set(x.reason, (byReason.get(x.reason) ?? 0) + x.n);
+      const reasons = [...byReason].map(([k, n]) => `${r.say(`reason_${k}`)} ${n}`).join(', ');
+      return { text: r.say('voids', { P: p, n: total, parts, reasons }), data: { count: total, sales: nSales, visits: nVisits, by_reason: Object.fromEntries(byReason) } };
     }
     case 'reminders': {
       const { rows } = await ctx.db.query(
@@ -679,6 +704,7 @@ export const assistantRoutes: Route[] = [
     method: 'POST',
     path: '/admin/memory/run',
     auth: 'admin',
+    machine: true,
     async handler(ctx) {
       return memoryUpkeepIn(ctx.db, ctx.deps, ctx.now);
     },
@@ -815,7 +841,10 @@ export const assistantRoutes: Route[] = [
       const patch: Record<string, unknown> = { ...body };
       if (body.status) patch.done_at = body.status === 'done' ? ctx.now : null;
       await updateRow(ctx.db, 'shop_tasks', ctx.shopId, params.id, patch);
-      return (await ctx.db.query(`select ${taskSelect} from shop_tasks where id = $1 and shop_id = $2`, [params.id, ctx.shopId])).rows[0];
+      // A paid payment reminder is an expense in the books; reopening it takes the expense back out.
+      const bookEntryId = await syncPaidTask(ctx.db, ctx.shopId, ctx.userId, params.id, ctx.now);
+      const row = (await ctx.db.query(`select ${taskSelect} from shop_tasks where id = $1 and shop_id = $2`, [params.id, ctx.shopId])).rows[0];
+      return { ...row, book_entry_id: bookEntryId };
     },
   },
   {
