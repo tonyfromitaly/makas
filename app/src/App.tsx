@@ -61,7 +61,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search).has('state') ? 'settings' : 'today'));
   const [autoMic, setAutoMic] = useState(false);
   const [welcome, setWelcome] = useState(() => {
-    if (!DEMO || new URLSearchParams(location.search).has('ornek')) return false;
+    if (!DEMO || ['sample', 'ornek'].some((k) => new URLSearchParams(location.search).has(k))) return false;
     try {
       return !localStorage.getItem('makas.welcomed');
     } catch {

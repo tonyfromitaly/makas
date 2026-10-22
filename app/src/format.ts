@@ -1,5 +1,8 @@
 import { LOCALES, type Lang } from './i18n';
 
+/** "%35" in Turkish, "35%" elsewhere. */
+export const pct = (n: number, lang: Lang) => (lang === 'tr' ? `%${n}` : `${n}%`);
+
 export function money(cents: number, currency: string, lang: Lang) {
   const whole = cents % 100 === 0;
   return new Intl.NumberFormat(LOCALES[lang], {

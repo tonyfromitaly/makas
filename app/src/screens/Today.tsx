@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DateTime } from 'luxon';
 import { useApp, useLoad } from '../state';
-import { addDays, dateLabel, timeIn, todayIn } from '../format';
+import { addDays, dateLabel, timeIn, todayIn , pct as percent } from '../format';
 import { Empty, Icon, Sheet } from '../components/ui';
 import { AppointmentForm } from './AppointmentForm';
 import { AgentNotes, SetupBanner } from '../components/AgentNotes';
@@ -53,7 +53,7 @@ export function Today() {
         <header className="receipt-head">
           <strong>{t('dayReceipt')}</strong>
           <span>
-            {me.shop.name} · {DateTime.fromISO(date).setLocale(lang).toFormat('ccc dd.LL.yyyy')} · {data?.data.length ?? 0} {t(data?.data.length === 1 ? 'receiptAppt' : 'receiptAppts')}
+            {me.shop.name} · {DateTime.fromISO(date).setLocale(lang).toFormat(lang === 'en' ? 'ccc LL/dd/yyyy' : 'ccc dd.LL.yyyy')} · {data?.data.length ?? 0} {t(data?.data.length === 1 ? 'receiptAppt' : 'receiptAppts')}
           </span>
         </header>
         <hr className="rule" />
@@ -177,7 +177,7 @@ function ReminderDots({ reminders }: { reminders: any[] }) {
 }
 
 function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
-  const { api, t, fail, me, fmt } = useApp();
+  const { api, t, fail, me, fmt, lang } = useApp();
   const tz = me.shop.timezone;
   const [time, setTime] = useState(timeIn(appt.starts_at, tz));
   // "Done" is the checkout: the visit's receipt, with products, a tip and how it was paid.
@@ -236,7 +236,7 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
               <li key={r.id}>
                 <span className={`dot ${r.status}`} />
                 <span>{r.template_key === 'reminder_day_before' ? t('remDayBefore') : t('remDayOf')}</span>
-                <span className="muted">{DateTime.fromISO(r.scheduled_at, { zone: tz }).toFormat('dd.MM HH:mm')}</span>
+                <span className="muted">{DateTime.fromISO(r.scheduled_at, { zone: tz }).toFormat(lang === 'en' ? 'LL/dd h:mm a' : 'dd.MM HH:mm')}</span>
                 <span className="muted">{t(`rem_${r.status}` as any)}</span>
               </li>
             ))}
@@ -373,7 +373,7 @@ function Versus({ cur, prev, date, running }: { cur?: number; prev?: number; dat
   return (
     <p className="versus small">
       {t('lastWeekSameDay', { day })}: <span className="numeral">{fmt(prev)}</span>
-      {d !== null && Math.abs(d) >= 0.03 && <span className={d > 0 ? 'pos' : 'neg'}> · {d > 0 ? '+' : '−'}%{Math.round(Math.abs(d) * 100)}</span>}
+      {d !== null && Math.abs(d) >= 0.03 && <span className={d > 0 ? 'pos' : 'neg'}> · {d > 0 ? '+' : '−'}{percent(Math.round(Math.abs(d) * 100), lang)}</span>}
     </p>
   );
 }

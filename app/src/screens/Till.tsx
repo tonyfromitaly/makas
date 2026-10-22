@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp, useLoad } from '../state';
-import { addDays, dateLabel, timeIn, toCents, todayIn } from '../format';
+import { addDays, dateLabel, timeIn, toCents, todayIn , pct as percent } from '../format';
 import { Empty, Icon, Segmented, Sheet } from '../components/ui';
 
 // The till. The owner rings up anyone's sale, sees each person's settlement slip and the day's receipts.
@@ -57,7 +57,7 @@ export function Till() {
  * and "take payment" stamps it. With an appointment it is that visit's checkout.
  */
 export function Register({ appointment, onDone }: { appointment?: any; onDone?(): void }) {
-  const { api, me, t, fmt, fail, toast, refreshAll } = useApp();
+  const { api, me, t, fmt, fail, toast, refreshAll, lang } = useApp();
   const owner = me.user.role === 'owner';
   const { data: services } = useLoad(() => api.get('/services?page_size=200'), []);
   const { data: products } = useLoad(() => api.get('/products'), []);
@@ -239,7 +239,7 @@ export function Register({ appointment, onDone }: { appointment?: any; onDone?()
             <div className="chips">
               {[0, 10, 15, 20].map((p) => (
                 <button key={p} className={`chip-btn ${p === 0 ? (tip === 0 ? 'on' : '') : tip && tip === Math.round((subtotal * p) / 100 / 100) * 100 && !tipText ? 'on' : ''}`} onClick={() => tipPct(p)}>
-                  {p === 0 ? t('none') : `%${p}`}
+                  {p === 0 ? t('none') : percent(p, lang)}
                 </button>
               ))}
               <input

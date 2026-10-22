@@ -29,11 +29,12 @@ export { DEMO_LOGIN };
 let lite: PGlite | null = null;
 const DATA_DIR = 'idb://fade-demo-v5';
 // Earlier demo databases (with sample data) are removed so every visitor starts from the empty shop.
-const OLD_DBS = ['/pglite/makas-demo-v1', '/pglite/makas-demo-v2', '/pglite/fade-demo-v3', '/pglite/fade-demo-v4', '/pglite/fade-sample-barber-v1', '/pglite/fade-sample-salon-v1'];
+const OLD_DBS = ['/pglite/makas-demo-v1', '/pglite/makas-demo-v2', '/pglite/fade-demo-v3', '/pglite/fade-demo-v4', '/pglite/fade-sample-barber-v1', '/pglite/fade-sample-salon-v1', '/pglite/fade-sample-barber-v2', '/pglite/fade-sample-salon-v2'];
 
-/** ?ornek=berber or ?ornek=kuafor opens a lived-in sample shop (website "try with sample data"). */
+/** ?sample=barber or ?sample=salon opens a lived-in sample shop (website "try with sample data"). ?ornek= is the old name. */
 export function sampleKind(): SampleKind | null {
-  const v = new URLSearchParams(location.search).get('ornek');
+  const q = new URLSearchParams(location.search);
+  const v = q.get('sample') ?? q.get('ornek');
   return v === 'berber' || v === 'barber' ? 'barber' : v === 'kuafor' || v === 'salon' ? 'salon' : null;
 }
 
@@ -58,7 +59,7 @@ export async function startDemo(): Promise<Transport> {
     }
   }
   try {
-    lite = await PGlite.create({ dataDir: kind ? `idb://fade-sample-${kind}-v2` : DATA_DIR, extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
+    lite = await PGlite.create({ dataDir: kind ? `idb://fade-sample-${kind}-v3` : DATA_DIR, extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });
   } catch {
     // IndexedDB blocked (private mode): fall back to memory.
     lite = await PGlite.create({ extensions: { btree_gist }, parsers: { 1082: (v: string) => v, 20: (v: string) => Number(v) } });

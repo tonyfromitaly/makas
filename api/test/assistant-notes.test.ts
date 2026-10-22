@@ -136,7 +136,7 @@ describe('notes from the records', () => {
     const login = await t.call('POST', '/auth/login', { body: SAMPLE_LOGINS.barber });
     const n = (await t.call('GET', '/assistant/notes', { token: login.body.access_token })).body;
     expect(n.data.every((x: any) => x.source === 'data')).toBe(true);
-    expect(n.markdown).toMatch(/Kira genelde ayın \d+/);
+    expect(n.markdown).toMatch(/Rent usually paid on the \d+(st|nd|rd|th);/);
     await t.close();
   });
 });

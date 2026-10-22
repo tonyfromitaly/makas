@@ -77,6 +77,9 @@ const SOURCE: Record<'tr' | 'en' | 'es', Record<Note['source'], string>> = {
 };
 
 /** The notebook as one markdown document, the way the barber and the model read it. */
+/** 1st, 2nd, 3rd, 11th, 22nd. */
+const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+
 export function memoryMarkdown(notes: Note[], shop: string, lang: 'tr' | 'en' | 'es', now: Date) {
   const day = (d: Date | string) => DateTime.fromJSDate(new Date(d)).setLocale(lang).toFormat('d LLL');
   const lines = [`# ${lang === 'tr' ? 'DÜKKÂN.md' : lang === 'es' ? 'LOCAL.md' : 'SHOP.md'} · ${shop}`, ''];
@@ -86,7 +89,7 @@ export function memoryMarkdown(notes: Note[], shop: string, lang: 'tr' | 'en' | 
     lines.push(`## ${HEADINGS[lang][kind]}`, '');
     for (const n of group) {
       const left = n.expires_at ? Math.max(0, Math.round((+new Date(n.expires_at) - now.getTime()) / 86_400_000)) : null;
-      const meta = [SOURCE[lang][n.source], day(n.last_seen_at), n.pinned ? '📌' : left !== null ? `${left}g` : ''].filter(Boolean).join(' · ');
+      const meta = [SOURCE[lang][n.source], day(n.last_seen_at), n.pinned ? '📌' : left !== null ? `${left}${lang === 'tr' ? 'g' : 'd'}` : ''].filter(Boolean).join(' · ');
       lines.push(`- ${n.subject && kind === 'client' ? `**${n.subject}**: ` : ''}${n.text} _(${meta})_`);
     }
     lines.push('');
@@ -250,7 +253,7 @@ export async function refreshDataNotes(db: Queryable, shopId: string, now: Date)
     const what = CATEGORY[lang][cat];
     const text = {
       tr: `${what} ${d ? `genelde ayın ${d}'inde` : 'her ay'} ödeniyor; son ödeme ${money(last.amount_cents)}.`,
-      en: `${what} ${d ? `usually paid on the ${d}th` : 'paid monthly'}; last payment ${money(last.amount_cents)}.`,
+      en: `${what} ${d ? `usually paid on the ${ordinal(d)}` : 'paid monthly'}; last payment ${money(last.amount_cents)}.`,
       es: `${what} ${d ? `se paga normalmente el día ${d}` : 'se paga cada mes'}; último pago ${money(last.amount_cents)}.`,
     }[lang];
     notes.push({ key: `money:${cat}`, kind: 'money', subject: null, text });

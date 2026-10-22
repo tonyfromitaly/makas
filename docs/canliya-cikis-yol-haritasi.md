@@ -122,7 +122,7 @@ ABD-öncelikli kararına göre sıralı:
    - Yabancı kurucu için en yaygın yol Delaware ya da Wyoming LLC (Stripe Atlas, Firstbase, doola gibi servisler).
    - Sonra EIN ve ABD banka hesabı (Mercury ya da Relay).
    - Bu olmadan Twilio A2P, Plaid production ve Stripe açılmaz. **Kritik yol bu.**
-2. **Yasal metinler.** Taslaklar hazır: `docs/legal/` (21 Ekim). Avukat onayı bekliyor. Sitede şimdilik yalnızca KVKK metni ve kısa bir İngilizce gizlilik notu var.
+2. **Yasal metinler.** Taslaklar hazır: `docs/legal/` (21 Ekim). Avukat onayı bekliyor. Sitede şimdilik kısa bir İngilizce gizlilik sayfası var (`/privacy`, 22 Ekim). KVKK metni kaldırıldı.
    - **Terms of Service:** sorumluluk sınırı, abonelik ve iptal, kabul edilebilir kullanım.
    - **Privacy Policy (ABD):** CCPA/CPRA ve diğer eyalet yasaları. Hangi veriyi topluyoruz, kimlerle paylaşıyoruz (Plaid, Square, Twilio, yapay zekâ sağlayıcısı), silme hakkı. Plaid başvurusu bunu ister.
    - **Data Processing Agreement:** dükkân kendi müşterilerinin verisinin sahibi, biz işleyiciyiz.
@@ -138,7 +138,7 @@ ABD-öncelikli kararına göre sıralı:
    - Bayi ağı ve yatırım düşünülüyorsa Ltd. Şti. daha doğru.
    - Satış için e-fatura ya da e-arşiv şart.
 2. **KVKK.**
-   - Aydınlatma metni var (`site/gizlilik.html`). Avukata gözden geçirtilmeli.
+   - Kısa gizlilik sayfası var (`site/privacy.html`). Avukata gözden geçirtilmeli.
    - Dükkânla **veri işleme sözleşmesi** gerekiyor. Dükkân veri sorumlusu, biz veri işleyeniz.
    - **Yurt dışına aktarım:** Render (Frankfurt ya da ABD) ve yapay zekâ sağlayıcısı yurt dışında. Haziran 2024'ten beri bunun yolu **standart sözleşme**; imzadan sonra kısa süre içinde Kurul'a bildirilmesi gerekiyor. Ya bu yapılır ya da Türkiye müşterileri için Türkiye'de barındırma seçilir.
    - **VERBİS:** Küçük işletmeler çalışan sayısı ve bilanço eşiklerine göre muaf olabilir. Eşikler Kurul kararlarıyla değişiyor, mali müşavire teyit ettirilir.

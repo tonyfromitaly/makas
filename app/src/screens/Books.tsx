@@ -3,7 +3,7 @@ import { useApp, useLoad } from '../state';
 import { takeNavHint } from '../nav';
 import { Empty, Icon, Segmented, useSpeech } from '../components/ui';
 import { DraftList } from '../components/Drafts';
-import { addDays, dateLabel, todayIn } from '../format';
+import { addDays, dateLabel, todayIn , pct as percent } from '../format';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -230,13 +230,13 @@ function shiftMonth(date: string, n: number) {
 
 /** "+12% vs the same days last month": colour only on the change, and only where it tells good from bad. */
 function Delta({ pct, basis, period, lowerIsBetter = false }: { pct?: number | null; basis?: string; period: string; lowerIsBetter?: boolean }) {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   if (pct === null || pct === undefined) return null;
   const good = lowerIsBetter ? pct < 0 : pct > 0;
   const label = t(basis === 'same_days' ? `vs_same_${period}` as any : `vs_prev_${period}` as any);
   return (
     <span className="delta small">
-      {Math.abs(pct) < 3 ? t('aboutSame') : <span className={good ? 'pos' : 'neg'}>{pct > 0 ? '+' : '−'}%{Math.abs(pct)}</span>} <span className="muted">{label}</span>
+      {Math.abs(pct) < 3 ? t('aboutSame') : <span className={good ? 'pos' : 'neg'}>{pct > 0 ? '+' : '−'}{percent(Math.abs(pct), lang)}</span>} <span className="muted">{label}</span>
     </span>
   );
 }

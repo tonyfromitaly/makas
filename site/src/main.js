@@ -4,7 +4,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 import Lenis from 'lenis';
-import { COPY, PANELS } from './copy.js';
+import { FORM_ERROR, PANELS } from './copy.js';
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
 document.documentElement.classList.add('js');
@@ -14,41 +14,6 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const fill = (s) => s.replace(/\{(\w+)\}/g, (_, k) => BRAND[k] ?? '');
-
-// ---------------------------------------------------------------- language
-const stored = (() => {
-  try {
-    return localStorage.getItem('usta.lang');
-  } catch {
-    return null;
-  }
-})();
-let lang = stored || ((navigator.language || 'tr').toLowerCase().startsWith('tr') ? 'tr' : 'en');
-const original = new Map($$('[data-k]').map((el) => [el, el.innerHTML]));
-const originalTitle = document.title;
-
-function applyLang() {
-  document.documentElement.lang = lang;
-  for (const [el, html] of original) {
-    const k = el.dataset.k;
-    el.innerHTML = lang === 'tr' ? html : fill(COPY.en[k] ?? html);
-  }
-  document.title = lang === 'tr' ? originalTitle : fill(COPY.en.docTitle);
-  $('#lang').textContent = lang === 'tr' ? 'EN' : 'TR';
-  renderPanel(currentType, false);
-}
-
-$('#lang').addEventListener('click', () => {
-  lang = lang === 'tr' ? 'en' : 'tr';
-  try {
-    localStorage.setItem('usta.lang', lang);
-  } catch {
-    /* private mode */
-  }
-  splits.forEach((s) => s.revert());
-  applyLang();
-  splitHeadings(false);
-});
 
 // ---------------------------------------------------------------- smooth scroll
 let lenis = null;
@@ -330,23 +295,22 @@ const panel = $('#panel');
 
 function renderPanel(type, transition = true) {
   const d = PANELS[type];
-  const t = d[lang] ?? d.tr;
   const update = () => {
     currentType = type;
     panel.dataset.type = type;
     $('#panel-photo').src = d.photo;
-    $('#panel-photo').alt = t.photoAlt;
+    $('#panel-photo').alt = d.photoAlt;
     $('#panel-shot').src = d.shot;
     $('#panel-shot').alt = '';
-    $('#panel-title').textContent = fill(t.title);
-    $('#panel-points').innerHTML = t.points.map(([b, s]) => `<li><b>${b}</b><span>${fill(s)}</span></li>`).join('');
-    $('#panel-menu').innerHTML = (t.menu ?? d.menu)
+    $('#panel-title').textContent = fill(d.title);
+    $('#panel-points').innerHTML = d.points.map(([b, s]) => `<li><b>${b}</b><span>${fill(s)}</span></li>`).join('');
+    $('#panel-menu').innerHTML = d.menu
       .map((m) => (Array.isArray(m) ? `<li>${m[0]}<b>$${m[1]}</b></li>` : `<li>${m}</li>`))
       .join('');
-    $('#panel-next').innerHTML = type === 'next' ? (t.menu ?? d.menu).map((m) => `<span>${m}</span>`).join('') : '';
+    $('#panel-next').innerHTML = type === 'next' ? d.menu.map((m) => `<span>${m}</span>`).join('') : '';
     const link = $('#panel-link');
     link.href = d.link.startsWith('#') ? d.link : `${BRAND.demoUrl}${d.link}`;
-    link.firstElementChild.textContent = t.linkLabel;
+    link.firstElementChild.textContent = d.linkLabel;
     $$('[role="tab"]').forEach((b) => {
       const on = b.dataset.type === type;
       b.setAttribute('aria-selected', String(on));
@@ -418,18 +382,18 @@ form.addEventListener('submit', async (e) => {
     const res = await fetch('/api/public/demo-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, consent: data.consent === 'evet', lang }),
+      body: JSON.stringify({ ...data, consent: data.consent === 'yes', lang: 'en' }),
     });
     if (!res.ok) throw new Error(String(res.status));
     done();
   } catch {
-    err.textContent = fill((COPY[lang] ?? COPY.tr).formError);
+    err.textContent = fill(FORM_ERROR);
     btn.disabled = false;
   }
 });
 
 // ---------------------------------------------------------------- opening sequence
-applyLang();
+renderPanel(currentType, false);
 document.fonts.ready.then(() => {
   splitHeadings(true);
   if (reduced) return;

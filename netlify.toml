@@ -33,15 +33,14 @@
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
 
 [[headers]]
-  for = "/gizlilik.html"
+  for = "/privacy.html"
   [headers.values]
     X-Frame-Options = "DENY"
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
 
-# The app also opens Plaid Link (bank sign-in) from Plaid's CDN, in an iframe.
-# Cloudflare Pages serves /gizlilik.html at /gizlilik (it drops .html), so the same rule covers both.
+# Cloudflare Pages serves /privacy.html at /privacy (it drops .html), so the same rule covers both.
 [[headers]]
-  for = "/gizlilik"
+  for = "/privacy"
   [headers.values]
     X-Frame-Options = "DENY"
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"

@@ -1,20 +1,20 @@
 import { DateTime } from 'luxon';
 import { withSystem, type Database } from './db';
 import { enqueueReminders } from './reminders';
-import { DEFAULT_SERVICES, type BusinessType } from './provision';
+import { servicesIn, type BusinessType } from './provision';
 import { salesFromVisits, saveSale } from './ekip/kasa';
 import { SAMPLE_HOURS } from './seed';
 
 export type SampleKind = 'barber' | 'salon';
 
 export const SAMPLE_LOGINS: Record<SampleKind, { email: string; password: string }> = {
-  barber: { email: 'ornek-berber@fade.demo', password: 'ornek-veri-2026' },
-  salon: { email: 'ornek-kuafor@fade.demo', password: 'ornek-veri-2026' },
+  barber: { email: 'sample-barber@monacount.demo', password: 'sample-data-2026' },
+  salon: { email: 'sample-salon@monacount.demo', password: 'sample-data-2026' },
 };
 /** The second person on each sample team has a login of their own: the team member's app. */
 export const SAMPLE_STAFF_LOGINS: Record<SampleKind, { email: string; password: string }> = {
-  barber: { email: 'ornek-emre@fade.demo', password: 'ornek-veri-2026' },
-  salon: { email: 'ornek-derya@fade.demo', password: 'ornek-veri-2026' },
+  barber: { email: 'sample-devon@monacount.demo', password: 'sample-data-2026' },
+  salon: { email: 'sample-dana@monacount.demo', password: 'sample-data-2026' },
 };
 
 type Deal = { title: string; pay_model: 'commission' | 'booth_rent' | 'salary'; service_pct?: number; product_pct?: number; salary_cents?: number; rent_cents?: number };
@@ -24,52 +24,52 @@ const PROFILES: Record<
   { shop: string; slug: string; owner: string; staff: string[]; deals: Deal[]; products: [string, number, number][]; clients: [string, string, boolean?][]; type: BusinessType }
 > = {
   barber: {
-    shop: 'Berber Halil',
-    slug: 'ornek-berber',
-    owner: 'Halil Usta',
-    staff: ['Halil Usta', 'Emre', 'Kerem'],
+    shop: 'Marco’s Barbershop',
+    slug: 'sample-barber',
+    owner: 'Marco',
+    staff: ['Marco', 'Devon', 'Luis'],
     deals: [
-      { title: 'Usta', pay_model: 'commission', service_pct: 0, product_pct: 0 },
-      { title: 'Kalfa', pay_model: 'commission', service_pct: 50, product_pct: 10 },
-      { title: 'Berber', pay_model: 'booth_rent', rent_cents: 25000 },
+      { title: 'Owner', pay_model: 'commission', service_pct: 0, product_pct: 0 },
+      { title: 'Barber', pay_model: 'commission', service_pct: 50, product_pct: 10 },
+      { title: 'Booth renter', pay_model: 'booth_rent', rent_cents: 25000 },
     ],
     products: [
-      ['Wax', 18, 12],
-      ['Sakal yağı', 16, 6],
-      ['Şampuan', 14, 9],
+      ['Pomade', 18, 12],
+      ['Beard oil', 16, 6],
+      ['Shampoo', 14, 9],
     ],
     clients: [
-      ['Ahmet Yılmaz', '+905321112233'],
-      ['Mehmet Kaya', '+905332223344'],
-      ['Can Demir', '+905343334455'],
-      ['John Carter', '+14155550123'],
-      ['Burak Şahin', '+905354445566'],
-      ['Ali Öztürk', '+905365556677', false],
+      ['James Miller', '+12125550141'],
+      ['Tyler Brooks', '+12125550152'],
+      ['Chris Nguyen', '+12125550163'],
+      ['John Carter', '+12125550174'],
+      ['Andre Wilson', '+12125550185'],
+      ['Kevin Patel', '+12125550196', false],
     ],
     type: 'barber',
   },
   salon: {
-    shop: 'Salon Elif',
-    slug: 'ornek-salon',
-    owner: 'Elif Hanım',
-    staff: ['Elif Hanım', 'Derya', 'Melis'],
+    shop: 'Studio Elena',
+    slug: 'sample-salon',
+    owner: 'Elena',
+    staff: ['Elena', 'Dana', 'Mia'],
     deals: [
-      { title: 'Kurucu', pay_model: 'commission', service_pct: 0, product_pct: 0 },
-      { title: 'Renk uzmanı', pay_model: 'commission', service_pct: 45, product_pct: 10 },
-      { title: 'Bakım', pay_model: 'salary', salary_cents: 240000, service_pct: 10, product_pct: 5 },
+      { title: 'Owner', pay_model: 'commission', service_pct: 0, product_pct: 0 },
+      { title: 'Colorist', pay_model: 'commission', service_pct: 45, product_pct: 10 },
+      { title: 'Stylist', pay_model: 'salary', salary_cents: 240000, service_pct: 10, product_pct: 5 },
     ],
     products: [
-      ['Saç bakım yağı', 22, 8],
-      ['Şampuan', 16, 10],
-      ['Saç maskesi', 19, 5],
+      ['Hair oil', 22, 8],
+      ['Shampoo', 16, 10],
+      ['Hair mask', 19, 5],
     ],
     clients: [
-      ['Ayşe Kara', '+905321112244'],
-      ['Zeynep Arslan', '+905332223355'],
-      ['Selin Çelik', '+905343334466'],
-      ['Maria Lopez', '+13055550188'],
-      ['Gizem Aydın', '+905354445577'],
-      ['Merve Koç', '+905365556688', false],
+      ['Sarah Johnson', '+13055550111'],
+      ['Emily Davis', '+13055550122'],
+      ['Jessica Chen', '+13055550133'],
+      ['Maria Lopez', '+13055550144'],
+      ['Ashley Moore', '+13055550155'],
+      ['Rachel Kim', '+13055550166', false],
     ],
     type: 'salon',
   },
@@ -85,15 +85,17 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
   const p = PROFILES[kind];
   return withSystem(db, async (tx) => {
     if ((await tx.query('select 1 from users where email = $1', [login.email])).rows[0]) return { created: false };
-    const tz = 'Europe/Istanbul';
+    const tz = 'America/New_York';
     const now = DateTime.fromJSDate(opts.now, { zone: tz });
     const today = now.startOf('day');
     const q = async (sql: string, params: unknown[]) => (await tx.query(sql, params)).rows[0];
 
     const shop = await q(
-      `insert into shops (name, country, timezone, language, currency, business_type, slug, booking_enabled, hours) values ($1, 'TR', $2, 'tr', 'USD', $3, $4, true, $5) returning id`,
+      `insert into shops (name, country, timezone, language, currency, business_type, slug, booking_enabled, hours) values ($1, 'US', $2, 'en', 'USD', $3, $4, true, $5) returning id`,
       [p.shop, tz, p.type, p.slug, JSON.stringify(SAMPLE_HOURS)],
     );
+    // Already through the setup wizard: the sample shows the shop, not the setup banner.
+    await tx.query('update shops set setup = $2 where id = $1', [shop.id, JSON.stringify({ ajanAdi: `Mona · ${p.shop}` })]);
     const user = await q(`insert into users (shop_id, email, password_hash, role, name) values ($1, $2, $3, 'owner', $4) returning id`, [
       shop.id,
       login.email,
@@ -107,7 +109,7 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
     ]);
 
     const services = [];
-    for (const [name, usd, min] of DEFAULT_SERVICES[p.type]) {
+    for (const [name, usd, min] of servicesIn(p.type, 'en')) {
       services.push(
         await q(`insert into services (shop_id, name, price_cents, duration_min, station_kind) values ($1, $2, $3, $4, 'chair') returning id, name, price_cents, duration_min`, [
           shop.id,
@@ -120,7 +122,7 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
     // A chair for each person, and a spare.
     const chairs: string[] = [];
     for (let i = 0; i <= p.staff.length; i++)
-      chairs.push((await q(`insert into stations (shop_id, name, kind, sort) values ($1, $2, 'chair', $3) returning id`, [shop.id, `Koltuk ${i + 1}`, i])).id);
+      chairs.push((await q(`insert into stations (shop_id, name, kind, sort) values ($1, $2, 'chair', $3) returning id`, [shop.id, `Chair ${i + 1}`, i])).id);
     const staffLogin = SAMPLE_STAFF_LOGINS[kind];
     const staffUser = await q(`insert into users (shop_id, email, password_hash, role, name) values ($1, $2, $3, 'barber', $4) returning id`, [
       shop.id,
@@ -150,7 +152,7 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
         (
           await q(
             `insert into clients (shop_id, name, phone_e164, language, consent_status, consent_at) values ($1, $2, $3, $4, $5, $6) returning id`,
-            [shop.id, name, phone, phone.startsWith('+1') ? 'en' : 'tr', consent ? 'granted' : 'revoked', consent ? opts.now : null],
+            [shop.id, name, phone, 'en', consent ? 'granted' : 'revoked', consent ? opts.now : null],
           )
         ).id,
       );
@@ -167,7 +169,7 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
     const income = (id: string, at: DateTime, cents: number) =>
       tx.query(
         `insert into book_entries (shop_id, kind, category, amount_cents, entry_date, note, source, appointment_id, created_by)
-         values ($1, 'income', 'service', $2, $3, 'Randevu', 'appointment', $4, $5)`,
+         values ($1, 'income', 'service', $2, $3, 'Appointment', 'appointment', $4, $5)`,
         [shop.id, cents, at.toISODate(), id, user.id],
       );
 
@@ -232,7 +234,7 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
       );
     }
 
-    await tx.query(`insert into ledger_entries (shop_id, client_id, amount_cents, kind, note, created_by) values ($1, $2, 4000, 'charge', 'Sonra ödeyecek', $3)`, [
+    await tx.query(`insert into ledger_entries (shop_id, client_id, amount_cents, kind, note, created_by) values ($1, $2, 4000, 'charge', 'Will pay later', $3)`, [
       shop.id,
       clients[1],
       user.id,
@@ -247,15 +249,15 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
     const month = today.startOf('month');
     for (const m of [month.minus({ months: 1 }), month]) {
       const at = (d: DateTime) => (d < today ? d : today);
-      await book('expense', 'rent', 1800, at(m.plus({ days: 2 })), 'kira 1800 dolar ödedim');
-      await book('expense', 'utilities', 120, at(m.plus({ days: 4 })), 'elektrik faturası ödendi');
-      await book('expense', 'supplies', 75, at(m.plus({ days: 9 })), 'malzeme aldım');
+      await book('expense', 'rent', 1800, at(m.plus({ days: 2 })), 'paid rent 1800 dollars');
+      await book('expense', 'utilities', 120, at(m.plus({ days: 4 })), 'paid the electric bill');
+      await book('expense', 'supplies', 75, at(m.plus({ days: 9 })), 'bought supplies');
     }
-    await book('income', 'tips', 15, today.minus({ days: 1 }), 'bahşiş 15 dolar');
+    await book('income', 'tips', 15, today.minus({ days: 1 }), 'tips 15 dollars');
     for (let d = 1; d <= 45; d++) {
       const day = today.minus({ days: d });
       if (day.weekday === 7) continue;
-      await book('income', 'service', 260 + ((d * 73) % 220), day, 'gün sonu kasa');
+      await book('income', 'service', 260 + ((d * 73) % 220), day, 'end of day till');
     }
 
     const end = today.endOf('month').startOf('day');
@@ -269,10 +271,10 @@ export async function seedSample(db: Database, kind: SampleKind, opts: { hashPas
         usd ? usd * 100 : null,
         user.id,
       ]);
-    await task('payment', 'Su faturası', today.minus({ days: 2 }).toISODate()!, 45);
-    await task('payment', 'Doğalgaz faturası', within(3)!, 140);
-    await task('payment', 'Ürün tedarikçisi', within(6)!, 260);
-    await task('reminder', kind === 'salon' ? 'Boya siparişini ver' : 'Makas bileme servisini ara', today.toISODate()!, null);
+    await task('payment', 'Water bill', today.minus({ days: 2 }).toISODate()!, 45);
+    await task('payment', 'Gas bill', within(3)!, 140);
+    await task('payment', 'Product supplier', within(6)!, 260);
+    await task('reminder', kind === 'salon' ? 'Order hair color' : 'Call the shear sharpening service', today.toISODate()!, null);
     return { created: true, shopId: shop.id };
   });
 }
