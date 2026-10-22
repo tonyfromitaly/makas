@@ -35,6 +35,10 @@ describe('operator sign-in', () => {
     expect((await t.call('GET', '/admin/support', { token: ADMIN_KEY })).status).toBe(401);
     expect((await t.call('GET', '/admin/health', { token: ADMIN_KEY })).status).toBe(200);
 
+    // Applications and invites (api/src/billing.ts) follow the same rule.
+    expect((await t.call('GET', '/admin/signups', { token: ADMIN_KEY })).status).toBe(401);
+    expect((await t.call('GET', '/admin/signups', { token: s.body.token })).status).toBe(200);
+
     // Thirty minutes later the session is over.
     t.clock.now = new Date(t.clock.now.getTime() + 31 * 60_000);
     expect((await t.call('GET', '/admin/support', { token: s.body.token })).status).toBe(401);

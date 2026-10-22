@@ -5,7 +5,9 @@ import { IANAZone } from 'luxon';
 import {
   createAccessKey,
   errorBody,
+  logOperator,
   safeEqual,
+  verifyOps,
   provisionShop,
   verifyAccess,
   withSystem,
@@ -264,10 +266,19 @@ export async function billingRoutes(
   });
 
   // --- operator: applications from the website (while payments are off) and invitations ---
+  // The same rule as every other admin route (core/src/api.ts): the panel's 30-minute session, or the raw
+  // key only while no authenticator secret is configured. Every attempt goes to operator_log.
   const admin = async (req: any, reply: any) => {
     const token = String(req.headers.authorization ?? '').replace(/^Bearer /, '');
-    if (!(await safeEqual(token, o.config.adminApiKey))) {
-      fail(reply, 401, 'UNAUTHORIZED', 'Invalid service credentials');
+    const session = token.split('.').length === 3 && (await verifyOps(o.config, token));
+    const raw = !session && (await safeEqual(token, o.config.adminApiKey));
+    const allowed = session || (raw && !o.config.adminTotpSecret);
+    const path = String(req.routeOptions?.url ?? req.url).replace(o.prefix, '');
+    await withSystem(o.db, (tx) =>
+      logOperator(tx, { action: `${req.method} ${path}`, target: (req.params as any)?.id ?? null, ip: req.ip, ok: !!allowed, at: o.config.now() }),
+    ).catch(() => {});
+    if (!allowed) {
+      fail(reply, 401, 'UNAUTHORIZED', raw ? 'Sign in with the admin key and your authenticator code' : 'Invalid admin credentials');
       return false;
     }
     return true;
