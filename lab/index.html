@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#302f33" />
+    <title>Mona Mile Lab</title>
+    <meta name="description" content="Mona Mile Lab. Soon." />
+    <meta property="og:title" content="Mona Mile Lab" />
+    <meta property="og:description" content="Soon." />
+    <meta property="og:image" content="/assets/autumn-desktop.webp" />
+    <link rel="icon" href="/world/assets/favicon.svg" />
+    <link rel="preload" href="/world/assets/fonts/CormorantGaramond-Light.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/banner.css" />
+  </head>
+  <body>
+    <!-- The still frame shows at once; the living landscape (world/) fades in over it when it is ready. -->
+    <main class="banner" aria-label="Mona Mile, late autumn sunset">
+      <picture>
+        <source media="(orientation:portrait)" srcset="/assets/autumn-mobile.webp" />
+        <img src="/assets/autumn-desktop.webp" alt="A weathered granite milestone above a quiet sea at sunset" fetchpriority="high" width="3840" height="2160" />
+      </picture>
+      <iframe title="Living autumn landscape" data-src="/world/" tabindex="-1" aria-hidden="true"></iframe>
+      <p class="soon">soon</p>
+    </main>
+    <script src="/banner.js" defer></script>
+  </body>
+</html>

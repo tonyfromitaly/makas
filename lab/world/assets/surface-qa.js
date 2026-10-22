@@ -1,0 +1,16 @@
+import * as THREE from 'three';
+import {Placement} from '../placement.js?v=round4-3';
+import {surfaceFace,regionValid,overlaps,faceScale} from '../inscription_data.js?v=round4-2';
+export async function testSurfaces(stone,drawing){
+ const canvas={getBoundingClientRect:()=>({x:0,y:0,width:1280,height:720})},scene=new THREE.Scene(),result={};
+ const views=[['front',[0,1.7,2],[0,1.1,.17]],['front-left',[-1.2,1.7,2],[-.055,1.3,.17]],['front-right',[1.2,1.7,2],[.055,1.5,.17]],['left',[-2,1.7,0],[-.28,1.1,0]],['right',[2,1.7,0],[.28,1.4,0]]];
+ for(const [name,origin,target] of views){const camera=new THREE.PerspectiveCamera(40,1280/720,.01,100);camera.position.set(...origin);camera.lookAt(new THREE.Vector3(...target));camera.updateMatrixWorld();const p=new Placement(scene,camera,canvas,stone,()=>[]);p.begin(drawing);p.lastUpdate=0;p.move(640,360);p.select();const before=Array.from(p.preview?.geometry.attributes.position.array||[]);camera.position.x+=.3;camera.updateMatrixWorld();const attached=JSON.stringify(before)===JSON.stringify(Array.from(p.preview?.geometry.attributes.position.array||[]));result[name]={valid:p.valid,previewVertices:before.length/3,attachedAfterCameraMove:attached,candidate:structuredClone(p.candidate)};p.cancel();}
+ result.rejects={back:!regionValid([0,1,-.17],[0,0,-1]),cap:!regionValid([0,1.97,0],[0,1,0]),buried:!regionValid([0,-.05,.17],[0,0,1]),corner:!regionValid([.25,1,.15],[.7,0,.7])};
+ const m=result.front.candidate,other=structuredClone(m);other.positionLocal[1]+=.25;result.overlap={same:overlaps(m,m),separated:!overlaps(m,other),differentFace:!overlaps(m,result.left.candidate)};
+ if(new URLSearchParams(location.search).has('persistqa')){const response=await fetch('api/inscriptions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result.front.candidate)});result.httpPersistence={status:response.status,body:await response.json()};}
+ const pre=document.createElement('pre');pre.id='surface-qa';pre.hidden=true;pre.textContent=JSON.stringify(result);document.body.append(pre);return result;
+}
+export function showRegions(stone,scene){const g=stone.geometry,pos=g.attributes.position,n=g.attributes.normal,index=g.index,verts=[],colors=[];const shades={front:[.25,.7,.5],left:[.3,.5,.9],right:[.85,.55,.25]};
+ for(let k=0;k<index.count;k+=3){const ids=[index.getX(k),index.getX(k+1),index.getX(k+2)],p=new THREE.Vector3(),normal=new THREE.Vector3();for(const i of ids){p.add(new THREE.Vector3().fromBufferAttribute(pos,i));normal.add(new THREE.Vector3().fromBufferAttribute(n,i));}p.multiplyScalar(1/3);normal.normalize();const face=surfaceFace(normal.toArray());if(!face||!regionValid(p.toArray(),normal.toArray(),faceScale(normal.toArray())))continue;for(const i of ids){verts.push(pos.getX(i),pos.getY(i),pos.getZ(i));colors.push(...shades[face]);}}
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.35,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-5}));mesh.matrixAutoUpdate=false;mesh.matrix.copy(stone.matrixWorld);scene.add(mesh);
+}
