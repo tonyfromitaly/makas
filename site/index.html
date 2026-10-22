@@ -121,7 +121,7 @@
             <article class="beat" data-shot="assistant">
               <p class="beat-tag">Mona</p>
               <h3 class="h3">Say it, it’s filed. Ask, she answers.</h3>
-              <p>“Tomorrow at three, John, beard trim.” “Made a hundred, paid three hundred rent.” Mona files each sentence where it belongs and you confirm with one tap. Ask “how much do I still have to pay this month?” and the answer comes from your books; the AI never makes up a number.</p>
+              <p>“Tomorrow at three, John, beard trim.” “Made a hundred, paid three hundred rent.” Mona files each sentence where it belongs and you confirm with one tap. Ask “how much do I still have to pay this month?” and the total is added up from your books, not guessed by the AI.</p>
               <img class="beat-shot" src="/shots/barber-assistant.webp" alt="The Mona screen: one sentence becomes two entries in the books" loading="lazy" />
             </article>
             <article class="beat" data-shot="today">
@@ -199,11 +199,11 @@
           <h2 id="trust-title" class="h2">Your business’s data is yours.</h2>
         </div>
         <ul class="promises">
-          <li><h3 class="h4">Every business in its own vault</h3><p>One business never sees another’s records. The separation is enforced twice: in the app and in the database.</p></li>
-          <li><h3 class="h4">Passwords nobody can read</h3><p>Passwords are stored with argon2id, never as plain text. Sign-in keys work once.</p></li>
+          <li><h3 class="h4">Every business in its own vault</h3><p>Each business’s records are kept apart, and the separation is enforced twice: in the app and in the database.</p></li>
+          <li><h3 class="h4">Passwords kept as hashes</h3><p>Passwords are stored with argon2id, not as plain text. A sign-in key works once, and resetting your password with one signs out your other devices.</p></li>
           <li><h3 class="h4">No texts without consent</h3><p>Clients get reminders only if they opted in, and every message tells them how to reply STOP.</p></li>
-          <li><h3 class="h4">Export or delete, any time</h3><p>Download all your data as one file, or delete your account for good.</p></li>
-          <li><h3 class="h4">Numbers from your own books</h3><p>The AI understands sentences but never produces totals; every number is computed from your records.</p></li>
+          <li><h3 class="h4">Export or delete, any time</h3><p>Download your clients, visits, sales and books as one file, or delete your account for good.</p></li>
+          <li><h3 class="h4">Numbers from your own books</h3><p>Totals like income, expenses and what’s due are computed from your records. When Mona answers in her own words, check the figures in Books.</p></li>
           <li><h3 class="h4">Card numbers never reach us</h3><p>When payments open, cards are handled by the payment processor; card numbers never touch our systems.</p></li>
         </ul>
         <a class="link-arrow" href="/privacy"><span>Privacy policy</span> <span aria-hidden="true">→</span></a>
