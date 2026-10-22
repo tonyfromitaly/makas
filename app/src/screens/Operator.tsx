@@ -36,7 +36,7 @@ export function Operator({ api, t, demoKey, onClose }: { api: Client; t: T; demo
   const [log, setLog] = useState<any[] | null>(null);
   const loadDemos = async () => setDemos((await api.raw('GET', '/admin/demo-requests', key)).body?.data ?? []);
   const loadLog = async () => setLog((await api.raw('GET', '/admin/log', key)).body?.data ?? []);
-  const [inv, setInv] = useState({ shop_name: '', owner_name: '', email: '', business_type: 'barber', country: 'TR', language: 'tr', status: 'trial', days: 14 });
+  const [inv, setInv] = useState({ shop_name: '', owner_name: '', email: '', business_type: 'barber', country: 'US', language: 'en', status: 'trial', days: 14 });
   const sendInvite = async () => {
     const r = await api.raw('POST', '/admin/invites', key, { ...inv, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', days: Number(inv.days) });
     if (r.status === 200) {
