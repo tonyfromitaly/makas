@@ -825,7 +825,7 @@ const en: Dict = {
   sug2: 'What are this month’s total expenses?',
   sug3: 'How much do I have to pay this month?',
   sug4: 'Made 100 dollars, paid 300 rent and 20 tips',
-  sug5: 'New client Ali Kaya 555 123 4567',
+  sug5: 'New client Jane Miller 555 123 4567',
   sug6: 'Tomorrow at 3 John haircut',
   sug7: 'Remind me to pay rent on the 25th',
   sug8: 'Who owes me?',

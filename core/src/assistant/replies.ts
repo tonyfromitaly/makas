@@ -203,7 +203,7 @@ const T: Record<L, Record<string, string>> = {
     need_phone: 'A new client needs a phone number.',
     duplicate: 'That number already belongs to {name}.',
     unknown:
-      'I didn’t quite get that. Try: “tomorrow at 3 John haircut”, “new client Ali Kaya 555 123 4567”, “made 100 dollars, paid 300 rent”, “remind me to pay rent on the 25th”, “how much did we make last month?”',
+      'I didn’t quite get that. Try: “tomorrow at 3 John haircut”, “new client Jane Miller 555 123 4567”, “made 100 dollars, paid 300 rent”, “remind me to pay rent on the 25th”, “how much did we make last month?”',
     brief_hello: 'Hi {name}!',
     brief_appts: 'You have {n} appointments today ({left} still to come).',
     brief_appts_one: 'You have 1 appointment today ({left} still to come).',
