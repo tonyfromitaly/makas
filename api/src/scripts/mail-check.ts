@@ -16,7 +16,7 @@ if (!to) {
 }
 try {
   await resendMailer(env.resendApiKey, env.mailFrom).send(
-    welcomeEmail({ to, name: 'Halil Usta', shop: 'Berber Halil', key: generateAccessKey(), appUrl: `${env.publicUrl}/app/`, lang: 'tr' }),
+    welcomeEmail({ to, name: 'Marco', shop: 'Marco’s Barbershop', key: generateAccessKey(), appUrl: `${env.publicUrl}/app/`, lang: 'en' }),
   );
   console.log(`✓ Deneme e-postası gönderildi: ${to} (gönderen: ${env.mailFrom})`);
 } catch (e) {
