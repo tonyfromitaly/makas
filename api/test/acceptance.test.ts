@@ -106,7 +106,7 @@ describe('acceptance', () => {
     const day = await t.call('GET', '/books/summary?period=day&date=2026-10-16', { token });
     expect(day.body.income_cents).toBe(3500);
     // Undo: back to booked removes the income again (no double counting).
-    await t.call('PATCH', `/appointments/${appts[0].id}`, { token, body: { status: 'booked' } });
+    await t.call('PATCH', `/appointments/${appts[0].id}`, { token, body: { status: 'booked', cancel_reason: 'wrong_entry' } });
     expect((await t.call('GET', '/books/summary?period=day&date=2026-10-16', { token })).body.income_cents).toBe(0);
     await t.call('PATCH', `/appointments/${appts[0].id}`, { token, body: { status: 'done' } });
 

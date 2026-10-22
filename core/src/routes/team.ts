@@ -3,11 +3,11 @@ import { DateTime } from 'luxon';
 import { audit, badRequest, cents, conflict, forbidden, isoDate, noContent, notFound, ok, positiveCents, uuid, type Ctx, type Route } from '../http';
 import { createAccessKey } from '../provision';
 import { STATION_KINDS, DEFAULT_HOURS, type Hours } from '../ekip/saat';
-import { payReport, saveSale, staffOf, syncVisitSale, type Line } from '../ekip/kasa';
+import { payReport, recordSaleVoid, saveSale, staffOf, syncVisitSale, type Line } from '../ekip/kasa';
 import { dropQueued, enqueueReminders } from '../reminders';
 import { periodBounds } from './money';
 import { fold } from '../parse/text';
-import { recordVoid, voidBody } from '../voids';
+import { voidBody } from '../voids';
 
 // The team, the stations they work at, what the shop sells over the counter, the till and settling up.
 // The owner sees and changes everything; a team member sees their own work and rings up their own sales.
@@ -437,8 +437,14 @@ export const teamRoutes: Route[] = [
         if (!a) throw notFound('Appointment');
         if (isStaff(ctx) && a.barber_id !== mine) throw notFound('Appointment');
         if (a.status === 'cancelled' || a.status === 'missed') throw conflict('This visit is not on; restore it first', 'NOT_BOOKED');
+        const existing = (await ctx.db.query('select id from sales where appointment_id = $1 and shop_id = $2', [a.id, ctx.shopId])).rows[0];
+        // Ringing a paid visit up again would rewrite money that came in. The receipt is voided first (owner,
+        // with a reason), then the visit can be rung up afresh.
+        if (existing && isStaff(ctx)) throw forbidden('This visit is already paid; the owner can change it');
+        if (existing) throw conflict('This visit is already paid; void its receipt first', 'ALREADY_PAID');
         staffId = isStaff(ctx) ? mine : body.staff_id ?? a.barber_id;
         const lines = await Promise.all(body.lines.map((l: z.infer<typeof lineBody>) => resolveLine(ctx, l, staffId)));
+        if (isStaff(ctx) && lines.some((l) => l.staff_id !== mine)) throw forbidden('A team member rings up only their own work');
         let service = lines.find((l) => l.kind === 'service' && l.ref_id === a.service_id);
         if (!service) {
           const s = (await ctx.db.query('select name from services where id = $1', [a.service_id])).rows[0];
@@ -451,14 +457,17 @@ export const teamRoutes: Route[] = [
           await dropQueued(ctx.db, { appointmentId: a.id }, 'appointment_done');
           await audit(ctx, 'appointment.done', 'appointment', a.id);
         }
-        const existing = (await ctx.db.query('select id from sales where appointment_id = $1 and shop_id = $2', [a.id, ctx.shopId])).rows[0];
-        const id = await saveSale(
-          ctx.db,
-          ctx.shopId,
-          ctx.userId,
-          { staff_id: staffId, appointment_id: a.id, client_id: a.client_id, client_name: a.client_name, method: body.method, tip_cents: body.tip_cents, lines, sold_at: ctx.now, note: body.note },
-          existing?.id,
-        );
+        const id = await saveSale(ctx.db, ctx.shopId, ctx.userId, {
+          staff_id: staffId,
+          appointment_id: a.id,
+          client_id: a.client_id,
+          client_name: a.client_name,
+          method: body.method,
+          tip_cents: body.tip_cents,
+          lines,
+          sold_at: ctx.now,
+          note: body.note,
+        });
         await audit(ctx, 'sale.checkout', 'sale', id);
         return ok(await getSale(ctx, id), 201);
       }
@@ -489,28 +498,8 @@ export const teamRoutes: Route[] = [
     ownerOnly: true,
     body: voidBody,
     async handler(ctx, { params, body }) {
-      const s = (
-        await ctx.db.query(
-          `select s.id, s.appointment_id, s.total_cents, s.sold_at, coalesce(s.client_name, c.name) as client_name, b.name as staff_name
-             from sales s left join barbers b on b.id = s.staff_id left join clients c on c.id = s.client_id
-            where s.id = $1 and s.shop_id = $2`,
-          [params.id, ctx.shopId],
-        )
-      ).rows[0];
+      const s = await recordSaleVoid(ctx.db, { shopId: ctx.shopId, userId: ctx.userId, saleId: params.id, reason: body.reason, note: body.note, now: ctx.now });
       if (!s) throw notFound('Sale');
-      await recordVoid(ctx.db, {
-        shopId: ctx.shopId,
-        userId: ctx.userId,
-        kind: 'sale',
-        refId: s.id,
-        reason: body.reason,
-        note: body.note,
-        amountCents: s.total_cents,
-        clientName: s.client_name,
-        staffName: s.staff_name,
-        happenedAt: s.sold_at,
-        at: ctx.now,
-      });
       if (s.appointment_id) {
         await syncVisitSale(ctx.db, ctx.shopId, ctx.userId, s.appointment_id, false);
         await ctx.db.query(`update appointments set status = 'booked' where id = $1 and shop_id = $2`, [s.appointment_id, ctx.shopId]);

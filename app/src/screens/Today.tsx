@@ -184,6 +184,8 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
   // "Done" is the checkout: the visit's receipt, with products, a tip and how it was paid.
   const [checkout, setCheckout] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Undoing a done visit voids its receipt: the owner's call, with a reason.
+  const [undoing, setUndoing] = useState(false);
   if (checkout) return <Register appointment={appt} onDone={onDone} />;
   const local = DateTime.fromISO(appt.starts_at, { zone: tz });
   const set = async (body: any) => {
@@ -225,8 +227,18 @@ function ActionPanel({ appt, onDone }: { appt: any; onDone(): void }) {
             {t('cancelled')}
           </button>
         </div>
+      ) : appt.status === 'done' && me.user.role !== 'owner' ? (
+        <p className="muted small">{t('paidOwnerOnly')}</p>
+      ) : appt.status === 'done' && undoing ? (
+        <VoidReason
+          title={t('whyVoid')}
+          reasons={['wrong_entry', 'refund', 'duplicate', 'client_cancelled', 'other']}
+          confirm={t('voidConfirm')}
+          onCancel={() => setUndoing(false)}
+          onConfirm={(reason, note) => set({ status: 'booked', cancel_reason: reason, ...(note ? { cancel_note: note } : {}) })}
+        />
       ) : (
-        <button className="btn" onClick={() => set({ status: 'booked' })}>
+        <button className="btn" onClick={() => (appt.status === 'done' ? setUndoing(true) : set({ status: 'booked' }))}>
           <Icon name="undo" /> {t('restore')} ({t(appt.status)})
         </button>
       )}

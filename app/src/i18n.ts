@@ -431,6 +431,7 @@ const tr = {
   noReceipts: 'Bu gün fiş yok.',
   voidConfirm: 'İptal et',
   voidSale: 'Fişi iptal et',
+  paidOwnerOnly: 'Ödenmiş randevuyu yalnızca işletme sahibi geri alabilir.',
   paidToBooks: '{amount} gider olarak deftere yazıldı.',
   whyVoid: 'Neden iptal ediliyor?',
   whyCancel: 'Randevu neden iptal ediliyor?',
@@ -977,6 +978,7 @@ const en: Dict = {
   noReceipts: 'No receipts this day.',
   voidConfirm: 'Void',
   voidSale: 'Void the receipt',
+  paidOwnerOnly: 'A paid visit can be undone by the owner only.',
   paidToBooks: '{amount} added to the books as an expense.',
   whyVoid: 'Why is it being voided?',
   whyCancel: 'Why is the appointment cancelled?',
@@ -1093,6 +1095,7 @@ const en: Dict = {
 const es: Dict = {
   ...en,
   paidToBooks: '{amount} anotado como gasto.',
+  paidOwnerOnly: 'Solo el dueño puede deshacer una visita pagada.',
   whyVoid: '¿Por qué se anula?',
   whyCancel: '¿Por qué se cancela la cita?',
   reasonNote: 'Nota (opcional)',

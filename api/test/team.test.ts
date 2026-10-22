@@ -185,8 +185,8 @@ describe('the till', () => {
     expect(day.totals).toMatchObject({ count: 2, total_cents: 6700, cash_cents: 3700, other_cents: 3000 });
     const sum = (await t.call('GET', '/books/summary?period=day&date=2026-10-15', { token: owner })).body;
     expect(sum.income_cents).toBe(6700);
-    // Undoing the visit takes its sale and income away.
-    await t.call('PATCH', `/appointments/${a.body.id}`, { token: owner, body: { status: 'booked' } });
+    // Undoing the visit (a void: it needs a reason) takes its sale and income away.
+    await t.call('PATCH', `/appointments/${a.body.id}`, { token: owner, body: { status: 'booked', cancel_reason: 'wrong_entry' } });
     expect((await t.call('GET', '/books/summary?period=day&date=2026-10-15', { token: owner })).body.income_cents).toBe(3700);
   });
 

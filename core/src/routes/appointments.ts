@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { audit, badRequest, conflict, isoDate, notFound, ok, pageQuery, paged, uuid, type Ctx, type Route } from '../http';
+import { audit, badRequest, conflict, forbidden, isoDate, notFound, ok, pageQuery, paged, uuid, type Ctx, type Route } from '../http';
 import { dropQueued, enqueueReminders } from '../reminders';
 import { freeSlots, stationFor } from '../ekip/saat';
-import { staffOf, syncVisitSale } from '../ekip/kasa';
+import { recordSaleVoid, staffOf, syncVisitSale } from '../ekip/kasa';
 import { recordVoid, VOID_REASONS } from '../voids';
 
 const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Expected YYYY-MM-DDTHH:mm');
@@ -266,6 +266,14 @@ export const appointmentRoutes: Route[] = [
         if (body.barber_id) patch.barber_id = await resolveBarber(ctx, body.barber_id);
       }
       const next = body.status ?? before.status;
+      // A done visit has a receipt: money that came in. Taking it back is a void, so the same rule as voiding
+      // a sale applies: the owner only, with a reason, and the receipt is kept in the voids record.
+      const paid = (await ctx.db.query('select id from sales where appointment_id = $1 and shop_id = $2', [before.id, ctx.shopId])).rows[0] as
+        | { id: string }
+        | undefined;
+      const undoingPaid = !!paid && before.status === 'done' && next !== 'done';
+      if (undoingPaid && ctx.role === 'barber') throw forbidden('This visit is paid; the owner can undo it');
+      if (undoingPaid && !body.cancel_reason) throw badRequest('Say why the paid visit is undone (cancel_reason)');
       if ((moved || next !== before.status) && (next === 'booked' || next === 'done'))
         await assertFree(
           ctx,
@@ -301,7 +309,11 @@ export const appointmentRoutes: Route[] = [
         await dropQueued(ctx.db, { appointmentId: before.id }, 'rescheduled');
         await enqueueReminders(ctx.db, before.id, ctx.now);
       }
-      if (patch.status || moved || patch.price_cents_snapshot !== undefined)
+      if (undoingPaid)
+        await recordSaleVoid(ctx.db, { shopId: ctx.shopId, userId: ctx.userId, saleId: paid!.id, reason: body.cancel_reason!, note: body.cancel_note, now: ctx.now });
+      // Only a change of status touches the sale. A paid visit that is moved on the calendar keeps its receipt
+      // as it was rung up: its lines, tip, who did the work and the day it was paid.
+      if (patch.status || (!paid && nextStatus === 'done' && (moved || patch.price_cents_snapshot !== undefined)))
         await syncVisitSale(ctx.db, ctx.shopId, ctx.userId, before.id, nextStatus === 'done');
       if (patch.status && (nextStatus === 'cancelled' || nextStatus === 'missed'))
         await recordVoid(ctx.db, {

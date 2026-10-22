@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon';
 import type { Queryable } from '../db';
 import { badRequest, notFound } from '../http';
+import { recordVoid, type VoidReason } from '../voids';
 
 // The till. Every payment is a sale: lines (services, products, anything else), each done by a person,
 // a tip for the person who rang it up, and how it was paid. The shop's books are written from the sales:
@@ -127,8 +128,42 @@ export async function writeBooks(db: Queryable, shopId: string, saleId: string, 
 }
 
 /**
+ * Writes the voids row for a sale that is about to go: what it was (amount, client, who did it, when it was
+ * paid) and why. The caller then removes the sale. Returns the sale, or null when there is none.
+ */
+export async function recordSaleVoid(
+  db: Queryable,
+  v: { shopId: string; userId: string | null; saleId: string; reason: VoidReason; note?: string | null; now: Date },
+) {
+  const s = (
+    await db.query(
+      `select s.id, s.appointment_id, s.total_cents, s.sold_at, coalesce(s.client_name, c.name) as client_name, b.name as staff_name
+         from sales s left join barbers b on b.id = s.staff_id left join clients c on c.id = s.client_id
+        where s.id = $1 and s.shop_id = $2`,
+      [v.saleId, v.shopId],
+    )
+  ).rows[0];
+  if (!s) return null;
+  await recordVoid(db, {
+    shopId: v.shopId,
+    userId: v.userId,
+    kind: 'sale',
+    refId: s.id,
+    reason: v.reason,
+    note: v.note,
+    amountCents: s.total_cents,
+    clientName: s.client_name,
+    staffName: s.staff_name,
+    happenedAt: s.sold_at,
+    at: v.now,
+  });
+  return s as { id: string; appointment_id: string | null };
+}
+
+/**
  * Keeps a visit's sale in step with the visit: done → a sale for the service (kept if one exists, with the
- * service line brought up to date); anything else → no sale and no income.
+ * service line brought up to date); anything else → no sale and no income. Called on a change of status
+ * only: a paid visit that is moved keeps its receipt, and undoing a paid visit is a void (recordSaleVoid).
  */
 export async function syncVisitSale(db: Queryable, shopId: string, userId: string | null, appointmentId: string, isDone: boolean) {
   const existing = (await db.query('select id, method, tip_cents, note from sales where appointment_id = $1 and shop_id = $2', [appointmentId, shopId])).rows[0];
