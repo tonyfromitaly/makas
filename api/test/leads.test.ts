@@ -31,6 +31,9 @@ describe('website demo requests', () => {
     expect((await env.call('POST', '/public/demo-requests', { body: { ...form, consent: false } })).status).toBe(400);
     expect((await env.call('POST', '/public/demo-requests', { body: { ...form, email: 'not-an-email' } })).status).toBe(400);
     expect((await env.call('POST', '/public/demo-requests', { body: { ...form, name: '' } })).status).toBe(400);
+    // "Call me" without a number cannot be answered; "email me" needs none.
+    expect((await env.call('POST', '/public/demo-requests', { body: { ...form, phone: '' } })).status).toBe(400);
+    expect((await env.call('POST', '/public/demo-requests', { body: { ...form, phone: '', contact: 'eposta' } })).status).toBe(201);
   });
 
   it('a bot that fills the hidden field, or a repeat sender, gets 201 and nothing is stored', async () => {

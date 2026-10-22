@@ -41,19 +41,38 @@ onScroll();
 
 // ---------------------------------------------------------------- headings
 let splits = [];
+let reveals = [];
 function splitHeadings(animate) {
   splits = $$('.h2').map((h) => new SplitText(h, { type: 'lines', linesClass: 'split-line', mask: 'lines' }));
   if (!animate || reduced) return;
-  splits.forEach((s) => {
+  reveals = splits.map((s) =>
     gsap.from(s.lines, {
       yPercent: 105,
       duration: 0.9,
       ease: 'power3.out',
       stagger: 0.08,
       scrollTrigger: { trigger: s.lines[0]?.parentElement ?? s.elements[0], start: 'top 82%', once: true },
-    });
-  });
+    }),
+  );
 }
+// Lines are measured once; when the width changes (a phone turned, a window resized) they are measured
+// again, or a heading split while narrow stays one word per line. Headings not yet revealed just show.
+let splitWidth = innerWidth;
+let resplit;
+addEventListener('resize', () => {
+  if (!splits.length || innerWidth === splitWidth) return;
+  clearTimeout(resplit);
+  resplit = setTimeout(() => {
+    splitWidth = innerWidth;
+    reveals.forEach((t) => {
+      t.scrollTrigger?.kill();
+      t.progress(1).kill();
+    });
+    reveals = [];
+    splits.forEach((s) => s.revert());
+    splitHeadings(false);
+  }, 150);
+});
 
 // ---------------------------------------------------------------- the fogged mirror
 /**
@@ -363,6 +382,18 @@ beats.forEach((b) =>
 
 // ---------------------------------------------------------------- demo request (POST /api/public/demo-requests)
 const form = $('#demo-form');
+// The phone is asked for only when they want a call, and then it is needed.
+const phoneField = $('#phone-field');
+const phone = $('input[name="phone"]', form);
+$$('input[name="contact"]', form).forEach((r) =>
+  r.addEventListener('change', () => {
+    const call = $('input[name="contact"]:checked', form).value === 'arayin';
+    phoneField.hidden = !call;
+    phone.disabled = !call;
+    phone.required = call;
+    if (call) phone.focus();
+  }),
+);
 const done = () => {
   $$('.field, .field-row, .consent, #form-submit, .form-error', form).forEach((el) => (el.hidden = true));
   $('#form-done').hidden = false;
@@ -397,11 +428,11 @@ renderPanel(currentType, false);
 document.fonts.ready.then(() => {
   splitHeadings(true);
   if (reduced) return;
-  const title = new SplitText('.hero-title', { type: 'words', mask: 'words' });
+  // The headline is the page's largest paint, so it is never hidden: it is there from the first frame
+  // and only what follows it moves in.
   gsap
     .timeline({ defaults: { ease: 'power3.out' } })
-    .from(title.words, { yPercent: 110, duration: 1, stagger: 0.08 })
-    .from('.hero-lead, .hero-actions, .hero-note', { y: 18, opacity: 0, duration: 0.7, stagger: 0.08 }, '-=0.6')
+    .from('.hero-lead, .hero-actions, .hero-assure, .hero-note', { y: 18, opacity: 0, duration: 0.7, stagger: 0.08 }, 0.1)
     .from('.mirror-wrap', { y: 30, opacity: 0, duration: 1 }, 0.1);
   moveRail();
 });

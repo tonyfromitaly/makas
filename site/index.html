@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0E1416" />
-    <title>{{product}} · the mirror of your business</title>
+    <title>{{product}} · your whole shop on one phone</title>
     <meta name="description" content="{{product}} puts appointments, the day's sales, client tabs and reminders on one screen for small businesses. Say it and Mona writes it down; ask and she answers from your books." />
-    <meta property="og:title" content="{{product}} · the mirror of your business" />
+    <meta property="og:title" content="{{product}} · your whole shop on one phone" />
     <meta property="og:description" content="Appointments, sales, client tabs and reminders on one screen, with an assistant you can talk to." />
     <meta property="og:image" content="/media/og.jpg" />
     <meta property="og:type" content="website" />
@@ -22,6 +22,7 @@
       <nav class="nav-links" aria-label="Sections">
         <a href="#who">Who it’s for</a>
         <a href="#product">{{product}}</a>
+        <a href="#pricing">Pricing</a>
         <a href="#security">Security</a>
         <a href="#about">About</a>
       </nav>
@@ -34,13 +35,14 @@
       <!-- Hero: the fogged shop mirror. Wipe it to see the app. -->
       <section class="hero" id="top">
         <div class="hero-copy">
-          <p class="eyebrow"><span>{{name}}</span> · <span>{{product}}</span></p>
-          <h1 class="hero-title">The mirror of your business.</h1>
+          <p class="eyebrow">The mirror of your business</p>
+          <h1 class="hero-title">Your whole shop on one phone.</h1>
           <p class="hero-lead">Appointments, the day’s sales, client tabs and reminders on one screen. Say it and Mona writes it down; ask and she answers from your books.</p>
           <div class="hero-actions">
             <a class="btn btn-solid" href="#demo">Request a demo</a>
             <a class="btn btn-line" href="{{demoUrl}}?sample=barber">Tour a sample shop</a>
           </div>
+          <p class="hero-assure"><span>We set it up with you, in your shop</span> <span class="dot" aria-hidden="true">·</span> <span>Cancel any time</span></p>
           <p class="hero-note">For small businesses that run on appointments and regulars. Starting with barbershops and salons.</p>
         </div>
 
@@ -55,6 +57,20 @@
             <span class="plaque-hint">Wipe the mist</span>
           </figcaption>
         </figure>
+      </section>
+
+      <!-- The problem, in the shopkeeper's words, before any feature. -->
+      <section class="familiar" aria-labelledby="familiar-title">
+        <div class="section-head">
+          <p class="eyebrow">Sound familiar?</p>
+          <h2 id="familiar-title" class="h2">Still counting the till at 9&nbsp;pm?</h2>
+        </div>
+        <ul class="familiar-list">
+          <li><span>The book</span>On paper, behind the chair.</li>
+          <li><span>The tabs</span>In someone’s head.</li>
+          <li><span>The no-shows</span>Nobody follows up.</li>
+        </ul>
+        <p class="familiar-turn">{{product}} does the adding up while you work. <a href="#product">See how <span aria-hidden="true">→</span></a></p>
       </section>
 
       <!-- Who it is for: the tabs carry the vision beyond barbers. -->
@@ -155,6 +171,27 @@
         </ol>
       </section>
 
+      <!-- Pricing: a setup visit, then a monthly price that grows only with what the shop asks for. -->
+      <section class="pricing" id="pricing" aria-labelledby="pricing-title">
+        <div class="section-head">
+          <p class="eyebrow">Pricing</p>
+          <h2 id="pricing-title" class="h2">Small to start. Priced to your shop.</h2>
+        </div>
+        <div class="prices">
+          <article class="price">
+            <h3 class="h4">Setup</h3>
+            <p class="price-amount">$49.99 <span>one time</span></p>
+            <p>We come by, enter your services and prices with you, and get your phone running.</p>
+          </article>
+          <article class="price">
+            <h3 class="h4">Monthly</h3>
+            <p class="price-amount"><span>from</span> $9.99 <span>/ month</span></p>
+            <p>The price grows only with what you ask for. We agree on it together before you pay anything.</p>
+          </article>
+        </div>
+        <p class="price-foot">Cancel any time. <a href="#demo">Get your price <span aria-hidden="true">→</span></a></p>
+      </section>
+
       <!-- Trust: what we promise about data, in plain words. -->
       <section class="trust" id="security" aria-labelledby="trust-title">
         <div class="section-head">
@@ -210,17 +247,15 @@
               <label><input type="radio" name="type" value="guzellik" /><span>Beauty &amp; nails</span></label>
               <label><input type="radio" name="type" value="diger" /><span>Other</span></label>
             </fieldset>
-            <div class="field-row">
-              <label class="field"><span>Email</span><input name="email" type="email" required maxlength="200" autocomplete="email" /></label>
-              <label class="field"><span>Phone (optional)</span><input name="phone" type="tel" maxlength="40" autocomplete="tel" /></label>
-            </div>
-            <label class="field"><span>City and state</span><input name="city" maxlength="120" autocomplete="address-level2" /></label>
-            <label class="field"><span>Message (optional)</span><textarea name="message" rows="3" maxlength="1500"></textarea></label>
+            <label class="field"><span>Email</span><input name="email" type="email" required maxlength="200" autocomplete="email" /></label>
             <fieldset class="field choice">
               <legend>How should we reach you?</legend>
-              <label><input type="radio" name="contact" value="arayin" checked /><span>Call me</span></label>
-              <label><input type="radio" name="contact" value="eposta" /><span>Email me</span></label>
+              <label><input type="radio" name="contact" value="eposta" checked /><span>Email me</span></label>
+              <label><input type="radio" name="contact" value="arayin" /><span>Call me</span></label>
             </fieldset>
+            <!-- Only asked for when they want a call, and then needed. -->
+            <label class="field" id="phone-field" hidden><span>Phone</span><input name="phone" type="tel" maxlength="40" autocomplete="tel" disabled /></label>
+            <label class="field"><span>Message (optional)</span><textarea name="message" rows="3" maxlength="1500"></textarea></label>
             <label class="consent"><input type="checkbox" name="consent" value="yes" required /><span>I agree that {{name}} may use these details to respond to my demo request. <a href="/privacy">Privacy policy</a></span></label>
             <p class="form-error" id="form-error" role="alert"></p>
             <button class="btn btn-solid btn-block" type="submit" id="form-submit">Send demo request</button>

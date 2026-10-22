@@ -289,10 +289,78 @@ section {
   flex-wrap: wrap;
   gap: 12px;
 }
+.hero-assure {
+  margin: 16px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.hero-assure span {
+  white-space: nowrap;
+}
+.hero-assure .dot {
+  margin: 0 4px;
+  color: var(--barbicide);
+}
 .hero-note {
-  margin: 18px 0 0;
+  margin: 10px 0 0;
   font-size: 14px;
   color: var(--ink-3);
+}
+
+/* --- familiar: the problem, on the dark of a shop after closing --- */
+.familiar {
+  background: var(--ink);
+  color: var(--paper);
+}
+.familiar .eyebrow {
+  color: var(--barbicide);
+}
+.familiar-list {
+  list-style: none;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0;
+  display: grid;
+  border-top: 1px solid rgba(251, 252, 252, 0.16);
+}
+@media (min-width: 860px) {
+  .familiar-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.familiar-list li {
+  padding: 22px 0;
+  border-bottom: 1px solid rgba(251, 252, 252, 0.16);
+  font-size: clamp(20px, 2vw, 26px);
+}
+@media (min-width: 860px) {
+  .familiar-list li {
+    padding: 26px 24px 26px 0;
+    border-bottom: 0;
+  }
+}
+.familiar-list span {
+  display: block;
+  margin-bottom: 8px;
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--chrome-2);
+}
+.familiar-turn {
+  max-width: var(--max);
+  margin: clamp(32px, 4vw, 48px) auto 0;
+  font-size: clamp(18px, 1.6vw, 21px);
+}
+.familiar-turn a {
+  color: var(--barbicide);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.familiar-turn a:hover {
+  text-decoration: underline;
 }
 
 /* The mirror: an arched shop mirror in a chrome frame, hung on a tiled wall. */
@@ -651,6 +719,57 @@ section {
   line-height: 1;
   color: var(--barbicide);
   margin-bottom: 18px;
+}
+
+/* --- pricing --- */
+.prices {
+  max-width: var(--max);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+@media (min-width: 760px) {
+  .prices {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.price {
+  background: var(--paper);
+  border: 1px solid var(--grout);
+  border-radius: 22px;
+  padding: 26px;
+}
+.price p {
+  margin: 0;
+  color: var(--ink-2);
+}
+.price .price-amount {
+  margin: 6px 0 14px;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(48px, 5vw, 64px);
+  line-height: 1;
+  color: var(--ink);
+}
+.price-amount span {
+  font: 500 14px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.price-foot {
+  max-width: var(--max);
+  margin: 28px auto 0;
+  font-weight: 600;
+}
+.price-foot a {
+  margin-left: 6px;
+  color: var(--barbicide-deep);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.price-foot a:hover {
+  text-decoration: underline;
 }
 
 /* --- trust --- */

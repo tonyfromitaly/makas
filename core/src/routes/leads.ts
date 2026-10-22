@@ -26,7 +26,7 @@ const demoRequest = z.object({
   team_size: z.enum(['1-4', '5-19', '20-49', '50+']).optional(),
   /** Honeypot: people never fill it. */
   company_url: z.string().max(200).optional(),
-});
+}).refine((b) => b.contact !== 'arayin' || b.phone, { message: 'A phone number is needed to call you', path: ['phone'] });
 
 export const leadRoutes: Route[] = [
   {
