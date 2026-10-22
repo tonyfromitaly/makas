@@ -1,5 +1,5 @@
 import { ZodError } from 'zod';
-import { safeEqual, verifyAccess } from './auth';
+import { issuedInTime, safeEqual, verifyAccess } from './auth';
 import { withSystem, withTenant, type Database } from './db';
 import { ApiError, Res, errorBody, mapPgError, notFound, unauthorized, forbidden, uuid, type Config, type Ctx, type Deps, type Route } from './http';
 import { authRoutes } from './routes/auth';
@@ -148,9 +148,11 @@ export function createApi(opts: { db: Database; config: Config; deps: Deps; log?
         if (!token) throw unauthorized();
         const claims = await verifyAccess(opts.config, token);
         const run = async (db: Ctx['db']) => {
-          const user = (await db.query('select id, role from users where id = $1 and shop_id = $2', [claims.sub, claims.shop]))
-            .rows[0];
+          const user = (
+            await db.query('select id, role, sessions_valid_after from users where id = $1 and shop_id = $2', [claims.sub, claims.shop])
+          ).rows[0];
           if (!user) throw unauthorized('Account no longer exists');
+          if (!issuedInTime(claims, user.sessions_valid_after)) throw unauthorized('Session ended, please sign in again');
           if (route.ownerOnly && user.role !== 'owner') throw forbidden('Only the shop owner can do this');
           await assertNotSuspended(db, claims.shop, route);
           if (route.gated && isLocked(await loadSubscription(db, claims.shop), now))
@@ -163,8 +165,9 @@ export function createApi(opts: { db: Database; config: Config; deps: Deps; log?
           const tenantDb = { query: (sql: string, params?: unknown[]) => withTenant(opts.db, shop, (tx) => tx.query(sql, params)) } as Ctx['db'];
           let checked: { id: string; role: Ctx['role'] } | null = null;
           await withTenant(opts.db, shop, async (db) => {
-            const user = (await db.query('select id, role from users where id = $1 and shop_id = $2', [claims.sub, shop])).rows[0];
+            const user = (await db.query('select id, role, sessions_valid_after from users where id = $1 and shop_id = $2', [claims.sub, shop])).rows[0];
             if (!user) throw unauthorized('Account no longer exists');
+            if (!issuedInTime(claims, user.sessions_valid_after)) throw unauthorized('Session ended, please sign in again');
             if (route.ownerOnly && user.role !== 'owner') throw forbidden('Only the shop owner can do this');
             await assertNotSuspended(db, shop, route);
             if (route.gated && isLocked(await loadSubscription(db, shop), now)) throw new ApiError(402, 'SUBSCRIPTION_INACTIVE', 'Subscription is not active');

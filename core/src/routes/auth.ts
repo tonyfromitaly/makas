@@ -107,19 +107,28 @@ export const authRoutes: Route[] = [
   },
   {
     // First login (or recovery) with the access key from the welcome e-mail: sets the password, then signs in.
+    // Recovery ends everything from before: other sessions (refresh and access tokens) and keys not yet used.
     method: 'POST',
     path: '/auth/key',
     auth: 'public',
     body: z.object({ key: z.string().trim().min(10).max(40), password }),
     async handler(ctx, { body }) {
       const hash = await sha256(normalizeKey(body.key));
+      // Taken in one step, so two requests with the same key cannot both use it.
       const key = (
-        await ctx.db.query(`select id, user_id, used_at, expires_at from access_keys where key_hash = $1`, [hash])
+        await ctx.db.query(
+          `update access_keys set used_at = $2 where key_hash = $1 and used_at is null and expires_at > $2 returning id, user_id`,
+          [hash, ctx.now],
+        )
       ).rows[0];
-      if (!key || key.used_at || new Date(key.expires_at) <= ctx.now)
-        throw new ApiError(401, 'INVALID_KEY', 'This access key is invalid, used or expired');
-      await ctx.db.query('update users set password_hash = $2 where id = $1', [key.user_id, await ctx.deps.hashPassword(body.password)]);
-      await ctx.db.query('update access_keys set used_at = $2 where id = $1', [key.id, ctx.now]);
+      if (!key) throw new ApiError(401, 'INVALID_KEY', 'This access key is invalid, used or expired');
+      await ctx.db.query('update users set password_hash = $2, sessions_valid_after = $3 where id = $1', [
+        key.user_id,
+        await ctx.deps.hashPassword(body.password),
+        ctx.now,
+      ]);
+      await ctx.db.query('update refresh_tokens set revoked_at = coalesce(revoked_at, $2) where user_id = $1', [key.user_id, ctx.now]);
+      await ctx.db.query('update access_keys set used_at = $2 where user_id = $1 and used_at is null', [key.user_id, ctx.now]);
       const user = (await ctx.db.query('select * from users where id = $1', [key.user_id])).rows[0];
       const { tokens } = await issueTokens(ctx.db, ctx.config, user);
       return { ...tokens, user: publicUser(user) };

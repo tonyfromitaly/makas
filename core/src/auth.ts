@@ -7,7 +7,13 @@ export interface AccessClaims {
   sub: string;
   shop: string;
   role: 'owner' | 'barber';
+  /** Issued at, in seconds. */
+  iat?: number;
 }
+
+/** False for an access token issued before the user's sessions were ended (recovery). Compared in whole seconds, as iat is. */
+export const issuedInTime = (claims: AccessClaims, validAfter: Date | string | null | undefined) =>
+  !validAfter || (claims.iat ?? 0) >= Math.floor(new Date(validAfter).getTime() / 1000);
 
 const key = (secret: string) => new TextEncoder().encode(secret);
 
@@ -29,7 +35,7 @@ export async function verifyAccess(config: Config, token: string): Promise<Acces
       currentDate: config.now(),
     });
     if (typeof payload.sub !== 'string' || typeof payload.shop !== 'string') throw new Error('claims');
-    return { sub: payload.sub, shop: payload.shop as string, role: payload.role as AccessClaims['role'] };
+    return { sub: payload.sub, shop: payload.shop as string, role: payload.role as AccessClaims['role'], iat: payload.iat };
   } catch {
     throw unauthorized('Invalid or expired token');
   }

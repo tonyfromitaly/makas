@@ -770,6 +770,11 @@ create table operator_log (
 create index operator_log_at on operator_log (at desc);
 `;
 
+// Recovery with an access key ends the sessions from before it: access tokens issued earlier are refused.
+const sessionCutoff = `
+alter table users add column sessions_valid_after timestamptz;
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -788,4 +793,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '015_job_runs', sql: jobRuns },
   { id: '016_demo_requests', sql: demoRequests },
   { id: '017_voids_paid_tasks', sql: voidsAndPaidTasks },
+  { id: '018_session_cutoff', sql: sessionCutoff },
 ];
