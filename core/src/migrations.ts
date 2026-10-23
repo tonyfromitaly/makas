@@ -775,6 +775,12 @@ const sessionCutoff = `
 alter table users add column sessions_valid_after timestamptz;
 `;
 
+// 017 gave voids the plain shop policy, without the system switch every other table has. On a managed owner
+// (no BYPASSRLS) the system path, pg_dump included, then saw no voids at all.
+const voidsSystemPolicy = `
+alter policy tenant_isolation on voids using ${POLICY('shop_id')} with check ${POLICY('shop_id')};
+`;
+
 export const migrations: { id: string; sql: string }[] = [
   { id: '001_init', sql: init },
   { id: '002_shop_tasks', sql: tasks },
@@ -794,4 +800,5 @@ export const migrations: { id: string; sql: string }[] = [
   { id: '016_demo_requests', sql: demoRequests },
   { id: '017_voids_paid_tasks', sql: voidsAndPaidTasks },
   { id: '018_session_cutoff', sql: sessionCutoff },
+  { id: '019_voids_system_policy', sql: voidsSystemPolicy },
 ];

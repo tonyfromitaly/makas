@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
-import { fromPGlite, migrate, withTenant, type Database } from '@makas/core';
+import { fromPGlite, migrate, withSystem, withTenant, type Database } from '@makas/core';
 import { loadConfig } from '../src/config';
 import { argon2Deps, buildServer } from '../src/server';
 
@@ -63,5 +63,25 @@ describe('non-superuser database owner', () => {
     expect(clash.body.error.code).toBe('SLOT_TAKEN');
     // Logging in (system path) still works.
     expect((await call('POST', '/auth/login', undefined, { email: 'alpha@example.com', password: 'correct-horse-battery' })).status).toBe(200);
+  });
+
+  it('the system sees every table, so a backup or the upkeep never misses rows (voids included)', async () => {
+    const c = (
+      await call('POST', '/auth/register', undefined, {
+        shop_name: 'charlie', owner_name: 'charlie', email: 'charlie@example.com', password: 'correct-horse-battery', country: 'US', timezone: 'UTC', language: 'en',
+      })
+    ).body;
+    const sale = await call('POST', '/sales', c.access_token, { method: 'cash', lines: [{ kind: 'other', name: 'Gift card', unit_cents: 2500 }] });
+    expect((await call('DELETE', `/sales/${sale.body.id}`, c.access_token, { reason: 'wrong_entry' })).status).toBe(204);
+    // pg_dump on Render runs as this owner (no BYPASSRLS) with app.system on: it must see the void.
+    const seen = await withSystem(db, async (tx) => (await tx.query<{ n: number }>('select count(*)::int as n from voids')).rows[0].n);
+    expect(seen).toBe(1);
+    // And no table under row-level security may leave the system switch out.
+    const blind = await db.query<{ tablename: string }>(
+      `select c.relname as tablename from pg_class c join pg_namespace n on n.oid = c.relnamespace
+         left join pg_policies p on p.schemaname = 'public' and p.tablename = c.relname and p.qual ilike '%app.system%'
+        where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity and p.policyname is null`,
+    );
+    expect(blind.rows.map((r) => r.tablename)).toEqual([]);
   });
 });
